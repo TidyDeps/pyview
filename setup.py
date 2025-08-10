@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""pydeps - Python module dependency visualization
+"""PyView - Interactive Python module dependency visualization
 """
 # pragma: nocover
 import io
@@ -33,34 +33,45 @@ class PyTest(TestCommand):
 
 
 setuptools.setup(
-    name='pydeps',
+    name='pyview',
     version=version,
     packages=setuptools.find_packages(exclude=['tests*']),
     python_requires=">=3.8",
     install_requires=[
         'stdlib_list',
     ],
-    long_description=io.open('README.rst', encoding='utf8').read(),
+    long_description=io.open('README.md', encoding='utf8').read(),
+    long_description_content_type='text/markdown',
     entry_points={
         'console_scripts': [
-            'pydeps = pydeps.pydeps:pydeps',
+            'pydeps = pydeps.pydeps:pydeps',  # 기존 CLI 호환성 유지
+            'pyview = pydeps.pydeps:pydeps',  # 새로운 CLI (향후 확장)
         ]
     },
-    url='https://github.com/thebjorn/pydeps',
+    url='https://github.com/yourusername/pyview',  # 실제 GitHub URL로 변경 필요
     cmdclass={'test': PyTest},
     license='BSD',
     author='bjorn',
     author_email='bp@datakortet.no',
-    description='Display module dependencies',
-    keywords='Python Module Dependency graphs',
+    maintainer='Your Name',  # 실제 이름으로 변경 필요
+    maintainer_email='your.email@example.com',  # 실제 이메일로 변경 필요
+    description='Interactive Python module dependency visualization with WebGL',
+    keywords='Python Module Dependency graphs visualization interactive WebGL',
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
+        'Development Status :: 4 - Beta',  # 개발 중이므로 Beta로 변경
         'Intended Audience :: Developers',
         'Natural Language :: English',
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
         'Topic :: Software Development :: Libraries :: Python Modules',
+        'Topic :: Software Development :: Quality Assurance',
+        'Topic :: Scientific/Engineering :: Visualization',
     ]
 )
