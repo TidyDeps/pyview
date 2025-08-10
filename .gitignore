@@ -89,3 +89,8 @@ pydeps1.svg
 
 # devcontainer json file exception
 !devcontainer.json
+
+# PyView development files (not for public repo)
+CLAUDE.md
+prd.md
+tasklist.md
