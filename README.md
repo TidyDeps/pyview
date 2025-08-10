@@ -1,23 +1,44 @@
 # PyView
 
-Python module dependency visualization tool.
+Interactive Python module dependency visualization with WebGL.
 
 ## About
 
-PyView is based on [thebjorn/pydeps](https://github.com/thebjorn/pydeps), a Python module dependency visualization tool that creates dependency graphs using Graphviz.
+PyView is an enhanced version of [thebjorn/pydeps](https://github.com/thebjorn/pydeps) that adds:
+- 🚀 **Interactive WebGL visualization** for large codebases (10,000+ modules)
+- 📊 **Multi-layer analysis** (Package → Module → Class → Method → Field)
+- 🔍 **Real-time search and navigation**
+- 💻 **Local web interface** (no server required)
+
+⚠️ **Development Status**: This project is currently under active development.
 
 ## Installation
 
+**For Development:**
 ```bash
+git clone https://github.com/yourusername/pyview.git
+cd pyview
 pip install -e .
+```
+
+**For End Users (when released):**
+```bash
+pip install pyview
 ```
 
 ## Usage
 
-Generate a dependency graph for a Python module:
-
+**Current CLI (compatible with pydeps):**
 ```bash
-python -m pydeps <module_name>
+# Generate static dependency graph
+pydeps <module_name>
+pyview <module_name>  # same as above
+```
+
+**Planned Features:**
+```bash
+# Launch interactive web interface (coming soon)
+pyview serve <project_path>
 ```
 
 ## License
