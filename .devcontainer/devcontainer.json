@@ -1,0 +1,27 @@
+{
+	"name": "devcontainer",
+	"image": "thebjorn/pydeps-devcontainer:1.0.0",
+	"settings": {
+		"workbench.colorTheme": "Default Dark+",
+		"terminal.integrated.defaultProfile.linux": "bash"
+	},
+	"extensions": [
+		// VS Code specific
+		"coenraads.bracket-pair-colorizer",
+		"vscode-icons-team.vscode-icons",
+		"editorconfig.editorconfig",
+		// GitHub specific
+		"eamodio.gitlens",
+		"cschleiden.vscode-github-actions",
+		"redhat.vscode-yaml",
+		"bierner.markdown-preview-github-styles",
+		"ban.spellright",
+		// Python specific,
+		"ms-python.python",
+		"ms-python.vscode-pylance",
+		"VisualStudioExptTeam.vscodeintellicode"
+	],
+	"postCreateCommand": "pip install -r requirements.txt && echo '\n# add python modules to PATH globally\nPATH=$PATH:~/.local/bin/' >> ~/.bashrc"
+}
+
+// Built with ❤ by [Pipeline Foundation](https://pipeline.foundation)
