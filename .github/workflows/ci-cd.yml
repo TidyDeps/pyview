@@ -81,7 +81,7 @@ jobs:
       - run: pytest -vv --cov=pyview --cov-report=xml tests/pyview || true
 
       - name: Upload coverage to codecov.io
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN}}
           fail_ci_if_error: false
