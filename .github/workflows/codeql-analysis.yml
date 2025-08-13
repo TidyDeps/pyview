@@ -10,6 +10,10 @@ on:
     - cron: '0 8 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   analyze:
     name: Analyze
@@ -31,7 +35,5 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
 # Built with ❤ by [Pipeline Foundation](https://pipeline.foundation)
