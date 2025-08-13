@@ -1,155 +1,56 @@
+PyView Documentation
+====================
 
+PyView is an interactive Python dependency visualization tool built on top of pydeps.
+It provides a 5-layer analysis system (Package → Module → Class → Method → Field) with 
+an interactive web-based interface.
 
 .. include:: ../README.rst
 
-
-
-API documentation
+API Documentation
 =================
 
-Module contents
----------------
-
-.. automodule:: pydeps
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-pydeps.arguments module
------------------------
-
-.. automodule:: pydeps.arguments
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-pydeps.cli module
------------------
-
-.. automodule:: pydeps.cli
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-pydeps.colors module
---------------------
-
-.. automodule:: pydeps.colors
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-pydeps.depgraph module
-----------------------
-
-.. automodule:: pydeps.depgraph
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-pydeps.depgraph2dot module
---------------------------
-
-.. automodule:: pydeps.depgraph2dot
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-pydeps.dot module
------------------
-
-.. automodule:: pydeps.dot
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-pydeps.dummymodule module
--------------------------
-
-.. automodule:: pydeps.dummymodule
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-pydeps.configs module
----------------------
-
-.. automodule:: pydeps.configs
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-pydeps.mf27 module
+PyView Core Module
 ------------------
 
-.. automodule:: pydeps.mf27
+.. automodule:: pyview
     :members:
     :undoc-members:
     :show-inheritance:
 
-pydeps.package\_names module
-----------------------------
+PyView Models
+-------------
 
-.. automodule:: pydeps.package_names
+.. automodule:: pyview.models
     :members:
     :undoc-members:
     :show-inheritance:
 
-pydeps.py2depgraph module
--------------------------
+PyView AST Analyzer
+-------------------
 
-.. automodule:: pydeps.py2depgraph
+.. automodule:: pyview.ast_analyzer
     :members:
     :undoc-members:
     :show-inheritance:
 
-pydeps.pycompat module
+PyView Analyzer Engine
 ----------------------
 
-.. automodule:: pydeps.pycompat
+.. automodule:: pyview.analyzer_engine
     :members:
     :undoc-members:
     :show-inheritance:
 
-pydeps.pydeps module
+PyView Legacy Bridge
 --------------------
 
-.. automodule:: pydeps.pydeps
+.. automodule:: pyview.legacy_bridge
     :members:
     :undoc-members:
     :show-inheritance:
 
-pydeps.pystdlib module
-----------------------
-
-.. automodule:: pydeps.pystdlib
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-pydeps.render_context module
------------------------------
-
-.. automodule:: pydeps.render_context
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-pydeps.target module
---------------------
-
-.. automodule:: pydeps.target
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-
-
-
-
-Indices and tables
+Indices and Tables
 ==================
 
 * :ref:`genindex`

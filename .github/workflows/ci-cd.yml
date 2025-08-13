@@ -25,7 +25,7 @@ jobs:
           python-version: '3.9'
 
       - run: pip install flake8
-      - run: flake8 pydeps/** --max-line-length=199 --exit-zero --exclude mf
+      - run: flake8 pyview/** --max-line-length=199 --exit-zero
 
   docs:
     name: CI:Docs
@@ -78,7 +78,7 @@ jobs:
 
       - run: pip install -r requirements.txt
       - run: pip list
-      - run: pytest -vv --cov=pydeps --cov-report=xml tests
+      - run: pytest -vv --cov=pyview --cov-report=xml tests
 
       - name: Upload coverage to codecov.io
         uses: codecov/codecov-action@v4
