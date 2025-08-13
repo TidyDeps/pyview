@@ -1,16 +1,26 @@
 # PyView
 
-Interactive Python module dependency visualization with WebGL.
+Interactive Python dependency visualization with 5-layer analysis and WebGL interface.
 
 ## About
 
-PyView is an enhanced version of [thebjorn/pydeps](https://github.com/thebjorn/pydeps) that adds:
-- 🚀 **Interactive WebGL visualization** for large codebases (10,000+ modules)
-- 📊 **Multi-layer analysis** (Package → Module → Class → Method → Field)
-- 🔍 **Real-time search and navigation**
-- 💻 **Local web interface** (no server required)
+PyView is an enhanced version of [thebjorn/pydeps](https://github.com/thebjorn/pydeps) that provides:
 
-⚠️ **Development Status**: This project is currently under active development.
+### ✨ Current Features (Implemented)
+- 🔍 **5-Layer Analysis Engine**: Package → Module → Class → Method → Field level dependency tracking
+- 🧠 **AST-based Analysis**: Deep code structure understanding using Python's AST 
+- 🔗 **Legacy Integration**: Seamless integration with existing pydeps functionality
+- 🚀 **FastAPI Server**: REST API with real-time WebSocket progress updates
+- 📊 **Comprehensive Testing**: Full unit test coverage with 27 test files
+- ⚡ **Parallel Processing**: Multi-worker analysis for performance
+
+### 🔮 Planned Features  
+- 🌐 **Interactive WebGL Visualization**: High-performance graph rendering
+- 🔍 **Real-time Search Interface**: Navigate large codebases efficiently  
+- 💻 **React Frontend**: Modern web interface with responsive design
+- 📱 **Progressive Web App**: Offline-capable local analysis tool
+
+⚠️ **Development Status**: Backend engine complete, frontend in development.
 
 ## Installation
 
@@ -28,17 +38,46 @@ pip install pyview
 
 ## Usage
 
-**Current CLI (compatible with pydeps):**
-```bash
-# Generate static dependency graph
-pydeps <module_name>
-pyview <module_name>  # same as above
+### 🔬 Backend Analysis Engine
+```python
+from pyview import analyze_project
+
+# Analyze a Python project
+result = analyze_project('/path/to/project')
+
+# Access 5-layer analysis data
+print(f"Packages: {len(result.dependency_graph.packages)}")
+print(f"Modules: {len(result.dependency_graph.modules)}")  
+print(f"Classes: {len(result.dependency_graph.classes)}")
+print(f"Methods: {len(result.dependency_graph.methods)}")
+print(f"Fields: {len(result.dependency_graph.fields)}")
+
+# Export to JSON
+with open('analysis.json', 'w') as f:
+    f.write(result.to_json())
 ```
 
-**Planned Features:**
+### 🌐 FastAPI Server
 ```bash
-# Launch interactive web interface (coming soon)
-pyview serve <project_path>
+# Start the API server
+python -m pyview.server.main --host 0.0.0.0 --port 8000
+
+# Or run demo
+python demo_server.py --start
+```
+
+**API Endpoints:**
+- `POST /api/analyze` - Start dependency analysis
+- `GET /api/analyze/{id}` - Get analysis status
+- `GET /api/results/{id}` - Get analysis results  
+- `POST /api/search` - Search entities
+- `WS /ws/progress/{id}` - Real-time progress updates
+- View docs at: `http://localhost:8000/docs`
+
+### 🖥️ CLI (Legacy pydeps compatibility)
+```bash
+# Generate static dependency graph (coming soon)
+pyview <module_name>
 ```
 
 ## License
