@@ -4,6 +4,8 @@ import { ConfigProvider, message } from 'antd'
 import AppLayout from '@/components/Layout/AppLayout'
 import AnalysisForm from '@/components/Analysis/AnalysisForm'
 import ProgressDisplay from '@/components/Analysis/ProgressDisplay'
+import VisualizationPage from '@/components/Visualization/VisualizationPage'
+import SearchPage from '@/components/Search/SearchPage'
 import { useAnalysis } from '@/hooks/useAnalysis'
 import type { AnalysisRequest } from '@/types/api'
 
@@ -59,18 +61,16 @@ const App: React.FC = () => {
       
       case 'visualization':
         return (
-          <div style={{ textAlign: 'center', padding: '50px 0' }}>
-            <h2>Dependency Graph Visualization</h2>
-            <p>This feature will be implemented next with WebGL rendering.</p>
-          </div>
+          <VisualizationPage 
+            analysisId={currentAnalysis?.analysis_id}
+          />
         )
       
       case 'search':
         return (
-          <div style={{ textAlign: 'center', padding: '50px 0' }}>
-            <h2>Entity Search</h2>
-            <p>Search functionality will be available after analysis completion.</p>
-          </div>
+          <SearchPage 
+            analysisId={currentAnalysis?.analysis_id}
+          />
         )
       
       default:
