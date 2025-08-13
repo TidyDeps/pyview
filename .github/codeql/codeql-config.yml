@@ -2,6 +2,7 @@ name: "CodeQL config"
 
 paths-ignore:
   - tests/**
+  - pydeps/**
 
 queries:
   - name: Security and quality internal queries
