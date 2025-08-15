@@ -1,7 +1,7 @@
 // Visualization Page with Graph and Controls
 import React, { useState, useEffect } from 'react'
 import { Row, Col, message, Alert, Spin } from 'antd'
-import DependencyGraph from './DependencyGraph'
+import NetworkGraph2D from './NetworkGraph2D'
 import GraphControls from './GraphControls'
 import { ApiService } from '@/services/api'
 
@@ -70,47 +70,50 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     const nodes: GraphData['nodes'] = []
     const edges: GraphData['edges'] = []
 
+    console.log('Transforming analysis results:', analysisResults)
+
     // Extract nodes from different levels
     if (analysisResults.packages) {
       analysisResults.packages.forEach((pkg: any, index: number) => {
         nodes.push({
-          id: pkg.package_id,
-          name: pkg.name,
+          id: pkg.package_id || `pkg_${index}`,
+          name: pkg.name || `Package ${index}`,
           type: 'package',
-          x: Math.cos(index * 0.5) * 50,
-          y: 0,
-          z: Math.sin(index * 0.5) * 50,
-          connections: pkg.module_ids || []
+          x: Math.cos(index * 0.8) * 60,
+          y: 20,
+          z: Math.sin(index * 0.8) * 60,
+          connections: pkg.modules || []
         })
       })
     }
 
     if (analysisResults.modules) {
       analysisResults.modules.forEach((mod: any, index: number) => {
-        const angle = index * 0.3
-        const radius = 30
+        const angle = index * (Math.PI * 2) / analysisResults.modules.length
+        const radius = 40
         nodes.push({
-          id: mod.module_id,
-          name: mod.name,
+          id: mod.module_id || `mod_${index}`,
+          name: mod.name || `Module ${index}`,
           type: 'module',
           x: Math.cos(angle) * radius,
-          y: 10,
+          y: 0,
           z: Math.sin(angle) * radius,
-          connections: mod.class_ids || []
+          connections: []
         })
       })
     }
 
     if (analysisResults.classes) {
       analysisResults.classes.forEach((cls: any, index: number) => {
-        const angle = index * 0.2
-        const radius = 20
+        const angle = index * (Math.PI * 2) / analysisResults.classes.length
+        const radius = 35 + (index % 2) * 10  // Alternate between two radius levels
+        const height = 15 + (index % 3) * 8   // Three height levels
         nodes.push({
-          id: cls.class_id,
-          name: cls.name,
+          id: cls.class_id || `cls_${index}`,
+          name: cls.name || `Class ${index}`,
           type: 'class',
           x: Math.cos(angle) * radius,
-          y: 20,
+          y: height,
           z: Math.sin(angle) * radius,
           connections: [...(cls.method_ids || []), ...(cls.field_ids || [])]
         })
@@ -119,14 +122,15 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
 
     if (analysisResults.methods) {
       analysisResults.methods.forEach((method: any, index: number) => {
-        const angle = index * 0.1
-        const radius = 15
+        const angle = index * (Math.PI * 2) / analysisResults.methods.length
+        const radius = 20 + (index % 4) * 5  // Four radius levels for better spread
+        const height = 30 + (index % 3) * 12  // Three height levels
         nodes.push({
-          id: method.method_id,
-          name: method.name,
+          id: method.method_id || `method_${index}`,
+          name: method.name || `Method ${index}`,
           type: 'method',
           x: Math.cos(angle) * radius,
-          y: 30,
+          y: height,
           z: Math.sin(angle) * radius,
           connections: []
         })
@@ -135,14 +139,15 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
 
     if (analysisResults.fields) {
       analysisResults.fields.forEach((field: any, index: number) => {
-        const angle = index * 0.05
-        const radius = 10
+        const angle = index * (Math.PI * 2) / analysisResults.fields.length
+        const radius = 25 + (index % 3) * 8  // Vary radius slightly for better distribution
+        const height = -20 + (index % 2) * 10  // Vary height as well
         nodes.push({
-          id: field.field_id,
-          name: field.name,
+          id: field.field_id || `field_${index}`,
+          name: field.name || `Field ${index}`,
           type: 'field',
           x: Math.cos(angle) * radius,
-          y: 40,
+          y: height,
           z: Math.sin(angle) * radius,
           connections: []
         })
@@ -224,29 +229,12 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
 
   return (
     <Row gutter={[16, 16]}>
-      <Col xs={24} lg={18}>
-        <DependencyGraph
+      <Col xs={24}>
+        <NetworkGraph2D
           data={graphData}
           onNodeClick={(node) => {
             message.info(`Selected: ${node.name} (${node.type})`)
           }}
-        />
-      </Col>
-      
-      <Col xs={24} lg={6}>
-        <GraphControls
-          selectedLevel={selectedLevel}
-          onLevelChange={setSelectedLevel}
-          nodeSize={nodeSize}
-          onNodeSizeChange={setNodeSize}
-          edgeOpacity={edgeOpacity}
-          onEdgeOpacityChange={setEdgeOpacity}
-          showLabels={showLabels}
-          onShowLabelsChange={setShowLabels}
-          layoutMode={layoutMode}
-          onLayoutModeChange={setLayoutMode}
-          onExport={handleExport}
-          onResetLayout={handleResetLayout}
         />
       </Col>
     </Row>
