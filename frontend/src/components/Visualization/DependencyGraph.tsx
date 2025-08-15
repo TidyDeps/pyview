@@ -177,21 +177,35 @@ const DependencyGraph: React.FC<DependencyGraphProps> = ({ data, onNodeClick }) 
   useEffect(() => {
     if (!data || !sceneRef.current) return
 
-    // Clear existing objects
+    // Clear existing objects (meshes, lines, and sprites for labels)
     const objectsToRemove = sceneRef.current.children.filter(
-      child => child.type === 'Mesh' || child.type === 'Line'
+      child => child.type === 'Mesh' || child.type === 'Line' || child.type === 'Sprite'
     )
-    objectsToRemove.forEach(obj => sceneRef.current!.remove(obj))
+    objectsToRemove.forEach(obj => {
+      sceneRef.current!.remove(obj)
+      // Dispose of materials and geometries to prevent memory leaks
+      if (obj.material) {
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach(mat => mat.dispose?.())
+        } else {
+          obj.material.dispose?.()
+        }
+      }
+      if (obj.geometry) {
+        obj.geometry.dispose?.()
+      }
+    })
 
     // Filter nodes by selected level
     const filteredNodes = data.nodes.filter(node => 
       selectedLevel === 'all' || node.type === selectedLevel
     )
 
-    // Create node meshes
+    // Create node meshes with labels
     const nodeGeometry = new THREE.SphereGeometry(nodeSize, 16, 16)
     
     filteredNodes.forEach(node => {
+      // Create node sphere
       const material = new THREE.MeshLambertMaterial({
         color: nodeColors[node.type] || 0x999999
       })
@@ -203,6 +217,28 @@ const DependencyGraph: React.FC<DependencyGraphProps> = ({ data, onNodeClick }) 
       mesh.userData = { node }
       
       sceneRef.current!.add(mesh)
+      
+      // Add text label if enabled
+      if (showLabels) {
+        const canvas = document.createElement('canvas')
+        const context = canvas.getContext('2d')!
+        canvas.width = 256
+        canvas.height = 64
+        
+        context.font = 'Bold 20px Arial'
+        context.fillStyle = 'white'
+        context.textAlign = 'center'
+        context.fillText(node.name, 128, 40)
+        
+        const texture = new THREE.CanvasTexture(canvas)
+        const labelMaterial = new THREE.SpriteMaterial({ map: texture })
+        const label = new THREE.Sprite(labelMaterial)
+        
+        label.position.set(node.x, node.y + nodeSize * 2, node.z)
+        label.scale.set(20, 5, 1)
+        
+        sceneRef.current!.add(label)
+      }
     })
 
     // Create edge lines
