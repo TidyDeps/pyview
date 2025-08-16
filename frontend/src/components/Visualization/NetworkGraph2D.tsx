@@ -2,9 +2,9 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { Card, Select, Space, Button, Typography, Slider, Switch } from 'antd'
 import { FullscreenOutlined, ReloadOutlined, SettingOutlined } from '@ant-design/icons'
-import cytoscape, { Core, ElementDefinition, Stylesheet } from 'cytoscape'
+import cytoscape from 'cytoscape'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 const { Option } = Select
 
 interface Node {
@@ -29,7 +29,7 @@ interface NetworkGraph2DProps {
 
 const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) => {
   const cyRef = useRef<HTMLDivElement>(null)
-  const cyInstanceRef = useRef<Core | null>(null)
+  const cyInstanceRef = useRef<any>(null)
   
   const [selectedLevel, setSelectedLevel] = useState<string>('module')
   const [layoutType, setLayoutType] = useState<string>('cose')
@@ -56,18 +56,18 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
   }
 
   // Cytoscape 스타일시트
-  const getStylesheet = (): Stylesheet[] => [
+  const getStylesheet = (): any[] => [
     {
       selector: 'node',
       style: {
-        'background-color': (ele) => nodeColors[ele.data('type')] || '#999',
+        'background-color': (ele: any) => nodeColors[ele.data('type')] || '#999',
         'label': showLabels ? 'data(name)' : '',
         'width': nodeSize,
         'height': nodeSize,
         'font-size': '12px',
         'text-valign': 'center',
         'text-halign': 'center',
-        'color': '#333',
+        'color': '#000',
         'text-outline-width': 2,
         'text-outline-color': '#fff',
         'border-width': 2,
@@ -85,75 +85,56 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
       }
     },
     {
-      selector: 'node:selected',
-      style: {
-        'border-width': 4,
-        'border-color': '#ff4d4f',
-        'background-color': '#fff2f0'
-      }
-    },
-    {
       selector: 'edge',
       style: {
         'width': 2,
-        'line-color': (ele) => edgeColors[ele.data('type')] || '#999',
-        'target-arrow-color': (ele) => edgeColors[ele.data('type')] || '#999',
+        'line-color': (ele: any) => edgeColors[ele.data('type')] || '#999',
+        'target-arrow-color': (ele: any) => edgeColors[ele.data('type')] || '#999',
         'target-arrow-shape': 'triangle',
         'curve-style': 'bezier',
         'opacity': edgeOpacity,
         'arrow-scale': 1.2
-      }
-    },
-    {
-      selector: 'edge:hover',
-      style: {
-        'width': 4,
-        'opacity': 1
-      }
-    },
-    // 타입별 특별 스타일
-    {
-      selector: 'node[type = "package"]',
-      style: {
-        'shape': 'round-rectangle',
-        'width': nodeSize * 1.3,
-        'height': nodeSize * 1.1
-      }
-    },
-    {
-      selector: 'node[type = "class"]',
-      style: {
-        'shape': 'round-rectangle'
-      }
-    },
-    {
-      selector: 'node[type = "method"]',
-      style: {
-        'shape': 'ellipse'
-      }
-    },
-    {
-      selector: 'node[type = "field"]',
-      style: {
-        'shape': 'diamond'
       }
     }
   ]
 
   // 데이터를 Cytoscape 형식으로 변환
   const transformData = (inputData: { nodes: Node[], edges: Edge[] }) => {
-    // 선택된 레벨에 따라 노드 필터링
+    console.log('NetworkGraph2D - Input data:', {
+      nodes: inputData.nodes.length,
+      edges: inputData.edges.length,
+      selectedLevel
+    })
+
     const filteredNodes = inputData.nodes.filter(node => 
       selectedLevel === 'all' || node.type === selectedLevel
     )
 
+    console.log('NetworkGraph2D - Filtered nodes:', filteredNodes.length)
+    console.log('NetworkGraph2D - Sample filtered nodes:', filteredNodes.slice(0, 3))
+
     const nodeIds = new Set(filteredNodes.map(n => n.id))
+    console.log('NetworkGraph2D - Node IDs set size:', nodeIds.size)
+    console.log('NetworkGraph2D - Sample node IDs:', Array.from(nodeIds).slice(0, 5))
+    
     const filteredEdges = inputData.edges.filter(edge => 
       nodeIds.has(edge.source) && nodeIds.has(edge.target)
     )
 
-    const elements: ElementDefinition[] = [
-      // 노드들
+    console.log('NetworkGraph2D - Filtered edges:', filteredEdges.length)
+    console.log('NetworkGraph2D - Sample edges before filtering:', inputData.edges.slice(0, 3))
+    console.log('NetworkGraph2D - Sample filtered edges:', filteredEdges.slice(0, 3))
+    
+    // Debug edge filtering
+    if (filteredEdges.length === 0 && inputData.edges.length > 0) {
+      console.warn('NetworkGraph2D - All edges filtered out! Checking first edge:')
+      const firstEdge = inputData.edges[0]
+      console.warn('First edge source exists:', nodeIds.has(firstEdge.source))
+      console.warn('First edge target exists:', nodeIds.has(firstEdge.target))
+      console.warn('First edge:', firstEdge)
+    }
+
+    const elements: any[] = [
       ...filteredNodes.map(node => ({
         data: {
           id: node.id,
@@ -161,7 +142,6 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
           type: node.type
         }
       })),
-      // 엣지들
       ...filteredEdges.map(edge => ({
         data: {
           id: `${edge.source}-${edge.target}`,
@@ -172,6 +152,7 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
       }))
     ]
 
+    console.log('NetworkGraph2D - Final elements:', elements.length)
     return elements
   }
 
@@ -212,20 +193,6 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
           spacing: 100,
           condense: false
         }
-      case 'breadthfirst':
-        return {
-          ...baseOptions,
-          directed: true,
-          spacingFactor: 1.75,
-          circle: false
-        }
-      case 'concentric':
-        return {
-          ...baseOptions,
-          concentric: (node: any) => node.degree(),
-          levelWidth: () => 2,
-          spacingFactor: 1.4
-        }
       default:
         return baseOptions
     }
@@ -236,7 +203,6 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
     const nodes: Node[] = []
     const edges: Edge[] = []
     
-    // 각 타입별로 노드 생성
     const types: Node['type'][] = ['package', 'module', 'class', 'method', 'field']
     const counts = { package: 3, module: 8, class: 12, method: 15, field: 10 }
     
@@ -250,7 +216,6 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
       }
     })
     
-    // 의미있는 연결 생성
     for (let i = 0; i < Math.min(nodes.length * 0.8, 35); i++) {
       const sourceIdx = Math.floor(Math.random() * nodes.length)
       let targetIdx = Math.floor(Math.random() * nodes.length)
@@ -272,17 +237,28 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
   useEffect(() => {
     if (!cyRef.current) return
 
-    const inputData = data || generateSampleData()
-    const elements = transformData(inputData)
+    try {
+      const inputData = data || generateSampleData()
+      const elements = transformData(inputData)
 
-    if (cyInstanceRef.current) {
-      // 기존 인스턴스 업데이트
-      cyInstanceRef.current.elements().remove()
-      cyInstanceRef.current.add(elements)
-      cyInstanceRef.current.style(getStylesheet())
-      cyInstanceRef.current.layout(getLayoutOptions(layoutType)).run()
-    } else {
-      // 새 인스턴스 생성
+      // 이전 인스턴스 안전하게 정리
+      if (cyInstanceRef.current) {
+        try {
+          cyInstanceRef.current.removeAllListeners()
+          cyInstanceRef.current.destroy()
+        } catch (destroyError) {
+          console.warn('Error destroying previous cytoscape instance:', destroyError)
+        } finally {
+          cyInstanceRef.current = null
+        }
+      }
+
+      // 최소한의 elements 확인
+      if (elements.length === 0) {
+        console.warn('NetworkGraph2D - No elements to render')
+        return
+      }
+
       const cy = cytoscape({
         container: cyRef.current,
         elements,
@@ -293,7 +269,6 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
         maxZoom: 3
       })
 
-      // 이벤트 리스너
       cy.on('tap', 'node', (evt) => {
         const node = evt.target
         const nodeData = {
@@ -304,11 +279,37 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
         onNodeClick?.(nodeData)
       })
 
+      // 레이아웃 완료 후 자동 맞춤
+      cy.ready(() => {
+        setTimeout(() => {
+          if (cyInstanceRef.current === cy) { // 여전히 동일한 인스턴스인지 확인
+            try {
+              cy.fit()
+              cy.center()
+            } catch (fitError) {
+              console.warn('Error fitting graph:', fitError)
+            }
+          }
+        }, 100)
+      })
+
       cyInstanceRef.current = cy
+
+    } catch (error) {
+      console.error('Error initializing Cytoscape:', error)
     }
 
     return () => {
-      // cleanup은 컴포넌트 언마운트시에만
+      if (cyInstanceRef.current) {
+        try {
+          cyInstanceRef.current.removeAllListeners()
+          cyInstanceRef.current.destroy()
+        } catch (error) {
+          console.warn('Error destroying cytoscape instance:', error)
+        } finally {
+          cyInstanceRef.current = null
+        }
+      }
     }
   }, [data, selectedLevel, layoutType, nodeSize, showLabels, edgeOpacity])
 
@@ -325,12 +326,6 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
     }
   }
 
-  const handleFullscreen = () => {
-    if (cyRef.current) {
-      cyRef.current.requestFullscreen()
-    }
-  }
-
   return (
     <Card
       title="2D Dependency Network Graph"
@@ -341,9 +336,6 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
           </Button>
           <Button icon={<SettingOutlined />} onClick={handleReset}>
             Reset View
-          </Button>
-          <Button icon={<FullscreenOutlined />} onClick={handleFullscreen}>
-            Fullscreen
           </Button>
         </Space>
       }
@@ -376,8 +368,6 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
               <Option value="cose">Force-directed</Option>
               <Option value="circle">Circle</Option>
               <Option value="grid">Grid</Option>
-              <Option value="breadthfirst">Hierarchical</Option>
-              <Option value="concentric">Concentric</Option>
             </Select>
           </div>
 
@@ -388,18 +378,6 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
               max={60}
               value={nodeSize}
               onChange={setNodeSize}
-              style={{ width: 80 }}
-            />
-          </div>
-
-          <div style={{ width: 120 }}>
-            <Text>Edge Opacity: </Text>
-            <Slider
-              min={0.2}
-              max={1}
-              step={0.1}
-              value={edgeOpacity}
-              onChange={setEdgeOpacity}
               style={{ width: 80 }}
             />
           </div>
@@ -420,9 +398,9 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
         style={{
           width: '100%',
           height: '600px',
-          border: '1px solid #d9d9d9',
+          border: '1px solid var(--ant-color-border)',
           borderRadius: 6,
-          background: '#fafafa'
+          backgroundColor: 'var(--ant-color-bg-container, #fff)'
         }}
       />
       
@@ -434,11 +412,6 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
           <div>⚙️ Method</div>
           <div>💎 Field</div>
         </Space>
-        <div style={{ marginTop: 8 }}>
-          <Text type="secondary">
-            Click nodes for details • Drag to move • Scroll to zoom • Right-click for context menu
-          </Text>
-        </div>
       </div>
     </Card>
   )

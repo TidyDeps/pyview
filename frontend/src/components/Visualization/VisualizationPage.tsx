@@ -1,12 +1,14 @@
 // Visualization Page with Graph and Controls
 import React, { useState, useEffect } from 'react'
-import { Row, Col, message, Alert, Spin } from 'antd'
+import { Row, Col, message, Alert, Spin, Card, Switch, Space } from 'antd'
+import { ExperimentOutlined, ApartmentOutlined } from '@ant-design/icons'
 import NetworkGraph2D from './NetworkGraph2D'
+import EnhancedNetworkGraph from './EnhancedNetworkGraph'
 import GraphControls from './GraphControls'
 import { ApiService } from '@/services/api'
 
 interface VisualizationPageProps {
-  analysisId?: string
+  analysisId: string | null
 }
 
 interface GraphData {
@@ -37,6 +39,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
   const [edgeOpacity, setEdgeOpacity] = useState<number>(0.6)
   const [showLabels, setShowLabels] = useState<boolean>(true)
   const [layoutMode, setLayoutMode] = useState<string>('force')
+  const [useEnhancedMode, setUseEnhancedMode] = useState<boolean>(false)
 
   // Load analysis data
   useEffect(() => {
@@ -71,12 +74,19 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     const edges: GraphData['edges'] = []
 
     console.log('Transforming analysis results:', analysisResults)
+    console.log('Available relationships:', analysisResults.relationships?.length || 0)
 
+    // Get dependency graph data
+    const dependencyGraph = analysisResults.dependency_graph || {}
+    
     // Extract nodes from different levels
-    if (analysisResults.packages) {
-      analysisResults.packages.forEach((pkg: any, index: number) => {
+    console.log('Processing nodes from dependency_graph...')
+    if (dependencyGraph.packages) {
+      console.log('Found packages:', dependencyGraph.packages.length)
+      dependencyGraph.packages.forEach((pkg: any, index: number) => {
+        const nodeId = pkg.id || pkg.name || `pkg_${index}`
         nodes.push({
-          id: pkg.package_id || `pkg_${index}`,
+          id: nodeId,
           name: pkg.name || `Package ${index}`,
           type: 'package',
           x: Math.cos(index * 0.8) * 60,
@@ -84,15 +94,18 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
           z: Math.sin(index * 0.8) * 60,
           connections: pkg.modules || []
         })
+        if (index < 3) console.log('Package node:', nodeId, pkg.name)
       })
     }
 
-    if (analysisResults.modules) {
-      analysisResults.modules.forEach((mod: any, index: number) => {
-        const angle = index * (Math.PI * 2) / analysisResults.modules.length
+    if (dependencyGraph.modules) {
+      console.log('Found modules:', dependencyGraph.modules.length)
+      dependencyGraph.modules.forEach((mod: any, index: number) => {
+        const angle = index * (Math.PI * 2) / dependencyGraph.modules.length
         const radius = 40
+        const nodeId = mod.id || mod.name || `mod_${index}`
         nodes.push({
-          id: mod.module_id || `mod_${index}`,
+          id: nodeId,
           name: mod.name || `Module ${index}`,
           type: 'module',
           x: Math.cos(angle) * radius,
@@ -100,16 +113,17 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
           z: Math.sin(angle) * radius,
           connections: []
         })
+        if (index < 3) console.log('Module node:', nodeId, mod.name)
       })
     }
 
-    if (analysisResults.classes) {
-      analysisResults.classes.forEach((cls: any, index: number) => {
-        const angle = index * (Math.PI * 2) / analysisResults.classes.length
+    if (dependencyGraph.classes) {
+      dependencyGraph.classes.forEach((cls: any, index: number) => {
+        const angle = index * (Math.PI * 2) / dependencyGraph.classes.length
         const radius = 35 + (index % 2) * 10  // Alternate between two radius levels
         const height = 15 + (index % 3) * 8   // Three height levels
         nodes.push({
-          id: cls.class_id || `cls_${index}`,
+          id: cls.id || cls.name || `cls_${index}`,
           name: cls.name || `Class ${index}`,
           type: 'class',
           x: Math.cos(angle) * radius,
@@ -120,13 +134,13 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
       })
     }
 
-    if (analysisResults.methods) {
-      analysisResults.methods.forEach((method: any, index: number) => {
-        const angle = index * (Math.PI * 2) / analysisResults.methods.length
+    if (dependencyGraph.methods) {
+      dependencyGraph.methods.forEach((method: any, index: number) => {
+        const angle = index * (Math.PI * 2) / dependencyGraph.methods.length
         const radius = 20 + (index % 4) * 5  // Four radius levels for better spread
         const height = 30 + (index % 3) * 12  // Three height levels
         nodes.push({
-          id: method.method_id || `method_${index}`,
+          id: method.id || method.name || `method_${index}`,
           name: method.name || `Method ${index}`,
           type: 'method',
           x: Math.cos(angle) * radius,
@@ -137,13 +151,13 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
       })
     }
 
-    if (analysisResults.fields) {
-      analysisResults.fields.forEach((field: any, index: number) => {
-        const angle = index * (Math.PI * 2) / analysisResults.fields.length
+    if (dependencyGraph.fields) {
+      dependencyGraph.fields.forEach((field: any, index: number) => {
+        const angle = index * (Math.PI * 2) / dependencyGraph.fields.length
         const radius = 25 + (index % 3) * 8  // Vary radius slightly for better distribution
         const height = -20 + (index % 2) * 10  // Vary height as well
         nodes.push({
-          id: field.field_id || `field_${index}`,
+          id: field.id || field.name || `field_${index}`,
           name: field.name || `Field ${index}`,
           type: 'field',
           x: Math.cos(angle) * radius,
@@ -155,16 +169,96 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     }
 
     // Extract edges from relationships
-    if (analysisResults.dependencies) {
-      analysisResults.dependencies.forEach((dep: any) => {
-        edges.push({
-          source: dep.source_id,
-          target: dep.target_id,
-          type: dep.relationship_type
-        })
+    console.log('Processing relationships...')
+    if (analysisResults.relationships) {
+      console.log('Relationships data:', analysisResults.relationships.slice(0, 5)) // Show first 5
+      
+      let validEdges = 0
+      let invalidEdges = 0
+      let moduleCreatedEdges = 0
+      const nodeIdSet = new Set(nodes.map(n => n.id))
+      const nodeIdArray = Array.from(nodeIdSet)
+      
+      // Helper function to find matching node by partial ID
+      const findNodeByPartialMatch = (entityId: string): string | null => {
+        // Direct match first
+        if (nodeIdSet.has(entityId)) return entityId
+        
+        // Try to find module-level match for function calls
+        if (entityId.startsWith('func:')) {
+          // Extract module path from func:module_path:function_name:line
+          const parts = entityId.split(':')
+          if (parts.length >= 2) {
+            const modulePath = parts[1]
+            // Look for matching module
+            const moduleNode = nodeIdArray.find(id => 
+              id.includes(modulePath) || modulePath.includes(id.replace('mod:', ''))
+            )
+            if (moduleNode) return moduleNode
+          }
+        }
+        
+        // Try to find by name similarity for other entities
+        const entityName = entityId.split('.').pop() || entityId.split(':').pop() || entityId
+        const matchingNode = nodeIdArray.find(id => 
+          id.includes(entityName) || id.endsWith(entityName)
+        )
+        
+        return matchingNode || null
+      }
+      
+      analysisResults.relationships.forEach((dep: any, index: number) => {
+        const sourceId = dep.from_entity
+        const targetId = dep.to_entity
+        
+        // Try direct match first
+        if (nodeIdSet.has(sourceId) && nodeIdSet.has(targetId)) {
+          edges.push({
+            source: sourceId,
+            target: targetId,
+            type: dep.dependency_type || 'import'
+          })
+          validEdges++
+        } else {
+          // Try to find matching nodes by partial match
+          const matchedSource = findNodeByPartialMatch(sourceId)
+          const matchedTarget = findNodeByPartialMatch(targetId)
+          
+          if (matchedSource && matchedTarget && matchedSource !== matchedTarget) {
+            // Check if this edge already exists to avoid duplicates
+            const edgeExists = edges.some(e => 
+              e.source === matchedSource && e.target === matchedTarget
+            )
+            
+            if (!edgeExists) {
+              edges.push({
+                source: matchedSource,
+                target: matchedTarget,
+                type: dep.dependency_type || 'call'
+              })
+              moduleCreatedEdges++
+            }
+          } else {
+            invalidEdges++
+            if (index < 5) { // Show first 5 invalid edges for debugging
+              console.warn('Invalid edge - no matching nodes:', {
+                sourceId,
+                targetId,
+                matchedSource,
+                matchedTarget,
+                dependency: dep
+              })
+            }
+          }
+        }
       })
+      
+      console.log(`Relationships processed: ${validEdges} direct, ${moduleCreatedEdges} module-level, ${invalidEdges} invalid edges`)
+    } else {
+      console.warn('No relationships found in analysis results')
     }
 
+    console.log(`Final graph data: ${nodes.length} nodes, ${edges.length} edges`)
     return { nodes, edges }
   }
 
@@ -228,16 +322,59 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
   }
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col xs={24}>
-        <NetworkGraph2D
-          data={graphData}
-          onNodeClick={(node) => {
-            message.info(`Selected: ${node.name} (${node.type})`)
-          }}
-        />
-      </Col>
-    </Row>
+    <div>
+      {/* Graph Mode Toggle */}
+      <Card 
+        size="small" 
+        style={{ marginBottom: 16 }}
+        title="🚀 Visualization Controls"
+      >
+        <Space align="center">
+          <Switch
+            checked={useEnhancedMode}
+            onChange={setUseEnhancedMode}
+            checkedChildren={<ExperimentOutlined />}
+            unCheckedChildren={<ApartmentOutlined />}
+          />
+          <span style={{ fontWeight: 500 }}>
+            {useEnhancedMode ? 'Enhanced Mode' : 'Standard Mode'}
+          </span>
+          <span style={{ color: '#666', fontSize: 12 }}>
+            {useEnhancedMode 
+              ? '✨ Click highlighting + Container grouping' 
+              : '📊 Basic network visualization'
+            }
+          </span>
+        </Space>
+      </Card>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24}>
+          {useEnhancedMode ? (
+            <>
+              {console.log('VisualizationPage - Rendering EnhancedNetworkGraph with data:', graphData)}
+              <EnhancedNetworkGraph
+                data={graphData}
+                onNodeClick={(nodeId) => {
+                  console.log('Enhanced mode - Clicked node:', nodeId)
+                  message.info(`🎯 Selected: ${nodeId}`)
+                }}
+              />
+            </>
+          ) : (
+            <>
+              {console.log('VisualizationPage - Rendering NetworkGraph2D with data:', graphData)}
+              <NetworkGraph2D
+                data={graphData}
+                onNodeClick={(node) => {
+                  message.info(`Selected: ${node.name} (${node.type})`)
+                }}
+              />
+            </>
+          )}
+        </Col>
+      </Row>
+    </div>
   )
 }
 
