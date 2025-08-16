@@ -8,6 +8,7 @@ import type {
   AnalysisStatusResponse,
   SearchRequest,
   SearchResponse,
+  QualityMetrics,
   ErrorResponse
 } from '@/types/api'
 
@@ -69,6 +70,12 @@ export class ApiService {
   // Delete analysis
   static async deleteAnalysis(analysisId: string): Promise<void> {
     await apiClient.delete(`/analysis/${analysisId}`)
+  }
+
+  // Get quality metrics for analysis
+  static async getQualityMetrics(analysisId: string): Promise<QualityMetrics[]> {
+    const response = await apiClient.get<QualityMetrics[]>(`/analysis/${analysisId}/quality-metrics`)
+    return response.data
   }
 }
 

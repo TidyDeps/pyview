@@ -1,7 +1,7 @@
 // Main Application Layout Component
 import React from 'react'
 import { Layout, Menu, Typography, theme } from 'antd'
-import { BarChartOutlined, ProjectOutlined, SearchOutlined } from '@ant-design/icons'
+import { BarChartOutlined, ProjectOutlined, SearchOutlined, BugOutlined, ApartmentOutlined } from '@ant-design/icons'
 
 const { Header, Content, Sider } = Layout
 const { Title } = Typography
@@ -36,6 +36,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({
       key: 'search',
       icon: <SearchOutlined />,
       label: 'Search',
+    },
+    {
+      key: 'quality-metrics',
+      icon: <BugOutlined />,
+      label: 'Quality Metrics',
+    },
+    {
+      key: 'multi-view',
+      icon: <ApartmentOutlined />,
+      label: 'Multi View',
     },
   ]
 
