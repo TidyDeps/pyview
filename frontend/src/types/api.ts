@@ -74,3 +74,17 @@ export interface ErrorResponse {
   detail?: string
   analysis_id?: string
 }
+
+export interface QualityMetrics {
+  entity_id: string
+  entity_type: string
+  cyclomatic_complexity: number
+  cognitive_complexity: number
+  lines_of_code: number
+  afferent_coupling: number
+  efferent_coupling: number
+  instability: number
+  maintainability_index: number
+  technical_debt_ratio: number
+  quality_grade: string
+}

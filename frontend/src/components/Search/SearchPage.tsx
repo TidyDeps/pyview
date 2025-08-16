@@ -22,7 +22,7 @@ const { Option } = Select
 const { Text, Link } = Typography
 
 interface SearchPageProps {
-  analysisId?: string
+  analysisId: string | null
 }
 
 const SearchPage: React.FC<SearchPageProps> = ({ analysisId }) => {
