@@ -305,10 +305,10 @@ class AnalysisResult:
                 if rel.from_entity == entity_id or rel.to_entity == entity_id]
 
 
-# Factory functions for creating IDs
 def create_package_id(package_path: str) -> str:
     """Create a unique package ID from package path"""
-    return f"pkg:{package_path.replace('/', '.').replace('\\', '.')}"
+    normalized = package_path.replace('/', '.').replace('\\', '.')
+    return f"pkg:{normalized}"
 
 
 def create_module_id(module_path: str) -> str:
