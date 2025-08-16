@@ -90,6 +90,22 @@ pydeps1.svg
 # devcontainer json file exception
 !devcontainer.json
 
+# Node.js / Frontend files
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Frontend build outputs
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/.next/
+
 # PyView development files (not for public repo)
 CLAUDE.md
 prd.md
