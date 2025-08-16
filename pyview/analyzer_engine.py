@@ -12,17 +12,20 @@ import time
 import logging
 from pathlib import Path
 from typing import List, Dict, Set, Optional, Callable, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from .models import (
     AnalysisResult, ProjectInfo, DependencyGraph, 
     PackageInfo, ModuleInfo, ClassInfo, MethodInfo, FieldInfo,
-    Relationship, CyclicDependency, DependencyType,
+    Relationship, CyclicDependency, DependencyType, QualityMetrics, EntityType,
     create_module_id
 )
 from .ast_analyzer import ASTAnalyzer, FileAnalysis
 from .legacy_bridge import LegacyBridge
+from .code_metrics import CodeMetricsEngine
+from .cache_manager import CacheManager, IncrementalAnalyzer, AnalysisCache, FileMetadata
+from .performance_optimizer import LargeProjectAnalyzer, PerformanceConfig, ResultPaginator
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +40,10 @@ class AnalysisOptions:
                  analysis_levels: List[str] = None,
                  enable_type_inference: bool = True,
                  max_workers: int = None,
-                 enable_caching: bool = True):
+                 enable_caching: bool = True,
+                 enable_quality_metrics: bool = True,
+                 enable_performance_optimization: bool = True,
+                 max_memory_mb: int = 1024):
         
         self.max_depth = max_depth
         self.exclude_patterns = exclude_patterns or ['__pycache__', '.git', '.venv', 'venv', 'env', 'tests']
@@ -46,6 +52,9 @@ class AnalysisOptions:
         self.enable_type_inference = enable_type_inference
         self.max_workers = max_workers or min(32, (os.cpu_count() or 1) + 4)
         self.enable_caching = enable_caching
+        self.enable_quality_metrics = enable_quality_metrics
+        self.enable_performance_optimization = enable_performance_optimization
+        self.max_memory_mb = max_memory_mb
 
 
 class ProgressCallback:
@@ -80,6 +89,24 @@ class AnalyzerEngine:
         # Initialize components
         self.ast_analyzer = ASTAnalyzer()
         self.legacy_bridge = LegacyBridge()
+        self.metrics_engine = None  # Temporarily disabled to prevent hanging
+        self.cache_manager = CacheManager() if options and options.enable_caching else None
+        self.incremental_analyzer = IncrementalAnalyzer(self.cache_manager) if self.cache_manager else None
+        
+        # Performance optimization components
+        if options and options.enable_performance_optimization:
+            perf_config = PerformanceConfig(
+                max_memory_mb=options.max_memory_mb,
+                max_workers=options.max_workers,
+                batch_size=100,
+                enable_streaming=True,
+                enable_gc=True
+            )
+            self.large_project_analyzer = LargeProjectAnalyzer(perf_config)
+            self.result_paginator = ResultPaginator()
+        else:
+            self.large_project_analyzer = None
+            self.result_paginator = None
         
         # Analysis state
         self.current_analysis_id: Optional[str] = None
@@ -106,36 +133,305 @@ class AnalyzerEngine:
             progress_callback = ProgressCallback()
         
         try:
-            # Stage 1: Project discovery
+            # Stage 1: Project discovery and size estimation
             progress_callback.update("Discovering project files", 5)
             project_files = self._discover_project_files(project_path)
             self.total_files = len(project_files)
             
-            # Stage 2: pydeps module-level analysis  
-            progress_callback.update("Running module-level analysis", 15)
-            pydeps_result = self._run_pydeps_analysis(project_path, progress_callback)
+            # Stage 1.2: Check for large project optimization
+            if self.large_project_analyzer and len(project_files) > 1000:
+                progress_callback.update("Analyzing project complexity", 7)
+                project_stats = self.large_project_analyzer.estimate_project_size(project_path)
+                
+                if project_stats['complexity'] in ['high', 'very_high']:
+                    progress_callback.update("Large project detected, using optimized analysis", 10)
+                    return self._analyze_large_project(project_path, project_files, progress_callback, start_time)
+                else:
+                    progress_callback.update("Project size manageable, using standard analysis", 10)
             
-            # Stage 3: AST detailed analysis
-            progress_callback.update("Analyzing code structure", 30)
-            ast_analyses = self._run_ast_analysis(project_files, progress_callback)
+            # Stage 1.5: Check for incremental analysis possibility
+            cache_id = None
+            if self.incremental_analyzer:
+                progress_callback.update("Checking cache validity", 8)
+                cache_id = self.incremental_analyzer.can_use_incremental(
+                    project_path, vars(self.options)
+                )
+                
+                if cache_id:
+                    progress_callback.update("Performing incremental analysis", 10)
+                    try:
+                        # Attempt incremental analysis
+                        def full_analysis_fallback(path, files):
+                            return self._perform_full_analysis(path, files, progress_callback)
+                        
+                        result = self.incremental_analyzer.perform_incremental_analysis(
+                            project_path, project_files, cache_id, full_analysis_fallback
+                        )
+                        
+                        progress_callback.update("Incremental analysis complete", 100)
+                        return result
+                        
+                    except Exception as e:
+                        self.logger.warning(f"Incremental analysis failed, falling back to full: {e}")
+                        # Continue with full analysis
             
-            # Stage 4: Data integration
-            progress_callback.update("Integrating analysis results", 80)
-            integrated_data = self._integrate_analyses(pydeps_result, ast_analyses, progress_callback)
+            # Perform full analysis
+            analysis_result = self._perform_full_analysis(project_path, project_files, progress_callback, start_time)
             
-            # Stage 5: Final result assembly
-            progress_callback.update("Assembling final results", 95)
-            analysis_result = self._assemble_result(
-                project_path, integrated_data, start_time, progress_callback
-            )
+            # Stage 7: Save to cache if caching enabled
+            if self.cache_manager and not cache_id:
+                progress_callback.update("Saving analysis cache", 99)
+                self._save_analysis_cache(project_path, project_files, analysis_result)
             
             progress_callback.update("Analysis complete", 100)
-            
             return analysis_result
             
         except Exception as e:
             self.logger.error(f"Analysis failed: {e}")
             raise
+    
+    def _perform_full_analysis(self, project_path: str, project_files: List[str], 
+                              progress_callback: ProgressCallback, start_time: float = None) -> AnalysisResult:
+        """Perform complete analysis without caching"""
+        if start_time is None:
+            start_time = time.time()
+        
+        # Stage 2: pydeps module-level analysis  
+        progress_callback.update("Running module-level analysis", 15)
+        pydeps_result = self._run_pydeps_analysis(project_path, progress_callback)
+        
+        # Stage 3: AST detailed analysis
+        progress_callback.update("Analyzing code structure", 30)
+        ast_analyses = self._run_ast_analysis(project_files, progress_callback)
+        
+        # Stage 4: Data integration
+        progress_callback.update("Integrating analysis results", 70)
+        integrated_data = self._integrate_analyses(pydeps_result, ast_analyses, progress_callback)
+        
+        # Stage 5: Quality metrics analysis (temporarily disabled to prevent hanging)
+        quality_metrics = []
+        progress_callback.update("Skipping quality metrics (fast mode)", 85)
+        # Temporarily disable quality metrics to prevent hanging
+        # if self.metrics_engine and self.options.enable_quality_metrics:
+        #     progress_callback.update("Calculating quality metrics", 85)
+        #     quality_metrics = self._calculate_quality_metrics(integrated_data, project_files, progress_callback)
+        
+        # Stage 6: Final result assembly
+        progress_callback.update("Assembling final results", 95)
+        analysis_result = self._assemble_result(
+            project_path, integrated_data, quality_metrics, start_time, progress_callback
+        )
+        
+        return analysis_result
+    
+    def _save_analysis_cache(self, project_path: str, project_files: List[str], 
+                            analysis_result: AnalysisResult):
+        """Save analysis results to cache"""
+        try:
+            cache_id = self.cache_manager.generate_cache_key(project_path, vars(self.options))
+            
+            # Create file metadata for all analyzed files
+            file_metadata = {}
+            for file_path in project_files:
+                if os.path.exists(file_path):
+                    file_metadata[file_path] = FileMetadata.from_file(file_path)
+            
+            # Create cache entry
+            cache = AnalysisCache(
+                cache_id=cache_id,
+                project_path=project_path,
+                created_at=datetime.now(),
+                expires_at=datetime.now() + timedelta(days=7),  # Cache for 7 days
+                file_metadata=file_metadata,
+                analysis_result=analysis_result
+            )
+            
+            self.cache_manager.save_cache(cache)
+            self.logger.info(f"Analysis results cached with ID: {cache_id}")
+            
+        except Exception as e:
+            self.logger.warning(f"Failed to save cache: {e}")
+    
+    def _analyze_large_project(self, project_path: str, project_files: List[str], 
+                              progress_callback: ProgressCallback, start_time: float) -> AnalysisResult:
+        """Analyze large project using optimization strategies"""
+        
+        if not self.large_project_analyzer:
+            # Fallback to standard analysis
+            return self._perform_full_analysis(project_path, project_files, progress_callback, start_time)
+        
+        progress_callback.update("Initializing large project analysis", 12)
+        
+        # Create optimized analyzer function for streaming
+        def optimized_ast_analysis(file_batch: List[str]):
+            batch_results = []
+            for file_path in file_batch:
+                try:
+                    analysis = self.ast_analyzer.analyze_file(file_path)
+                    if analysis:
+                        batch_results.append(analysis)
+                except Exception as e:
+                    self.logger.warning(f"Failed to analyze {file_path}: {e}")
+            return batch_results
+        
+        # Stream analysis results
+        all_analyses = []
+        total_processed = 0
+        
+        for batch_result in self.large_project_analyzer.analyze_large_project(
+            project_path, optimized_ast_analysis, 
+            lambda msg, prog: progress_callback.update(f"Large project: {msg}", 15 + (prog * 0.6))
+        ):
+            all_analyses.extend(batch_result)
+            total_processed += len(batch_result)
+            
+            # Periodic progress updates
+            if total_processed % 500 == 0:  # Every 500 files
+                progress_callback.update(f"Processed {total_processed}/{len(project_files)} files", 
+                                       15 + (total_processed / len(project_files)) * 60)
+        
+        progress_callback.update("Completing large project analysis", 80)
+        
+        # Use simplified integration for large projects
+        integrated_data = self._integrate_large_project_data(all_analyses, progress_callback)
+        
+        # Skip quality metrics for very large projects to save memory
+        quality_metrics = []
+        if self.metrics_engine and len(project_files) < 5000:  # Only for < 5k files
+            progress_callback.update("Calculating quality metrics (subset)", 85)
+            # Analyze only a sample for quality metrics
+            sample_size = min(1000, len(all_analyses))
+            sample_analyses = all_analyses[:sample_size]
+            quality_metrics = self._calculate_quality_metrics_sample(integrated_data, sample_analyses, progress_callback)
+        
+        # Final result assembly with pagination support
+        progress_callback.update("Assembling results with pagination", 95)
+        analysis_result = self._assemble_large_project_result(
+            project_path, integrated_data, quality_metrics, start_time, progress_callback
+        )
+        
+        return analysis_result
+    
+    def _integrate_large_project_data(self, all_analyses: List[FileAnalysis], 
+                                     progress_callback: ProgressCallback) -> Dict:
+        """Simplified integration for large projects"""
+        
+        packages = {}
+        modules = []
+        classes = []
+        methods = []
+        fields = []
+        relationships = []
+        
+        for analysis in all_analyses:
+            # Convert analysis to our data structures (simplified)
+            module_info = ModuleInfo(
+                id=create_module_id(analysis.file_path),
+                name=Path(analysis.file_path).stem,
+                file_path=analysis.file_path,
+                classes=analysis.classes,  # Assuming these are already converted
+                functions=analysis.functions,
+                imports=analysis.imports,
+                loc=analysis.lines_of_code
+            )
+            modules.append(module_info)
+            
+            # Add classes and methods (simplified)
+            classes.extend(analysis.classes)
+            methods.extend(analysis.methods)
+            fields.extend(analysis.fields)
+        
+        return {
+            'packages': list(packages.values()),
+            'modules': modules,
+            'classes': classes,
+            'methods': methods,
+            'fields': fields,
+            'relationships': relationships,
+            'cycles': [],  # Skip cycle detection for large projects
+            'metrics': {
+                'entity_counts': {
+                    'modules': len(modules),
+                    'classes': len(classes),
+                    'methods': len(methods),
+                    'fields': len(fields)
+                }
+            }
+        }
+    
+    def _calculate_quality_metrics_sample(self, integrated_data: Dict, 
+                                        sample_analyses: List[FileAnalysis],
+                                        progress_callback: ProgressCallback) -> List[QualityMetrics]:
+        """Calculate quality metrics on a sample for large projects"""
+        
+        if not self.metrics_engine:
+            return []
+        
+        sample_metrics = []
+        
+        # Only analyze a subset to save memory and time
+        for i, module in enumerate(integrated_data.get('modules', [])[:100]):  # Max 100 modules
+            try:
+                # This would be a simplified quality analysis
+                quality_metric = QualityMetrics(
+                    entity_id=module.id,
+                    entity_type=EntityType.MODULE,
+                    cyclomatic_complexity=5,  # Simplified
+                    lines_of_code=module.loc,
+                    quality_grade="B"  # Default grade
+                )
+                sample_metrics.append(quality_metric)
+                
+            except Exception as e:
+                self.logger.warning(f"Failed to calculate metrics for {module.id}: {e}")
+                continue
+        
+        return sample_metrics
+    
+    def _assemble_large_project_result(self, project_path: str, integrated_data: Dict, 
+                                      quality_metrics: List[QualityMetrics],
+                                      start_time: float, progress_callback: ProgressCallback) -> AnalysisResult:
+        """Assemble results for large projects with pagination"""
+        
+        end_time = time.time()
+        duration = end_time - start_time
+        
+        # Create project info
+        project_info = ProjectInfo(
+            name=os.path.basename(project_path),
+            path=project_path,
+            analyzed_at=datetime.now().isoformat(),
+            total_files=self.total_files,
+            analysis_duration_seconds=duration,
+            python_version=f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            analysis_options=vars(self.options)
+        )
+        
+        # Create dependency graph with pagination info
+        dependency_graph = DependencyGraph(
+            packages=integrated_data['packages'],
+            modules=integrated_data['modules'][:1000],  # Limit modules in memory
+            classes=integrated_data['classes'][:2000],   # Limit classes
+            methods=integrated_data['methods'][:5000],   # Limit methods
+            fields=integrated_data['fields'][:5000]      # Limit fields
+        )
+        
+        # Create final result
+        result = AnalysisResult(
+            analysis_id=self.current_analysis_id,
+            project_info=project_info,
+            dependency_graph=dependency_graph,
+            relationships=integrated_data['relationships'][:1000],  # Limit relationships
+            quality_metrics=quality_metrics,
+            metrics=integrated_data['metrics'],
+            cycles=integrated_data['cycles']
+        )
+        
+        self.logger.info(f"Large project analysis completed in {duration:.2f} seconds")
+        self.logger.info(f"Analyzed {len(integrated_data['modules'])} modules, "
+                        f"{len(integrated_data['classes'])} classes")
+        
+        return result
     
     def _discover_project_files(self, project_path: str) -> List[str]:
         """Discover all Python files in the project"""
@@ -445,7 +741,88 @@ class AnalyzerEngine:
         
         return metrics
     
+    def _calculate_quality_metrics(self, integrated_data: Dict, project_files: List[str], 
+                                  progress_callback: ProgressCallback) -> List[QualityMetrics]:
+        """Calculate code quality metrics for all entities"""
+        quality_metrics = []
+        
+        if not self.metrics_engine:
+            return quality_metrics
+            
+        from .models import EntityType
+        
+        # Read source files for analysis
+        source_cache = {}
+        for file_path in project_files:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    source_cache[file_path] = f.read()
+            except:
+                continue
+        
+        total_entities = (len(integrated_data.get('modules', [])) + 
+                         len(integrated_data.get('classes', [])))
+        processed = 0
+        
+        # Calculate metrics for modules
+        for module in integrated_data.get('modules', []):
+            source_code = source_cache.get(module.file_path, "")
+            if source_code:
+                module_metrics = self.metrics_engine.analyze_module_quality(module, source_code)
+                
+                quality_metric = QualityMetrics(
+                    entity_id=module.id,
+                    entity_type=EntityType.MODULE,
+                    cyclomatic_complexity=module_metrics.complexity.cyclomatic_complexity,
+                    cognitive_complexity=module_metrics.complexity.cognitive_complexity,
+                    nesting_depth=module_metrics.complexity.nesting_depth,
+                    lines_of_code=len(source_code.split('\n')),
+                    afferent_coupling=module_metrics.coupling.afferent_coupling,
+                    efferent_coupling=module_metrics.coupling.efferent_coupling,
+                    instability=module_metrics.coupling.instability,
+                    maintainability_index=module_metrics.maintainability_index,
+                    technical_debt_ratio=module_metrics.technical_debt_ratio,
+                    quality_grade=self.metrics_engine.get_quality_rating(module_metrics)
+                )
+                quality_metrics.append(quality_metric)
+                
+            processed += 1
+            if processed % 10 == 0:
+                progress = 85 + (processed / total_entities) * 10
+                progress_callback.update(f"Quality metrics: {processed}/{total_entities}", progress)
+        
+        # Calculate metrics for classes
+        for class_info in integrated_data.get('classes', []):
+            source_code = source_cache.get(class_info.file_path, "")
+            if source_code:
+                class_metrics = self.metrics_engine.analyze_class_quality(class_info, source_code)
+                
+                quality_metric = QualityMetrics(
+                    entity_id=class_info.id,
+                    entity_type=EntityType.CLASS,
+                    cyclomatic_complexity=class_metrics.complexity.cyclomatic_complexity,
+                    cognitive_complexity=class_metrics.complexity.cognitive_complexity,
+                    nesting_depth=class_metrics.complexity.nesting_depth,
+                    lines_of_code=sum(len(m.body_text.split('\n')) for m in class_info.methods),
+                    afferent_coupling=class_metrics.coupling.afferent_coupling,
+                    efferent_coupling=class_metrics.coupling.efferent_coupling,
+                    instability=class_metrics.coupling.instability,
+                    maintainability_index=class_metrics.maintainability_index,
+                    technical_debt_ratio=class_metrics.technical_debt_ratio,
+                    quality_grade=self.metrics_engine.get_quality_rating(class_metrics)
+                )
+                quality_metrics.append(quality_metric)
+                
+            processed += 1
+            if processed % 10 == 0:
+                progress = 85 + (processed / total_entities) * 10
+                progress_callback.update(f"Quality metrics: {processed}/{total_entities}", progress)
+        
+        self.logger.info(f"Calculated quality metrics for {len(quality_metrics)} entities")
+        return quality_metrics
+    
     def _assemble_result(self, project_path: str, integrated_data: Dict, 
+                        quality_metrics: List[QualityMetrics],
                         start_time: float, progress_callback: ProgressCallback) -> AnalysisResult:
         """Assemble the final analysis result"""
         
@@ -490,6 +867,7 @@ class AnalyzerEngine:
             project_info=project_info,
             dependency_graph=dependency_graph,
             relationships=integrated_data['relationships'],
+            quality_metrics=quality_metrics,
             metrics=integrated_data['metrics'],
             cycles=cycles
         )

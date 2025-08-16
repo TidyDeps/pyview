@@ -74,6 +74,7 @@ class MethodInfo:
     is_property: bool = False
     calls: List[str] = field(default_factory=list)  # IDs of called methods/functions
     complexity: int = 1  # Cyclomatic complexity
+    body_text: str = ""  # Method body source code for analysis
     docstring: Optional[str] = None
 
 
@@ -86,8 +87,8 @@ class ClassInfo:
     line_number: int
     file_path: str
     bases: List[str] = field(default_factory=list)  # Base class IDs
-    methods: List[str] = field(default_factory=list)  # Method IDs
-    fields: List[str] = field(default_factory=list)  # Field IDs
+    methods: List[MethodInfo] = field(default_factory=list)  # Method objects
+    fields: List[FieldInfo] = field(default_factory=list)  # Field objects
     decorators: List[str] = field(default_factory=list)
     is_abstract: bool = False
     docstring: Optional[str] = None
@@ -100,8 +101,8 @@ class ModuleInfo:
     name: str
     file_path: str
     package_id: Optional[str] = None
-    classes: List[str] = field(default_factory=list)  # Class IDs
-    functions: List[str] = field(default_factory=list)  # Function IDs
+    classes: List[ClassInfo] = field(default_factory=list)  # Class objects
+    functions: List[MethodInfo] = field(default_factory=list)  # Function objects
     imports: List[ImportInfo] = field(default_factory=list)
     loc: int = 0  # Lines of Code
     docstring: Optional[str] = None
@@ -133,21 +134,20 @@ class Relationship:
 
 
 @dataclass
-class ComplexityMetrics:
-    """Code complexity metrics"""
-    cyclomatic_complexity: Dict[str, int] = field(default_factory=dict)
-    cognitive_complexity: Dict[str, int] = field(default_factory=dict)
-    nesting_depth: Dict[str, int] = field(default_factory=dict)
-    lines_of_code: Dict[str, int] = field(default_factory=dict)
-
-
-@dataclass
-class CouplingMetrics:
-    """Coupling and cohesion metrics"""
-    afferent_coupling: Dict[str, int] = field(default_factory=dict)  # Incoming dependencies
-    efferent_coupling: Dict[str, int] = field(default_factory=dict)  # Outgoing dependencies
-    instability: Dict[str, float] = field(default_factory=dict)  # I = Ce / (Ca + Ce)
-    abstractness: Dict[str, float] = field(default_factory=dict)  # A = Abstract classes / Total classes
+class QualityMetrics:
+    """Code quality metrics for entities"""
+    entity_id: str
+    entity_type: EntityType
+    cyclomatic_complexity: int = 1
+    cognitive_complexity: int = 0
+    nesting_depth: int = 0
+    lines_of_code: int = 0
+    afferent_coupling: int = 0  # Incoming dependencies
+    efferent_coupling: int = 0  # Outgoing dependencies
+    instability: float = 0.0    # I = Ce / (Ca + Ce)
+    maintainability_index: float = 100.0
+    technical_debt_ratio: float = 0.0
+    quality_grade: str = "A"    # A, B, C, D, F
 
 
 @dataclass
@@ -247,6 +247,7 @@ class AnalysisResult:
     project_info: ProjectInfo
     dependency_graph: DependencyGraph
     relationships: List[Relationship] = field(default_factory=list)
+    quality_metrics: List[QualityMetrics] = field(default_factory=list)
     metrics: Optional[Dict[str, Any]] = None
     cycles: List[CyclicDependency] = field(default_factory=list)
     
