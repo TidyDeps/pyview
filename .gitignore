@@ -70,7 +70,7 @@ README.html
 ./pydeps-pylib.svg
 .pydeps~
 .lintscore6
-*.json
+# *.json
 source.jdb
 docs/.md5
 pydeps.svg
@@ -110,7 +110,7 @@ frontend/.next/
 CLAUDE.md
 prd.md
 tasklist.md
+.cursor/
 
 # Personal work artifacts (individual work process)
 PROJECT_STATUS.md
-.cursor/
