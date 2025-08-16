@@ -52,11 +52,14 @@ class DummyModule(object):
         self._legal_mnames = {}
         self.target = target
         self.fname = '_dummy_' + target.modpath.replace('.', '_') + '.py'
-        self.absname = os.path.join(target.workdir, self.fname)
+        # Use /tmp directory to avoid triggering server auto-reload
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        self.absname = os.path.join(temp_dir, self.fname)
 
         if target.is_module:
             cli.verbose(1, "target is a PACKAGE")
-            with open(self.fname, 'w') as fp:
+            with open(self.absname, 'w') as fp:
                 for fname in python_sources_below(target.package_root):
                     modname = fname2modname(fname, target.syspath_dir)
                     self.print_import(fp, modname)
@@ -69,7 +72,7 @@ class DummyModule(object):
             log.debug('fname: %r', self.fname)
             log.debug('target.dirname: %r', target.dirname)
 
-            with open(self.fname, 'w') as fp:
+            with open(self.absname, 'w') as fp:
                 dirname = os.path.abspath(os.path.join(target.calling_dir, target.calling_fname))
                 for fname in os.listdir(dirname):
                     fname = os.path.join(dirname, fname)
@@ -106,7 +109,7 @@ class DummyModule(object):
         # log.debug("sys.path: %r", sys.path)
         if self.fname.endswith('.pyc') or self.fname.endswith('.pyo'):
             return '<pyc file, no text>'
-        with open(self.fname) as fp:
+        with open(self.absname) as fp:
             return fp.read()
 
     def legal_module_name(self, name):
