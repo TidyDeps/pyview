@@ -1,16 +1,17 @@
 # PyView
 
-Interactive Python module dependency visualization with WebGL.
+Interactive Python module dependency visualization with modern web interface.
 
 ## About
 
 PyView is an enhanced version of [thebjorn/pydeps](https://github.com/thebjorn/pydeps) that adds:
-- 🚀 **Interactive WebGL visualization** for large codebases (10,000+ modules)
-- 📊 **Multi-layer analysis** (Package → Module → Class → Method → Field)
-- 🔍 **Real-time search and navigation**
-- 💻 **Local web interface** (no server required)
+- 🎨 **Interactive 2D network visualization** with Cytoscape.js for large codebases
+- 📊 **5-layer analysis** (Package → Module → Class → Method → Field)
+- 🔍 **Real-time search and navigation** across all entity types
+- 🌐 **Modern web interface** with React + TypeScript + FastAPI
+- 📡 **Real-time progress updates** via WebSocket
 
-⚠️ **Development Status**: This project is currently under active development.
+✅ **Development Status**: Phase 2 Complete - Fully functional system ready for use!
 
 ## Installation
 
@@ -35,10 +36,15 @@ pydeps <module_name>
 pyview <module_name>  # same as above
 ```
 
-**Planned Features:**
+**New Interactive Web Interface:**
 ```bash
-# Launch interactive web interface (coming soon)
-pyview serve <project_path>
+# Launch backend server
+cd server && python app.py
+
+# Launch frontend (in separate terminal)
+cd frontend && npm install && npm run dev
+
+# Open browser: http://localhost:3000
 ```
 
 ## License
