@@ -4,8 +4,8 @@ import { Row, Col, message, Alert, Spin, Card, Switch, Space } from 'antd'
 import { ExperimentOutlined, ApartmentOutlined } from '@ant-design/icons'
 import NetworkGraph2D from './NetworkGraph2D'
 import EnhancedNetworkGraph from './EnhancedNetworkGraph'
-import GraphControls from './GraphControls'
 import { ApiService } from '@/services/api'
+import HierarchicalNetworkGraph from './HierarchicalNetworkGraph'
 
 interface VisualizationPageProps {
   analysisId: string | null
@@ -40,6 +40,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
   const [showLabels, setShowLabels] = useState<boolean>(true)
   const [layoutMode, setLayoutMode] = useState<string>('force')
   const [useEnhancedMode, setUseEnhancedMode] = useState<boolean>(false)
+  const [useHierarchicalMode, setUseHierarchicalMode] = useState<boolean>(false)
 
   // Load analysis data
   useEffect(() => {
@@ -350,27 +351,51 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
 
       <Row gutter={[16, 16]}>
         <Col xs={24}>
-          {useEnhancedMode ? (
-            <>
-              {console.log('VisualizationPage - Rendering EnhancedNetworkGraph with data:', graphData)}
-              <EnhancedNetworkGraph
-                data={graphData}
-                onNodeClick={(nodeId) => {
-                  console.log('Enhanced mode - Clicked node:', nodeId)
-                  message.info(`🎯 Selected: ${nodeId}`)
-                }}
+          {/* 모드 선택 */}
+          <Card size="small" style={{ marginBottom: 16 }}>
+            <Space>
+              <Switch
+                checked={useEnhancedMode}
+                onChange={setUseEnhancedMode}
+                checkedChildren={<ExperimentOutlined />}
+                unCheckedChildren={<ApartmentOutlined />}
               />
-            </>
+              <span>Enhanced Mode</span>
+              
+              <Switch
+                checked={useHierarchicalMode}
+                onChange={setUseHierarchicalMode}
+                checkedChildren={<BranchesOutlined />}
+                unCheckedChildren="Hierarchical"
+              />
+              <span>Hierarchical Mode</span>
+            </Space>
+          </Card>
+
+          {/* 그래프 렌더링 */}
+          {useHierarchicalMode ? (
+            <HierarchicalNetworkGraph
+              data={graphData}
+              onNodeClick={(nodeId) => {
+                console.log('Hierarchical mode - Clicked node:', nodeId)
+                message.info(`🎯 Selected: ${nodeId}`)
+              }}
+            />
+          ) : useEnhancedMode ? (
+            <EnhancedNetworkGraph
+              data={graphData}
+              onNodeClick={(nodeId) => {
+                console.log('Enhanced mode - Clicked node:', nodeId)
+                message.info(`🎯 Selected: ${nodeId}`)
+              }}
+            />
           ) : (
-            <>
-              {console.log('VisualizationPage - Rendering NetworkGraph2D with data:', graphData)}
-              <NetworkGraph2D
-                data={graphData}
-                onNodeClick={(node) => {
-                  message.info(`Selected: ${node.name} (${node.type})`)
-                }}
-              />
-            </>
+            <NetworkGraph2D
+              data={graphData}
+              onNodeClick={(node) => {
+                message.info(`Selected: ${node.name} (${node.type})`)
+              }}
+            />
           )}
         </Col>
       </Row>
