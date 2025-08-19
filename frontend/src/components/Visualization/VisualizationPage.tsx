@@ -1,7 +1,7 @@
 // Visualization Page with Graph and Controls
 import React, { useState, useEffect } from 'react'
 import { Row, Col, message, Alert, Spin, Card, Switch, Space } from 'antd'
-import { ExperimentOutlined, ApartmentOutlined } from '@ant-design/icons'
+import { ExperimentOutlined, ApartmentOutlined, BranchesOutlined } from '@ant-design/icons'
 import NetworkGraph2D from './NetworkGraph2D'
 import EnhancedNetworkGraph from './EnhancedNetworkGraph'
 import { ApiService } from '@/services/api'
