@@ -670,7 +670,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'border-style': 'dashed',
         'border-color': '#d4b106',
         'border-opacity': 0.8,
-        'content': 'data(label)',
+        'content': (node: any) => node.data('label') || 'Package',
         'text-valign': 'top',
         'text-halign': 'left',
         'text-margin-x': 10,
@@ -680,7 +680,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'color': '#d4b106',
         'text-outline-width': 2,
         'text-outline-color': '#fff',
-        'padding': `${containerPadding}px`
+        'padding': `${containerPadding}px`,
+        'width': 200,
+        'height': 150
       }
     },
     
@@ -695,7 +697,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'border-style': 'dashed',
         'border-color': '#722ed1',
         'border-opacity': 0.7,
-        'content': 'data(label)',
+        'content': (node: any) => node.data('label') || 'Module',
         'text-valign': 'top',
         'text-halign': 'left',
         'text-margin-x': 8,
@@ -703,7 +705,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'font-size': '12px',
         'font-weight': 'bold',
         'color': '#722ed1',
-        'padding': `${containerPadding * 0.7}px`
+        'padding': `${Math.round(containerPadding * 0.7)}px`,
+        'width': 150,
+        'height': 100
       }
     },
     
@@ -720,9 +724,8 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       selector: 'node',
       style: {
         'background-color': (node: any) => {
-          const type = node.data('type');
-          const level = node.data('level');
-          const isSuperNode = node.data('isSuperNode');
+          const type = node.data('type') || 'module';
+          const isSuperNode = node.data('isSuperNode') || false;
           
           if (isSuperNode) return '#d9d9d9';
           
@@ -738,8 +741,8 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           return colors[type as keyof typeof colors] || '#d9d9d9';
         },
         'label': (node: any) => {
-          const name = node.data('name');
-          const isSuperNode = node.data('isSuperNode');
+          const name = node.data('name') || node.data('id') || 'Node';
+          const isSuperNode = node.data('isSuperNode') || false;
           const childCount = node.data('childCount');
           
           if (isSuperNode && childCount) {
@@ -749,17 +752,17 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           return name;
         },
         'font-size': (node: any) => {
-          const level = node.data('level');
+          const level = node.data('level') || 1;
           return Math.max(10, 18 - level * 2) + 'px';
         },
         'width': (node: any) => {
-          const level = node.data('level');
-          const isSuperNode = node.data('isSuperNode');
+          const level = node.data('level') || 1;
+          const isSuperNode = node.data('isSuperNode') || false;
           return isSuperNode ? 120 : Math.max(40, 100 - level * 10);
         },
         'height': (node: any) => {
-          const level = node.data('level');
-          const isSuperNode = node.data('isSuperNode');
+          const level = node.data('level') || 1;
+          const isSuperNode = node.data('isSuperNode') || false;
           return isSuperNode ? 60 : Math.max(30, 80 - level * 8);
         },
         'text-valign': 'center',
@@ -772,8 +775,8 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'text-wrap': 'wrap',
         'text-max-width': '150px',
         'shape': (node: any) => {
-          const type = node.data('type');
-          const isSuperNode = node.data('isSuperNode');
+          const type = node.data('type') || 'module';
+          const isSuperNode = node.data('isSuperNode') || false;
           
           if (isSuperNode) return 'round-rectangle';
           
