@@ -295,7 +295,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         elements,
         style: getHierarchicalStylesheet(),
         layout: getHierarchicalLayout(layoutType),
-        wheelSensitivity: 0.3,
+        wheelSensitivity: 1,
         minZoom: 0.1,
         maxZoom: 5
       });
@@ -359,9 +359,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       });
     });
 
-    // 엣지 변환 (보이는 노드들 간의 연결만)
+    // 엣지 변환 (보이는 노드들 간의 연결만, 자기 자신으로의 엣지 제외)
     edges.forEach(edge => {
-      if (nodeIds.has(edge.source) && nodeIds.has(edge.target)) {
+      if (nodeIds.has(edge.source) && nodeIds.has(edge.target) && edge.source !== edge.target) {
         elements.push({
           data: {
             id: `${edge.source}-${edge.target}`,
@@ -390,10 +390,12 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     // Step 3: 노드들에 parent 속성 추가
     const clusteredNodes = assignNodesToContainers(visibleNodes, clusters);
     
-    // Step 4: 엣지 필터링
+    // Step 4: 엣지 필터링 (자기 자신으로의 엣지 제외)
     const nodeIds = new Set(visibleNodes.map(n => n.id));
     const filteredEdges = edges.filter(edge => 
-      nodeIds.has(edge.source) && nodeIds.has(edge.target)
+      nodeIds.has(edge.source) && 
+      nodeIds.has(edge.target) &&
+      edge.source !== edge.target  // 자기 자신으로의 엣지 제외
     ).map(edge => ({
       data: {
         id: `${edge.source}-${edge.target}`,
@@ -794,7 +796,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     },
     // SuperNode 스타일
     {
-      selector: 'node[isSuperNode = true]',
+      selector: 'node[isSuperNode="true"]',
       style: {
         'background-color': '#f0f0f0',
         'border-style': 'dashed',
@@ -806,7 +808,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     },
     // 확장된 노드 스타일
     {
-      selector: 'node[isExpanded = true]',
+      selector: 'node[isExpanded="true"]',
       style: {
         'border-color': '#52c41a',
         'border-width': 4
