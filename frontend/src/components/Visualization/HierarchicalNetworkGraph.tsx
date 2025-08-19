@@ -1,17 +1,43 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Card, Button, Switch, Select, Space, Tooltip, message, Slider, Tag } from 'antd';
 import { 
-  ZoomInOutlined, 
-  ZoomOutOutlined, 
   ReloadOutlined, 
   HighlightOutlined,
-  AppstoreOutlined,
   ExpandOutlined,
   CompressOutlined,
-  ClusterOutlined,
-  BranchesOutlined
+  ClusterOutlined
 } from '@ant-design/icons';
 import cytoscape from 'cytoscape';
+
+// 확장 라이브러리들 동적 로드
+let coseBilkentLoaded = false;
+let colaLoaded = false;
+
+const loadCytoscapeExtensions = async () => {
+  if (!coseBilkentLoaded) {
+    try {
+      // @ts-ignore
+      const coseBilkent = await import('cytoscape-cose-bilkent');
+      cytoscape.use(coseBilkent.default || coseBilkent);
+      coseBilkentLoaded = true;
+      console.log('✅ Loaded cytoscape-cose-bilkent');
+    } catch (error) {
+      console.warn('Could not load cytoscape-cose-bilkent:', error);
+    }
+  }
+  
+  if (!colaLoaded) {
+    try {
+      // @ts-ignore
+      const cola = await import('cytoscape-cola');
+      cytoscape.use(cola.default || cola);
+      colaLoaded = true;
+      console.log('✅ Loaded cytoscape-cola');
+    } catch (error) {
+      console.warn('Could not load cytoscape-cola:', error);
+    }
+  }
+};
 
 const { Option } = Select;
 
@@ -31,6 +57,21 @@ interface HierarchicalNode {
   };
 }
 
+interface ClusterContainer {
+  id: string;
+  type: 'package-cluster' | 'module-cluster' | 'class-cluster';
+  name: string;
+  children: string[];
+  bounds?: { x: number, y: number, width: number, height: number };
+  parentCluster?: string;
+}
+
+// interface ClusteredLayoutData {
+//   containers: ClusterContainer[];
+//   nodes: HierarchicalNode[];
+//   edges: any[];
+// }
+
 interface HierarchicalGraphProps {
   data: any;
   onNodeClick?: (nodeId: string) => void;
@@ -45,12 +86,15 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   
   // 상태 관리
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const [layoutType, setLayoutType] = useState('hierarchical-force');
+  const [layoutType, setLayoutType] = useState('clustered');
   const [viewLevel, setViewLevel] = useState(1); // 0=package, 1=module, 2=class, 3=method, 4=field
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [highlightMode, setHighlightMode] = useState(true);
   const [clusterMode, setClusterMode] = useState(true);
   const [showMinimap, setShowMinimap] = useState(false);
+  const [enableClustering, setEnableClustering] = useState(true);
+  const [clusterLevel, setClusterLevel] = useState('both');
+  const [containerPadding, setContainerPadding] = useState(30);
   
   // 계층적 노드 구조
   const [hierarchicalData, setHierarchicalData] = useState<{
@@ -230,11 +274,15 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   useEffect(() => {
     if (!cyRef.current || !hierarchicalData.nodes.length) return;
 
-    try {
-      // 기존 인스턴스 정리
-      if (cyInstanceRef.current) {
-        cyInstanceRef.current.destroy();
-      }
+    const initializeCytoscape = async () => {
+      try {
+        // 확장 라이브러리 로드
+        await loadCytoscapeExtensions();
+        
+        // 기존 인스턴스 정리
+        if (cyInstanceRef.current) {
+          cyInstanceRef.current.destroy();
+        }
 
       const visibleNodes = getVisibleNodes();
       const elements = transformToElements(visibleNodes, hierarchicalData.edges);
@@ -266,9 +314,12 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         }, 1000);
       });
 
-    } catch (error) {
-      console.error('Error creating hierarchical graph:', error);
-    }
+      } catch (error) {
+        console.error('Error creating hierarchical graph:', error);
+      }
+    };
+
+    initializeCytoscape();
 
     return () => {
       if (cyInstanceRef.current) {
@@ -276,10 +327,19 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         cyInstanceRef.current = null;
       }
     };
-  }, [hierarchicalData, viewLevel, expandedNodes, layoutType]);
+  }, [hierarchicalData, viewLevel, expandedNodes, layoutType, enableClustering, clusterLevel, containerPadding]);
 
-  // 요소들을 Cytoscape 형식으로 변환
+  // 클러스터링된 요소들을 Cytoscape 형식으로 변환
   const transformToElements = (visibleNodes: HierarchicalNode[], edges: any[]) => {
+    if (!enableClustering) {
+      return transformToSimpleElements(visibleNodes, edges);
+    }
+    
+    return buildClusteredLayout(visibleNodes, edges);
+  };
+
+  // 기존 방식 (클러스터링 없음)
+  const transformToSimpleElements = (visibleNodes: HierarchicalNode[], edges: any[]) => {
     const elements: any[] = [];
     const nodeIds = new Set(visibleNodes.map(n => n.id));
 
@@ -293,9 +353,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           level: node.level,
           isSuperNode: node.isSuperNode,
           isExpanded: node.isExpanded,
-          childCount: node.childCount,
-          parent: clusterMode ? getClusterParent(node) : undefined
-        }
+          childCount: node.childCount
+        },
+        classes: `node-${node.type}`
       });
     });
 
@@ -316,11 +376,189 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     return elements;
   };
 
-  // 클러스터 부모 결정
-  const getClusterParent = (node: HierarchicalNode): string | undefined => {
-    if (!clusterMode || node.level === 0) return undefined;
-    return node.parent;
+  // 클러스터링 기반 레이아웃 구축
+  const buildClusteredLayout = (visibleNodes: HierarchicalNode[], edges: any[]) => {
+    console.log('🎯 Building clustered layout...');
+    
+    // Step 1: 클러스터 식별
+    const clusters = identifyClusters(visibleNodes);
+    console.log('📦 Identified clusters:', clusters);
+    
+    // Step 2: 컨테이너 노드 생성
+    const containerElements = createContainerElements(clusters);
+    
+    // Step 3: 노드들에 parent 속성 추가
+    const clusteredNodes = assignNodesToContainers(visibleNodes, clusters);
+    
+    // Step 4: 엣지 필터링
+    const nodeIds = new Set(visibleNodes.map(n => n.id));
+    const filteredEdges = edges.filter(edge => 
+      nodeIds.has(edge.source) && nodeIds.has(edge.target)
+    ).map(edge => ({
+      data: {
+        id: `${edge.source}-${edge.target}`,
+        source: edge.source,
+        target: edge.target,
+        type: edge.type || 'dependency'
+      }
+    }));
+    
+    return [...containerElements, ...clusteredNodes, ...filteredEdges];
   };
+
+  // 클러스터 식별
+  const identifyClusters = (nodes: HierarchicalNode[]) => {
+    const packageClusters = new Map<string, ClusterContainer>();
+    const moduleClusters = new Map<string, ClusterContainer>();
+    
+    nodes.forEach(node => {
+      // Package 클러스터 식별 (모듈 노드들을 그룹핑)
+      if (node.type === 'module' && (clusterLevel === 'package' || clusterLevel === 'both')) {
+        const packageId = extractPackageId(node.id);
+        if (!packageClusters.has(packageId)) {
+          packageClusters.set(packageId, {
+            id: `package-cluster-${packageId}`,
+            type: 'package-cluster',
+            name: `📦 ${packageId}`,
+            children: []
+          });
+        }
+        packageClusters.get(packageId)!.children.push(node.id);
+      }
+      
+      // Module 클러스터 식별 (클래스 노드들을 그룹핑)
+      if (node.type === 'class' && (clusterLevel === 'module' || clusterLevel === 'both')) {
+        const moduleId = extractModuleId(node.id);
+        if (moduleId && !moduleClusters.has(moduleId)) {
+          const packageId = extractPackageId(moduleId);
+          moduleClusters.set(moduleId, {
+            id: `module-cluster-${moduleId}`,
+            type: 'module-cluster',
+            name: `📄 ${moduleId.split(':').pop()?.split('.').pop() || moduleId}`,
+            children: [],
+            parentCluster: clusterLevel === 'both' ? `package-cluster-${packageId}` : undefined
+          });
+        }
+        if (moduleId) {
+          moduleClusters.get(moduleId)!.children.push(node.id);
+        }
+      }
+    });
+    
+    return {
+      packages: Array.from(packageClusters.values()),
+      modules: Array.from(moduleClusters.values())
+    };
+  };
+
+  // 패키지 ID 추출
+  const extractPackageId = (nodeId: string): string => {
+    const parts = nodeId.split(':');
+    if (parts.length >= 2) {
+      const modulePath = parts[1];
+      return modulePath.split('.')[0] || 'unknown';
+    }
+    return 'unknown';
+  };
+
+  // 모듈 ID 추출
+  const extractModuleId = (nodeId: string): string | null => {
+    const parts = nodeId.split(':');
+    if (parts.length >= 3 && parts[0] === 'cls') {
+      // 'cls:mod:package.module:ClassName' → 'mod:package.module'
+      return `${parts[1]}:${parts[2]}`;
+    }
+    return null;
+  };
+
+  // 컨테이너 요소 생성
+  const createContainerElements = (clusters: { packages: ClusterContainer[], modules: ClusterContainer[] }) => {
+    const containerElements: any[] = [];
+    
+    // 패키지 컨테이너
+    clusters.packages.forEach(cluster => {
+      if (cluster.children.length > 0) {
+        containerElements.push({
+          data: {
+            id: cluster.id,
+            label: cluster.name,
+            type: 'package-container'
+          },
+          classes: 'package-container'
+        });
+      }
+    });
+    
+    // 모듈 컨테이너
+    clusters.modules.forEach(cluster => {
+      if (cluster.children.length > 0) {
+        containerElements.push({
+          data: {
+            id: cluster.id,
+            label: cluster.name,
+            type: 'module-container',
+            parent: cluster.parentCluster
+          },
+          classes: 'module-container'
+        });
+      }
+    });
+    
+    console.log('📦 Created container elements:', containerElements.length);
+    return containerElements;
+  };
+
+  // 노드를 컨테이너에 할당
+  const assignNodesToContainers = (nodes: HierarchicalNode[], clusters: { packages: ClusterContainer[], modules: ClusterContainer[] }) => {
+    const nodeElements: any[] = [];
+    
+    nodes.forEach(node => {
+      let parentContainer: string | undefined;
+      
+      // 모듈 노드 → 패키지 컨테이너
+      if (node.type === 'module') {
+        const packageId = extractPackageId(node.id);
+        const packageCluster = clusters.packages.find(c => c.id === `package-cluster-${packageId}`);
+        if (packageCluster && packageCluster.children.includes(node.id)) {
+          parentContainer = packageCluster.id;
+        }
+      }
+      
+      // 클래스 노드 → 모듈 컨테이너
+      if (node.type === 'class') {
+        const moduleId = extractModuleId(node.id);
+        if (moduleId) {
+          const moduleCluster = clusters.modules.find(c => c.id === `module-cluster-${moduleId}`);
+          if (moduleCluster && moduleCluster.children.includes(node.id)) {
+            parentContainer = moduleCluster.id;
+          }
+        }
+      }
+      
+      nodeElements.push({
+        data: {
+          id: node.id,
+          name: node.name,
+          type: node.type,
+          level: node.level,
+          isSuperNode: node.isSuperNode,
+          isExpanded: node.isExpanded,
+          childCount: node.childCount,
+          parent: parentContainer
+        },
+        classes: `node-${node.type}`
+      });
+    });
+    
+    console.log('🔗 Assigned nodes to containers:', nodeElements.length);
+    return nodeElements;
+  };
+
+  // // 클러스터 부모 결정 (사용하지 않음)
+  // const getClusterParent = (node: HierarchicalNode): string | undefined => {
+  //   if (!clusterMode || node.level === 0) return undefined;
+  //   return node.parent;
+  // };
 
   // 이벤트 핸들러 설정
   const setupEventHandlers = (cy: cytoscape.Core) => {
@@ -420,7 +658,63 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   };
 
   // 계층적 스타일시트
-  const getHierarchicalStylesheet = () => [
+  const getHierarchicalStylesheet = (): any[] => [
+    // 패키지 컨테이너 스타일
+    {
+      selector: '.package-container',
+      style: {
+        'shape': 'round-rectangle',
+        'background-color': '#fff7e6',
+        'background-opacity': 0.1,
+        'border-width': 3,
+        'border-style': 'dashed',
+        'border-color': '#d4b106',
+        'border-opacity': 0.8,
+        'content': 'data(label)',
+        'text-valign': 'top',
+        'text-halign': 'left',
+        'text-margin-x': 10,
+        'text-margin-y': 10,
+        'font-size': '14px',
+        'font-weight': 'bold',
+        'color': '#d4b106',
+        'text-outline-width': 2,
+        'text-outline-color': '#fff',
+        'padding': `${containerPadding}px`
+      }
+    },
+    
+    // 모듈 컨테이너 스타일
+    {
+      selector: '.module-container',
+      style: {
+        'shape': 'round-rectangle',
+        'background-color': '#f9f0ff',
+        'background-opacity': 0.15,
+        'border-width': 2,
+        'border-style': 'dashed',
+        'border-color': '#722ed1',
+        'border-opacity': 0.7,
+        'content': 'data(label)',
+        'text-valign': 'top',
+        'text-halign': 'left',
+        'text-margin-x': 8,
+        'text-margin-y': 8,
+        'font-size': '12px',
+        'font-weight': 'bold',
+        'color': '#722ed1',
+        'padding': `${containerPadding * 0.7}px`
+      }
+    },
+    
+    // 컨테이너 노드 공통 스타일
+    {
+      selector: 'node:parent',
+      style: {
+        'background-opacity': 0.1,
+        'text-outline-width': 0
+      }
+    },
     // 기본 노드 스타일
     {
       selector: 'node',
@@ -577,6 +871,27 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   // 계층적 레이아웃
   const getHierarchicalLayout = (type: string) => {
     switch (type) {
+      case 'clustered':
+        return {
+          name: 'cose-bilkent',
+          quality: 'default',
+          nodeDimensionsIncludeLabels: true,
+          refresh: 20,
+          fit: true,
+          padding: 30,
+          randomize: false,
+          nodeRepulsion: 4500,
+          idealEdgeLength: 50,
+          edgeElasticity: 0.45,
+          nestingFactor: 0.1,
+          gravity: 0.25,
+          numIter: 2500,
+          tile: true,
+          tilingPaddingVertical: 20,
+          tilingPaddingHorizontal: 20,
+          animate: true,
+          animationDuration: 1000
+        };
       case 'hierarchical-force':
         return {
           name: 'cose',
@@ -585,7 +900,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           nodeRepulsion: 8000,
           idealEdgeLength: 120,
           edgeElasticity: 100,
-          nestingFactor: 5,
+          nestingFactor: enableClustering ? 0.1 : 5,
           gravity: 80,
           numIter: 1000,
           initialTemp: 200,
@@ -609,6 +924,25 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           idealEdgeLength: 150,
           nestingFactor: 12,
           gravity: 100
+        };
+      case 'cola':
+        return {
+          name: 'cola',
+          animate: true,
+          refresh: 1,
+          maxSimulationTime: 4000,
+          ungrabifyWhileSimulating: false,
+          fit: true,
+          padding: 30,
+          nodeDimensionsIncludeLabels: true,
+          randomize: false,
+          avoidOverlap: true,
+          handleDisconnected: true,
+          convergenceThreshold: 0.01,
+          nodeSpacing: 5,
+          flow: undefined,
+          alignment: undefined,
+          gapInequalities: undefined
         };
       default:
         return {
@@ -716,6 +1050,38 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
             </Tooltip>
           </Space>
 
+          {/* 클러스터링 컨트롤 */}
+          <Space wrap>
+            <span>클러스터링:</span>
+            <Switch 
+              checked={enableClustering} 
+              onChange={setEnableClustering}
+              checkedChildren="ON"
+              unCheckedChildren="OFF"
+              size="small"
+            />
+            
+            {enableClustering && (
+              <>
+                <span>레벨:</span>
+                <Select value={clusterLevel} onChange={setClusterLevel} style={{ width: 100 }} size="small">
+                  <Option value="package">Package</Option>
+                  <Option value="module">Module</Option>
+                  <Option value="both">Both</Option>
+                </Select>
+                
+                <span>여백:</span>
+                <Slider 
+                  min={10} 
+                  max={50} 
+                  value={containerPadding} 
+                  onChange={setContainerPadding}
+                  style={{ width: 80 }}
+                />
+              </>
+            )}
+          </Space>
+
           {/* 레이아웃 선택 */}
           <Space>
             <Select
@@ -724,9 +1090,11 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
               style={{ width: 140 }}
               size="small"
             >
+              <Option value="clustered">Clustered</Option>
               <Option value="hierarchical-force">Hierarchical Force</Option>
               <Option value="hierarchical-tree">Tree</Option>
               <Option value="compound">Compound</Option>
+              <Option value="cola">Cola</Option>
             </Select>
           </Space>
 
@@ -764,7 +1132,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         >
           <div style={{ fontSize: 12 }}>
             <div><strong>ID:</strong> {selectedNode}</div>
-            <div><strong>Level:</strong> {getLevelName(viewLevel)}</div>
             <div><strong>Expanded:</strong> {expandedNodes.size} nodes</div>
             {hierarchicalData.hierarchy[selectedNode] && (
               <div><strong>Children:</strong> {hierarchicalData.hierarchy[selectedNode].length}</div>
