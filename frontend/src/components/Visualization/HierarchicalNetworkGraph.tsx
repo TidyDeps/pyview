@@ -573,9 +573,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       console.log('🎯 Node clicked:', { nodeId, nodeData, type: nodeData.type });
       setSelectedNode(nodeId);
       
-      // 하이라이트 모드 (SuperNode나 컨테이너가 아닌 경우에만)
-      if (highlightMode && !nodeData.isSuperNode && nodeData.type !== 'package-container' && nodeData.type !== 'module-container') {
-        console.log('🌟 Applying highlight to:', nodeId);
+      // 하이라이트 모드 (컨테이너가 아닌 모든 실제 노드에 적용)
+      if (highlightMode && nodeData.type !== 'package-container' && nodeData.type !== 'module-container') {
+        console.log('🌟 Applying highlight to:', nodeId, 'type:', nodeData.type);
         handleHierarchicalHighlight(cy, nodeId);
       }
       
@@ -593,7 +593,8 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     // 배경 클릭
     cy.on('tap', (evt) => {
       if (evt.target === cy) {
-        clearHighlights(cy);
+        console.log('🌍 Background clicked - clearing highlights');
+        cy.elements().removeClass('highlighted connected dimmed hierarchical');
         setSelectedNode(null);
       }
     });
@@ -615,7 +616,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   // 계층적 하이라이트
   const handleHierarchicalHighlight = (cy: cytoscape.Core, nodeId: string) => {
     console.log('🔍 Starting highlight for:', nodeId);
-    clearHighlights(cy);
+    
+    // 먼저 기존 하이라이트 제거
+    cy.elements().removeClass('highlighted connected dimmed hierarchical');
 
     const targetNode = cy.getElementById(nodeId);
     if (!targetNode.length) {
@@ -633,16 +636,39 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     console.log('🔗 Connected nodes:', connectedNodes.length);
     console.log('👥 Related nodes:', relatedNodes.length);
     
-    targetNode.addClass('highlighted');
-    connectedNodes.addClass('connected');
-    relatedNodes.addClass('hierarchical');
-    connectedEdges.addClass('highlighted');
-    
-    // 나머지 흐리게
-    cy.nodes().not(targetNode).not(connectedNodes).not(relatedNodes).addClass('dimmed');
-    cy.edges().not(connectedEdges).addClass('dimmed');
-    
-    console.log('🎨 Highlight applied successfully');
+    // 약간의 지연을 주어 하이라이트가 제대로 적용되도록 함
+    setTimeout(() => {
+      // 클릭한 노드 하이라이트 (가장 중요!)
+      targetNode.addClass('highlighted');
+      console.log('🎯 Target highlighted:', targetNode.data('type'), targetNode.data('id'));
+      
+      // 연결된 노드들 하이라이트 (컨테이너 제외)
+      const actualConnectedNodes = connectedNodes.filter(node => {
+        const nodeType = node.data('type');
+        return nodeType !== 'package-container' && nodeType !== 'module-container';
+      });
+      actualConnectedNodes.addClass('connected');
+      
+      // 관련 노드들 하이라이트 (컨테이너 제외)
+      const actualRelatedNodes = relatedNodes.filter(node => {
+        const nodeType = node.data('type');
+        return nodeType !== 'package-container' && nodeType !== 'module-container';
+      });
+      actualRelatedNodes.addClass('hierarchical');
+      
+      connectedEdges.addClass('highlighted');
+      
+      // 나머지 흐리게 (컨테이너는 dimmed에서 제외)
+      const nonContainerNodes = cy.nodes().filter(node => {
+        const nodeType = node.data('type');
+        return nodeType !== 'package-container' && nodeType !== 'module-container';
+      });
+      
+      nonContainerNodes.not(targetNode).not(actualConnectedNodes).not(actualRelatedNodes).addClass('dimmed');
+      cy.edges().not(connectedEdges).addClass('dimmed');
+      
+      console.log('🎨 Highlight applied successfully - target should be highlighted now');
+    }, 50);
   };
 
   // 계층적으로 관련된 노드들 찾기
@@ -680,14 +706,8 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       console.log('👫 Siblings found:', siblings);
     }
 
-    // 같은 타입의 노드들도 관련 노드로 간주 (클래스의 경우 특히 유용)
-    if (node.type === 'class') {
-      const sameTypeNodes = hierarchicalData.nodes
-        .filter(n => n.type === 'class' && n.id !== nodeId)
-        .map(n => n.id);
-      relatedIds.push(...sameTypeNodes.slice(0, 5)); // 최대 5개만
-      console.log('🎭 Same type nodes (class):', sameTypeNodes.slice(0, 5));
-    }
+    // 같은 타입 노드 하이라이트 기능 제거 - 실제 연결된 노드만 하이라이트
+    // (이전에 클래스 클릭 시 다른 클래스들도 하이라이트되던 기능을 제거함)
 
     console.log('🎯 Total related IDs:', relatedIds);
     const relatedNodes = cy.nodes().filter(n => relatedIds.includes(n.id()));
@@ -696,9 +716,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     return relatedNodes;
   };
 
-  const clearHighlights = (cy: cytoscape.Core) => {
-    cy.elements().removeClass('highlighted connected dimmed hierarchical');
-  };
+  // clearHighlights 함수 제거 - 직접 cy.elements().removeClass() 사용
 
   // 계층적 스타일시트
   const getHierarchicalStylesheet = (): any[] => [
@@ -708,7 +726,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       style: {
         'shape': 'round-rectangle',
         'background-color': '#fff7e6',
-        'background-opacity': 0.1,
+        'background-opacity': 0.05,
         'border-width': 3,
         'border-style': 'dashed',
         'border-color': '#d4b106',
@@ -716,19 +734,23 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'content': (node: any) => node.data('label') || 'Package',
         'text-valign': 'top',
         'text-halign': 'left',
-        'text-margin-x': 15,
-        'text-margin-y': 15,
-        'font-size': '14px',
+        'text-margin-x': (node: any) => -(node.width() / 2 - 15),
+        'text-margin-y': (node: any) => -(node.height() / 2 - 15),
+        'font-size': '16px',
         'font-weight': 'bold',
         'color': '#d4b106',
-        'text-outline-width': 2,
-        'text-outline-color': '#fff',
-        'text-background-color': 'rgba(255, 247, 230, 0.8)',
-        'text-background-padding': '4px',
+        'text-outline-width': 3,
+        'text-outline-color': '#ffffff',
+        'text-background-color': 'rgba(255, 247, 230, 0.95)',
+        'text-background-padding': '8px',
         'text-background-shape': 'round-rectangle',
+        'text-background-opacity': 1,
         'padding': `${containerPadding}px`,
         'width': 200,
-        'height': 150
+        'height': 150,
+        'z-index': 1,
+        'overlay-opacity': 0,
+        'events': 'no'
       }
     },
     
@@ -738,7 +760,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       style: {
         'shape': 'round-rectangle',
         'background-color': '#f9f0ff',
-        'background-opacity': 0.15,
+        'background-opacity': 0.08,
         'border-width': 2,
         'border-style': 'dashed',
         'border-color': '#722ed1',
@@ -746,19 +768,23 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'content': (node: any) => node.data('label') || 'Module',
         'text-valign': 'top',
         'text-halign': 'left',
-        'text-margin-x': 12,
-        'text-margin-y': 12,
-        'font-size': '12px',
+        'text-margin-x': (node: any) => -(node.width() / 2 - 12),
+        'text-margin-y': (node: any) => -(node.height() / 2 - 12),
+        'font-size': '14px',
         'font-weight': 'bold',
         'color': '#722ed1',
-        'text-outline-width': 2,
-        'text-outline-color': '#fff',
-        'text-background-color': 'rgba(249, 240, 255, 0.8)',
-        'text-background-padding': '3px',
+        'text-outline-width': 3,
+        'text-outline-color': '#ffffff',
+        'text-background-color': 'rgba(249, 240, 255, 0.95)',
+        'text-background-padding': '6px',
         'text-background-shape': 'round-rectangle',
+        'text-background-opacity': 1,
         'padding': `${Math.round(containerPadding * 0.7)}px`,
         'width': 150,
-        'height': 100
+        'height': 100,
+        'z-index': 2,
+        'overlay-opacity': 0,
+        'events': 'no'
       }
     },
     
@@ -770,10 +796,22 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'text-outline-width': 0
       }
     },
-    // 기본 노드 스타일
+    // 클래스 노드 전용 스타일 (컨테이너보다 위에 표시)
+    {
+      selector: 'node[type="class"]',
+      style: {
+        'z-index': 100,
+        'overlay-opacity': 0,
+        'events': 'yes',
+        'z-index': 100
+      }
+    },
+    
+    // 기본 노드 스타일 (컨테이너보다 위에 표시)
     {
       selector: 'node',
       style: {
+        'z-index': 10,
         'background-color': (node: any) => {
           const type = node.data('type') || 'module';
           const isSuperNode = node.data('isSuperNode') || false;
@@ -881,7 +919,20 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       style: {
         'background-color': '#ff4d4f',
         'border-color': '#ff4d4f',
-        'border-width': 5
+        'border-width': 5,
+        'z-index': 999
+      }
+    },
+    // 클래스 노드 하이라이트 특별 스타일
+    {
+      selector: 'node[type="class"].highlighted',
+      style: {
+        'background-color': '#ff7875',
+        'border-color': '#ff4d4f', 
+        'border-width': 6,
+        'z-index': 999,
+        'overlay-opacity': 0.1,
+        'overlay-color': '#ff4d4f'
       }
     },
     {
