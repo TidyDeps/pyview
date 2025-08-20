@@ -67,6 +67,8 @@ export const useAnalysis = (): UseAnalysisResult => {
               clearInterval(statusInterval)
               ws.disconnect()
               setWsService(null)
+              setIsLoading(false) // Make sure to stop loading
+              setProgress(null)   // Clear progress updates
               if (status.status === 'failed') {
                 setError(status.error || 'Analysis failed')
               }
