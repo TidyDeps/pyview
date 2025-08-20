@@ -70,7 +70,7 @@ README.html
 ./pydeps-pylib.svg
 .pydeps~
 .lintscore6
-# *.json
+
 # *.json
 source.jdb
 docs/.md5
@@ -123,15 +123,6 @@ frontend/build/
 frontend/.vite/
 frontend/.next/
 
-# PyView development files (not for public repo)
-CLAUDE.md
-prd.md
-tasklist.md
-.cursor/
-
-# Personal work artifacts (individual work process)
-PROJECT_STATUS.md
-
 # Backup/duplicate files (copies created during development)
 *\ 2.*
 *\ 2/
@@ -147,19 +138,12 @@ frontend/tsconfig.json
 frontend/tsconfig.node.json
 .venv/pyvenv.cfg
 
-# 로그 파일들 (프로젝트별 경로)
+# log files
 frontend/*.log
 server/*.log
 backend/*.log
 
-# 개발 분석 문서들 (개인 작업용)
-*_analysis.md
-*_integration.md
-*_interfaces.md
-design_*.md
-integration_*.md
-
-# 백업/임시 파일들 강화
+# backup, temp files
 *_backup.*
 *_old.*
 *_temp.*
@@ -167,13 +151,13 @@ integration_*.md
 *.old
 *.temp
 
-# IDE/에디터 설정 파일들 추가
+# IDE/editor config files
 .vscode/settings.json
 .vscode/launch.json
 *.swp
 *.swo
 
-# 시스템 파일들
+# system files
 .DS_Store
 Thumbs.db
 desktop.ini
