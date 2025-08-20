@@ -360,9 +360,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       const allNodes = cy.nodes();
       const matchingNode = allNodes.filter(node => {
         const nodeData = node.data();
-        return nodeData.id.includes(selectedNodeId) || 
-               nodeData.name.includes(selectedNodeId) ||
-               selectedNodeId.includes(nodeData.id);
+        return nodeData.id?.includes(selectedNodeId) || 
+               nodeData.name?.includes(selectedNodeId) ||
+               selectedNodeId?.includes(nodeData.id);
       });
       
       if (matchingNode.length > 0) {
@@ -574,7 +574,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       if (node.type === 'module') {
         const packageId = extractPackageId(node.id);
         const packageCluster = clusters.packages.find(c => c.id === `package-cluster-${packageId}`);
-        if (packageCluster && packageCluster.children.includes(node.id)) {
+        if (packageCluster && packageCluster.children?.includes(node.id)) {
           parentContainer = packageCluster.id;
         }
       }
@@ -584,7 +584,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         const moduleId = extractModuleId(node.id);
         if (moduleId) {
           const moduleCluster = clusters.modules.find(c => c.id === `module-cluster-${moduleId}`);
-          if (moduleCluster && moduleCluster.children.includes(node.id)) {
+          if (moduleCluster && moduleCluster.children?.includes(node.id)) {
             parentContainer = moduleCluster.id;
           }
         }
