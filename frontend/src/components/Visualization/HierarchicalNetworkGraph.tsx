@@ -1,9 +1,8 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Card, Button, Switch, Select, Space, message, Slider, Tag } from 'antd';
+import { Card, Button, Space, message, Slider, Tag } from 'antd';
 import { 
   ReloadOutlined, 
-  ExpandOutlined,
-  CompressOutlined
+  ExpandOutlined
 } from '@ant-design/icons';
 import cytoscape from 'cytoscape';
 
@@ -37,7 +36,7 @@ const loadCytoscapeExtensions = async () => {
   }
 };
 
-const { Option } = Select;
+
 
 interface HierarchicalNode {
   id: string;
@@ -86,13 +85,12 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   
   // 상태 관리
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const [layoutType, setLayoutType] = useState('clustered');
+  const layoutType = 'clustered'; // 레이아웃 고정 설정
   const [viewLevel, setViewLevel] = useState(1); // 0=package, 1=module, 2=class, 3=method, 4=field
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   // 고정 모드 설정
   const highlightMode = true; // 하이라이트 모드 고정
-  const [enableClustering, setEnableClustering] = useState(true);
-  const [clusterLevel, setClusterLevel] = useState('both');
+  const enableClustering = true; // 클러스터링 고정 설정
   const [containerPadding, setContainerPadding] = useState(30);
   
   // 계층적 노드 구조
@@ -326,7 +324,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         cyInstanceRef.current = null;
       }
     };
-  }, [hierarchicalData, viewLevel, expandedNodes, layoutType, enableClustering, clusterLevel, containerPadding]);
+  }, [hierarchicalData, viewLevel, expandedNodes, containerPadding]);
 
   // Handle external node selection (from file tree)
   useEffect(() => {
@@ -465,7 +463,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     
     nodes.forEach(node => {
       // Package 클러스터 식별 (모듈 노드들을 그룹핑)
-      if (node.type === 'module' && (clusterLevel === 'package' || clusterLevel === 'both')) {
+      if (node.type === 'module') {
         const packageId = extractPackageId(node.id);
         if (!packageClusters.has(packageId)) {
           packageClusters.set(packageId, {
@@ -479,7 +477,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       }
       
       // Module 클러스터 식별 (클래스 노드들을 그룹핑)
-      if (node.type === 'class' && (clusterLevel === 'module' || clusterLevel === 'both')) {
+      if (node.type === 'class') {
         const moduleId = extractModuleId(node.id);
         if (moduleId && !moduleClusters.has(moduleId)) {
           const packageId = extractPackageId(moduleId);
@@ -488,7 +486,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
             type: 'module-cluster',
             name: `📄 ${moduleId.split(':').pop()?.split('.').pop() || moduleId}`,
             children: [],
-            parentCluster: clusterLevel === 'both' ? `package-cluster-${packageId}` : undefined
+            parentCluster: `package-cluster-${packageId}`
           });
         }
         if (moduleId) {
@@ -1099,10 +1097,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     message.success('모든 노드가 확장되었습니다');
   };
 
-  const collapseAll = () => {
-    setExpandedNodes(new Set());
-    message.success('모든 노드가 축소되었습니다');
-  };
+
 
   return (
     <div style={{ width: '100%', height: '700px', display: 'flex', flexDirection: 'column' }}>
@@ -1144,60 +1139,24 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
           {/* 클러스터링 컨트롤 */}
           <Space wrap>
-            <span>클러스터링:</span>
-            <Switch 
-              checked={enableClustering} 
-              onChange={setEnableClustering}
-              checkedChildren="ON"
-              unCheckedChildren="OFF"
-              size="small"
+            <span>컨테이너 여백:</span>
+            <Slider 
+              min={10} 
+              max={50} 
+              value={containerPadding} 
+              onChange={setContainerPadding}
+              style={{ width: 80 }}
             />
-            
-            {enableClustering && (
-              <>
-                <span>레벨:</span>
-                <Select value={clusterLevel} onChange={setClusterLevel} style={{ width: 100 }} size="small">
-                  <Option value="package">Package</Option>
-                  <Option value="module">Module</Option>
-                  <Option value="both">Both</Option>
-                </Select>
-                
-                <span>여백:</span>
-                <Slider 
-                  min={10} 
-                  max={50} 
-                  value={containerPadding} 
-                  onChange={setContainerPadding}
-                  style={{ width: 80 }}
-                />
-              </>
-            )}
           </Space>
 
-          {/* 레이아웃 선택 */}
-          <Space>
-            <Select
-              value={layoutType}
-              onChange={setLayoutType}
-              style={{ width: 140 }}
-              size="small"
-            >
-              <Option value="clustered">Clustered</Option>
-              <Option value="hierarchical-force">Hierarchical Force</Option>
-              <Option value="hierarchical-tree">Tree</Option>
-              <Option value="compound">Compound</Option>
-              <Option value="cola">Cola</Option>
-            </Select>
-          </Space>
+
 
           {/* 확장/축소 버튼들 */}
           <Space>
             <Button size="small" onClick={expandAll} icon={<ExpandOutlined />}>
               Expand All
             </Button>
-            <Button size="small" onClick={collapseAll} icon={<CompressOutlined />}>
-              Collapse All
-            </Button>
+
             <Button 
               size="small" 
               onClick={() => cyInstanceRef.current?.fit()}
