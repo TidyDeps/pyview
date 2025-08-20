@@ -462,9 +462,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
   // 클러스터 식별
   const identifyClusters = (nodes: HierarchicalNode[]) => {
-    console.log('🎯 identifyClusters called with nodes:', nodes.length);
-    console.log('🔍 First 5 nodes:', nodes.slice(0, 5).map(n => ({ id: n.id, type: n.type, name: n.name })));
-    
     const packageClusters = new Map<string, ClusterContainer>();
     const moduleClusters = new Map<string, ClusterContainer>();
     const classClusters = new Map<string, ClusterContainer>();
@@ -504,24 +501,19 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       
       // Class 클러스터 식별 (method/field 노드들을 그룹핑)
       if (node.type === 'method' || node.type === 'field' || node.type === 'function') {
-        console.log('🔍 Processing node for class clustering:', { id: node.id, type: node.type });
         const classId = extractClassId(node.id);
-        console.log('🎯 Extracted class ID:', classId);
         if (classId && !classClusters.has(classId)) {
           const moduleId = extractModuleId(classId);
-          const cluster = {
+          classClusters.set(classId, {
             id: `class-cluster-${classId}`,
             type: 'class-cluster',
             name: `🏷️ ${classId.split(':').pop() || classId}`,
             children: [],
             parentCluster: moduleId ? `module-cluster-${moduleId}` : undefined
-          };
-          classClusters.set(classId, cluster);
-          console.log('📦 Created new class cluster:', cluster);
+          });
         }
         if (classId) {
           classClusters.get(classId)!.children.push(node.id);
-          console.log('➕ Added node to class cluster:', node.id, '→', classId);
         }
       }
     });
@@ -556,43 +548,31 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
   // 클래스 ID 추출 (method/field에서)
   const extractClassId = (nodeId: string): string | null => {
-    console.log('🔎 extractClassId called with:', nodeId);
-    
     // PyView 형식: meth:cls:module_id:class_name:method_name:line_number → cls:module_id:class_name
     // PyView 형식: field:cls:module_id:class_name:field_name → cls:module_id:class_name
     if (nodeId.startsWith('meth:') || nodeId.startsWith('field:')) {
       const parts = nodeId.split(':');
-      // meth:cls:module_id:class_name:... → cls:module_id:class_name
       if (parts.length >= 4 && parts[1] === 'cls') {
-        const classId = `${parts[1]}:${parts[2]}:${parts[3]}`;
-        console.log('✅ Extracted class ID (PyView format):', classId);
-        return classId;
+        return `${parts[1]}:${parts[2]}:${parts[3]}`;
       }
     }
     
     // Demo 데이터 형식: method_cls_ClassName → cls_ClassName
-    // 또는 클래스명이 ID에 포함된 경우
     if (nodeId.includes('_cls_') || nodeId.includes('cls_')) {
       const clsMatch = nodeId.match(/cls_([^_]+)/);
       if (clsMatch) {
-        const classId = `cls_${clsMatch[1]}`;
-        console.log('✅ Extracted class ID (demo format):', classId);
-        return classId;
+        return `cls_${clsMatch[1]}`;
       }
     }
     
     // 직접적인 클래스 참조가 있는 경우
-    // method ID에서 클래스 이름을 찾으려고 시도
     const parts = nodeId.split('_');
     for (let i = 0; i < parts.length - 1; i++) {
       if (parts[i] === 'cls' || parts[i] === 'class') {
-        const classId = `cls_${parts[i + 1]}`;
-        console.log('✅ Extracted class ID (generic format):', classId);
-        return classId;
+        return `cls_${parts[i + 1]}`;
       }
     }
     
-    console.log('❌ Could not extract class ID from:', nodeId);
     return null;
   };
 
@@ -878,9 +858,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'border-opacity': 0.8,
         'content': '',  // 클러스터 라벨 숨김
         'text-opacity': 0,  // 텍스트 완전 숨김
-        'padding': `${containerPadding}px`,
-        'width': 200,
-        'height': 150,
+        'padding': `${containerPadding * 1.3}px`,
+        'width': 300,
+        'height': 200,
         'z-index': 1,
         'overlay-opacity': 0,
         'events': 'no'
@@ -900,9 +880,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'border-opacity': 0.7,
         'content': '',  // 클러스터 라벨 숨김
         'text-opacity': 0,  // 텍스트 완전 숨김
-        'padding': `${Math.round(containerPadding * 0.7)}px`,
-        'width': 150,
-        'height': 100,
+        'padding': `${Math.round(containerPadding * 1.0)}px`,
+        'width': 220,
+        'height': 140,
         'z-index': 2,
         'overlay-opacity': 0,
         'events': 'no'
@@ -921,9 +901,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'border-opacity': 0.6,
         'content': '',  // 클러스터 라벨 숨김
         'text-opacity': 0,  // 텍스트 완전 숨김
-        'padding': `${Math.round(containerPadding * 0.5)}px`,
-        'width': 100,
-        'height': 80,
+        'padding': `${Math.round(containerPadding * 0.7)}px`,
+        'width': 150,
+        'height': 100,
         'z-index': 3,
         'overlay-opacity': 0,
         'events': 'no'
@@ -1126,15 +1106,15 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           fit: true,
           padding: 30,
           randomize: false,
-          nodeRepulsion: 4500,
-          idealEdgeLength: 50,
+          nodeRepulsion: 6000,
+          idealEdgeLength: 70,
           edgeElasticity: 0.45,
-          nestingFactor: 0.1,
+          nestingFactor: 0.2,
           gravity: 0.25,
           numIter: 2500,
           tile: true,
-          tilingPaddingVertical: 20,
-          tilingPaddingHorizontal: 20,
+          tilingPaddingVertical: 40,
+          tilingPaddingHorizontal: 40,
           animate: false
         };
       case 'hierarchical-force':
