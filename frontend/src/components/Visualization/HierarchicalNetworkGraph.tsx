@@ -1,11 +1,9 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Card, Button, Switch, Select, Space, Tooltip, message, Slider, Tag } from 'antd';
+import { Card, Button, Switch, Select, Space, message, Slider, Tag } from 'antd';
 import { 
   ReloadOutlined, 
-  HighlightOutlined,
   ExpandOutlined,
-  CompressOutlined,
-  ClusterOutlined
+  CompressOutlined
 } from '@ant-design/icons';
 import cytoscape from 'cytoscape';
 
@@ -91,9 +89,8 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   const [layoutType, setLayoutType] = useState('clustered');
   const [viewLevel, setViewLevel] = useState(1); // 0=package, 1=module, 2=class, 3=method, 4=field
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
-  const [highlightMode, setHighlightMode] = useState(true);
-  const [clusterMode, setClusterMode] = useState(true);
-  const [showMinimap, setShowMinimap] = useState(false);
+  // 고정 모드 설정
+  const highlightMode = true; // 하이라이트 모드 고정
   const [enableClustering, setEnableClustering] = useState(true);
   const [clusterLevel, setClusterLevel] = useState('both');
   const [containerPadding, setContainerPadding] = useState(30);
@@ -609,11 +606,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     return nodeElements;
   };
 
-  // // 클러스터 부모 결정 (사용하지 않음)
-  // const getClusterParent = (node: HierarchicalNode): string | undefined => {
-  //   if (!clusterMode || node.level === 0) return undefined;
-  //   return node.parent;
-  // };
+
 
   // 이벤트 핸들러 설정
   const setupEventHandlers = (cy: cytoscape.Core) => {
@@ -1146,35 +1139,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
           {/* 모드 스위치들 */}
           <Space wrap>
-            <Tooltip title="Click highlighting">
-              <Switch
-                checked={highlightMode}
-                onChange={setHighlightMode}
-                checkedChildren={<HighlightOutlined />}
-                unCheckedChildren="Highlight"
-                size="small"
-              />
-            </Tooltip>
-            
-            <Tooltip title="Group by hierarchy">
-              <Switch
-                checked={clusterMode}
-                onChange={setClusterMode}
-                checkedChildren={<ClusterOutlined />}
-                unCheckedChildren="Cluster"
-                size="small"
-              />
-            </Tooltip>
-            
-            <Tooltip title="Show overview minimap">
-              <Switch
-                checked={showMinimap}
-                onChange={setShowMinimap}
-                checkedChildren="Map"
-                unCheckedChildren="Map"
-                size="small"
-              />
-            </Tooltip>
+
           </Space>
 
           {/* 클러스터링 컨트롤 */}
@@ -1264,26 +1229,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         )}
       </Card>
 
-      {/* 미니맵 */}
-      {showMinimap && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 10,
-            right: 10,
-            width: 200,
-            height: 150,
-            border: '1px solid #ccc',
-            backgroundColor: '#f9f9f9',
-            zIndex: 10,
-            borderRadius: 4
-          }}
-        >
-          <div style={{ padding: 5, fontSize: 10, textAlign: 'center' }}>
-            Minimap (Coming Soon)
-          </div>
-        </div>
-      )}
+
 
       {/* Cytoscape 컨테이너 */}
       <div 
