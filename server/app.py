@@ -568,10 +568,10 @@ if frontend_static.exists():
     app.mount("/", StaticFiles(directory=str(frontend_static), html=True), name="static")
 
 if __name__ == "__main__":
-    print("🚀 Starting PyView FastAPI Server...")
-    print("📊 Backend API: http://localhost:8000")
-    print("🌐 Frontend UI: http://localhost:3000")
-    print("📚 API Docs: http://localhost:8000/docs")
+    print("Starting PyView FastAPI Server...")
+    print("Backend API: http://localhost:8000")
+    print("Frontend UI: http://localhost:3000")
+    print("API Docs: http://localhost:8000/docs")
     
     uvicorn.run(
         "app:app",

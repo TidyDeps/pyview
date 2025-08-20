@@ -6,6 +6,8 @@ import NetworkGraph2D from './NetworkGraph2D'
 import EnhancedNetworkGraph from './EnhancedNetworkGraph'
 import { ApiService } from '@/services/api'
 import HierarchicalNetworkGraph from './HierarchicalNetworkGraph'
+import FileTreeSidebar from '../FileTree/FileTreeSidebar'
+import AppLayout from '../Layout/AppLayout'
 
 interface VisualizationPageProps {
   analysisId: string | null
@@ -41,6 +43,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
   const [layoutMode, setLayoutMode] = useState<string>('force')
   const [useEnhancedMode, setUseEnhancedMode] = useState<boolean>(false)
   const [useHierarchicalMode, setUseHierarchicalMode] = useState<boolean>(false)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [analysisResults, setAnalysisResults] = useState<any>(null)
 
   // Load analysis data
   useEffect(() => {
@@ -52,6 +56,9 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
         setError(null)
         
         const results = await ApiService.getAnalysisResults(analysisId)
+        
+        // Store raw analysis results for file tree
+        setAnalysisResults(results)
         
         // Transform backend data to graph format
         const transformedData = transformAnalysisToGraph(results)
@@ -289,6 +296,20 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     message.info('Layout reset to defaults')
   }
 
+  // File tree node selection handler
+  const handleFileTreeNodeSelect = (nodeId: string, nodeType: string) => {
+    console.log('File tree selected:', nodeId, nodeType)
+    setSelectedNodeId(nodeId)
+    message.info(`📂 Selected from file tree: ${nodeId}`)
+  }
+
+  // Graph node click handler
+  const handleGraphNodeClick = (nodeId: string) => {
+    console.log('Graph node clicked:', nodeId)
+    setSelectedNodeId(nodeId)
+    message.info(`🎯 Selected from graph: ${nodeId}`)
+  }
+
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '50px 0' }}>
@@ -322,6 +343,16 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     )
   }
 
+  // File tree content
+  const fileTreeContent = analysisResults ? (
+    <FileTreeSidebar
+      analysisData={analysisResults}
+      onNodeSelect={handleFileTreeNodeSelect}
+      selectedNodeId={selectedNodeId}
+      style={{ height: '100%' }}
+    />
+  ) : null
+
   return (
     <div>
       {/* Graph Mode Toggle */}
@@ -350,7 +381,20 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
       </Card>
 
       <Row gutter={[16, 16]}>
-        <Col xs={24}>
+        {/* File Tree Column - 조건부 렌더링 */}
+        {analysisResults && (
+          <Col xs={24} sm={6} md={6} lg={5}>
+            <FileTreeSidebar
+              analysisData={analysisResults}
+              onNodeSelect={handleFileTreeNodeSelect}
+              selectedNodeId={selectedNodeId}
+              style={{ height: 'calc(100vh - 200px)' }}
+            />
+          </Col>
+        )}
+        
+        {/* Graph Column */}
+        <Col xs={24} sm={analysisResults ? 18 : 24} md={analysisResults ? 18 : 24} lg={analysisResults ? 19 : 24}>
           {/* 모드 선택 */}
           <Card size="small" style={{ marginBottom: 16 }}>
             <Space>
@@ -376,25 +420,22 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
           {useHierarchicalMode ? (
             <HierarchicalNetworkGraph
               data={graphData}
-              onNodeClick={(nodeId) => {
-                console.log('Hierarchical mode - Clicked node:', nodeId)
-                message.info(`🎯 Selected: ${nodeId}`)
-              }}
+              onNodeClick={handleGraphNodeClick}
+              selectedNodeId={selectedNodeId}
             />
           ) : useEnhancedMode ? (
             <EnhancedNetworkGraph
               data={graphData}
-              onNodeClick={(nodeId) => {
-                console.log('Enhanced mode - Clicked node:', nodeId)
-                message.info(`🎯 Selected: ${nodeId}`)
-              }}
+              onNodeClick={handleGraphNodeClick}
+              selectedNodeId={selectedNodeId}
             />
           ) : (
             <NetworkGraph2D
               data={graphData}
               onNodeClick={(node) => {
-                message.info(`Selected: ${node.name} (${node.type})`)
+                handleGraphNodeClick(node.id || node.name)
               }}
+              selectedNodeId={selectedNodeId}
             />
           )}
         </Col>

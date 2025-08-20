@@ -14,11 +14,13 @@ const { Option } = Select;
 interface EnhancedNetworkGraphProps {
   data: any;
   onNodeClick?: (nodeId: string) => void;
+  selectedNodeId?: string | null;
 }
 
 const EnhancedNetworkGraph: React.FC<EnhancedNetworkGraphProps> = ({ 
   data, 
-  onNodeClick 
+  onNodeClick,
+  selectedNodeId 
 }) => {
   const cyRef = useRef<HTMLDivElement>(null);
   const cyInstanceRef = useRef<cytoscape.Core | null>(null);
@@ -51,7 +53,7 @@ const EnhancedNetworkGraph: React.FC<EnhancedNetworkGraphProps> = ({
         elements,
         style: getStylesheet(),
         layout: getLayoutConfig(layoutType),
-        wheelSensitivity: 0.3,
+        wheelSensitivity: 1.5,
         minZoom: 0.1,
         maxZoom: 3
       });
@@ -115,6 +117,57 @@ const EnhancedNetworkGraph: React.FC<EnhancedNetworkGraphProps> = ({
       }
     };
   }, [data, highlightMode, containerMode, layoutType]);
+
+  // Handle external node selection (from file tree)
+  useEffect(() => {
+    if (!cyInstanceRef.current || !selectedNodeId) return;
+
+    const cy = cyInstanceRef.current;
+    
+    // Clear previous highlights
+    cy.elements().removeClass('highlighted connected dimmed');
+    
+    // Find and highlight the selected node
+    const targetNode = cy.getElementById(selectedNodeId);
+    
+    if (targetNode.length > 0) {
+      // Highlight the node
+      targetNode.addClass('highlighted');
+      
+      // Center and zoom to the node
+      cy.animate({
+        center: { eles: targetNode },
+        zoom: 1.5
+      }, {
+        duration: 500
+      });
+      
+      console.log('EnhancedNetworkGraph - Centered on node:', selectedNodeId);
+    } else {
+      // Try to find node by partial match
+      const allNodes = cy.nodes();
+      const matchingNode = allNodes.filter(node => {
+        const nodeData = node.data();
+        return nodeData.id.includes(selectedNodeId) || 
+               nodeData.name.includes(selectedNodeId) ||
+               selectedNodeId.includes(nodeData.id);
+      });
+      
+      if (matchingNode.length > 0) {
+        const firstMatch = matchingNode.first();
+        firstMatch.addClass('highlighted');
+        cy.animate({
+          center: { eles: firstMatch },
+          zoom: 1.5
+        }, {
+          duration: 500
+        });
+        console.log('EnhancedNetworkGraph - Centered on matching node:', firstMatch.id());
+      } else {
+        console.warn('EnhancedNetworkGraph - Node not found:', selectedNodeId);
+      }
+    }
+  }, [selectedNodeId]);
 
   // 데이터를 Cytoscape 형식으로 변환
   const transformDataToCytoscape = (inputData: any) => {
@@ -411,10 +464,10 @@ const EnhancedNetworkGraph: React.FC<EnhancedNetworkGraphProps> = ({
               <Option value="grid">Grid</Option>
             </Select>
             
-            <Button size="small" onClick={() => handleZoom(1.2)}>
+            <Button size="small" onClick={() => handleZoom(1.7)}>
               <ZoomInOutlined />
             </Button>
-            <Button size="small" onClick={() => handleZoom(0.8)}>
+            <Button size="small" onClick={() => handleZoom(0.6)}>
               <ZoomOutOutlined />
             </Button>
             <Button size="small" onClick={handleReset}>

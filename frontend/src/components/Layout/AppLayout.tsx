@@ -1,5 +1,5 @@
 // Main Application Layout Component
-import React from 'react'
+import React, { useState } from 'react'
 import { Layout, Menu, Typography, theme } from 'antd'
 import { BarChartOutlined, ProjectOutlined, SearchOutlined, BugOutlined, ApartmentOutlined } from '@ant-design/icons'
 
@@ -10,12 +10,18 @@ interface AppLayoutProps {
   children: React.ReactNode
   selectedKey?: string
   onMenuSelect?: (key: string) => void
+  showFileTree?: boolean
+  fileTreeContent?: React.ReactNode
+  fileTreeWidth?: number
 }
 
 const AppLayout: React.FC<AppLayoutProps> = ({ 
   children, 
   selectedKey = 'analysis', 
-  onMenuSelect 
+  onMenuSelect,
+  showFileTree = false,
+  fileTreeContent,
+  fileTreeWidth = 300
 }) => {
   const {
     token: { colorBgContainer, borderRadiusLG },
@@ -78,6 +84,21 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             onClick={handleMenuClick}
           />
         </Sider>
+        
+        {/* File Tree Sider - 조건부 렌더링 */}
+        {showFileTree && (
+          <Sider 
+            width={fileTreeWidth} 
+            style={{ 
+              background: colorBgContainer,
+              borderRight: '1px solid #f0f0f0'
+            }}
+            breakpoint="lg"
+            collapsedWidth="0"
+          >
+            {fileTreeContent}
+          </Sider>
+        )}
         
         <Layout style={{ padding: '0 24px 24px' }}>
           <Content

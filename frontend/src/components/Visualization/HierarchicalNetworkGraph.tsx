@@ -75,11 +75,13 @@ interface ClusterContainer {
 interface HierarchicalGraphProps {
   data: any;
   onNodeClick?: (nodeId: string) => void;
+  selectedNodeId?: string | null;
 }
 
 const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({ 
   data, 
-  onNodeClick 
+  onNodeClick,
+  selectedNodeId 
 }) => {
   const cyRef = useRef<HTMLDivElement>(null);
   const cyInstanceRef = useRef<cytoscape.Core | null>(null);
@@ -328,6 +330,57 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       }
     };
   }, [hierarchicalData, viewLevel, expandedNodes, layoutType, enableClustering, clusterLevel, containerPadding]);
+
+  // Handle external node selection (from file tree)
+  useEffect(() => {
+    if (!cyInstanceRef.current || !selectedNodeId) return;
+    const cy = cyInstanceRef.current;
+    
+    // Clear previous highlights
+    cy.elements().removeClass('highlighted connected dimmed hierarchical');
+    
+    // Find and highlight the selected node
+    const targetNode = cy.getElementById(selectedNodeId);
+    
+    if (targetNode.length > 0) {
+      // Highlight the node
+      targetNode.addClass('highlighted');
+      
+      // Center the view on the node
+      cy.animate({
+        center: { eles: targetNode },
+        zoom: 1.5
+      }, {
+        duration: 500
+      });
+      
+      console.log('HierarchicalNetworkGraph - Centered on node:', selectedNodeId);
+    } else {
+      // Try to find node by partial match
+      const allNodes = cy.nodes();
+      const matchingNode = allNodes.filter(node => {
+        const nodeData = node.data();
+        return nodeData.id.includes(selectedNodeId) || 
+               nodeData.name.includes(selectedNodeId) ||
+               selectedNodeId.includes(nodeData.id);
+      });
+      
+      if (matchingNode.length > 0) {
+        const firstMatch = matchingNode.first();
+        firstMatch.addClass('highlighted');
+        
+        cy.animate({
+          center: { eles: firstMatch },
+          zoom: 1.5
+        }, {
+          duration: 500
+        });
+        console.log('HierarchicalNetworkGraph - Centered on matching node:', firstMatch.id());
+      } else {
+        console.warn('HierarchicalNetworkGraph - Node not found:', selectedNodeId);
+      }
+    }
+  }, [selectedNodeId]);
 
   // 클러스터링된 요소들을 Cytoscape 형식으로 변환
   const transformToElements = (visibleNodes: HierarchicalNode[], edges: any[]) => {
@@ -731,20 +784,8 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'border-style': 'dashed',
         'border-color': '#d4b106',
         'border-opacity': 0.8,
-        'content': (node: any) => node.data('label') || 'Package',
-        'text-valign': 'top',
-        'text-halign': 'left',
-        'text-margin-x': (node: any) => -(node.width() / 2 - 15),
-        'text-margin-y': (node: any) => -(node.height() / 2 - 15),
-        'font-size': '16px',
-        'font-weight': 'bold',
-        'color': '#d4b106',
-        'text-outline-width': 3,
-        'text-outline-color': '#ffffff',
-        'text-background-color': 'rgba(255, 247, 230, 0.95)',
-        'text-background-padding': '8px',
-        'text-background-shape': 'round-rectangle',
-        'text-background-opacity': 1,
+        'content': '',  // 클러스터 라벨 숨김
+        'text-opacity': 0,  // 텍스트 완전 숨김
         'padding': `${containerPadding}px`,
         'width': 200,
         'height': 150,
@@ -765,20 +806,8 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'border-style': 'dashed',
         'border-color': '#722ed1',
         'border-opacity': 0.7,
-        'content': (node: any) => node.data('label') || 'Module',
-        'text-valign': 'top',
-        'text-halign': 'left',
-        'text-margin-x': (node: any) => -(node.width() / 2 - 12),
-        'text-margin-y': (node: any) => -(node.height() / 2 - 12),
-        'font-size': '14px',
-        'font-weight': 'bold',
-        'color': '#722ed1',
-        'text-outline-width': 3,
-        'text-outline-color': '#ffffff',
-        'text-background-color': 'rgba(249, 240, 255, 0.95)',
-        'text-background-padding': '6px',
-        'text-background-shape': 'round-rectangle',
-        'text-background-opacity': 1,
+        'content': '',  // 클러스터 라벨 숨김
+        'text-opacity': 0,  // 텍스트 완전 숨김
         'padding': `${Math.round(containerPadding * 0.7)}px`,
         'width': 150,
         'height': 100,
@@ -802,8 +831,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       style: {
         'z-index': 100,
         'overlay-opacity': 0,
-        'events': 'yes',
-        'z-index': 100
+        'events': 'yes'
       }
     },
     
@@ -994,14 +1022,12 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           tile: true,
           tilingPaddingVertical: 20,
           tilingPaddingHorizontal: 20,
-          animate: true,
-          animationDuration: 1000
+          animate: false
         };
       case 'hierarchical-force':
         return {
           name: 'cose',
-          animate: true,
-          animationDuration: 1500,
+          animate: false,
           nodeRepulsion: 8000,
           idealEdgeLength: 120,
           edgeElasticity: 100,
@@ -1019,12 +1045,12 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           spacingFactor: 1.75,
           padding: 50,
           avoidOverlap: true,
-          animate: true
+          animate: false
         };
       case 'compound':
         return {
           name: 'cose',
-          animate: true,
+          animate: false,
           nodeRepulsion: 10000,
           idealEdgeLength: 150,
           nestingFactor: 12,
@@ -1033,7 +1059,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       case 'cola':
         return {
           name: 'cola',
-          animate: true,
+          animate: false,
           refresh: 1,
           maxSimulationTime: 4000,
           ungrabifyWhileSimulating: false,
@@ -1052,7 +1078,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       default:
         return {
           name: 'cose',
-          animate: true,
+          animate: false,
           nodeRepulsion: 5000,
           idealEdgeLength: 100
         };

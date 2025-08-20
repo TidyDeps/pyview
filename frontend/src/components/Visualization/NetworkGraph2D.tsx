@@ -25,9 +25,10 @@ interface NetworkGraph2DProps {
     edges: Edge[]
   }
   onNodeClick?: (node: Node) => void
+  selectedNodeId?: string | null
 }
 
-const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) => {
+const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick, selectedNodeId }) => {
   const cyRef = useRef<HTMLDivElement>(null)
   const cyInstanceRef = useRef<any>(null)
   
@@ -312,6 +313,57 @@ const NetworkGraph2D: React.FC<NetworkGraph2DProps> = ({ data, onNodeClick }) =>
       }
     }
   }, [data, selectedLevel, layoutType, nodeSize, showLabels, edgeOpacity])
+
+  // Handle external node selection (from file tree)
+  useEffect(() => {
+    if (!cyInstanceRef.current || !selectedNodeId) return;
+    const cy = cyInstanceRef.current;
+    
+    // Clear previous highlights
+    cy.elements().removeClass('highlighted connected dimmed');
+    
+    // Find and highlight the selected node
+    const targetNode = cy.getElementById(selectedNodeId);
+    
+    if (targetNode.length > 0) {
+      // Highlight the node
+      targetNode.addClass('highlighted');
+      
+      // Center the view on the node
+      cy.animate({
+        center: { eles: targetNode },
+        zoom: 1.5
+      }, {
+        duration: 500
+      });
+      
+      console.log('NetworkGraph2D - Centered on node:', selectedNodeId);
+    } else {
+      // Try to find node by partial match
+      const allNodes = cy.nodes();
+      const matchingNode = allNodes.filter(node => {
+        const nodeData = node.data();
+        return nodeData.id.includes(selectedNodeId) || 
+               nodeData.name.includes(selectedNodeId) ||
+               selectedNodeId.includes(nodeData.id);
+      });
+      
+      if (matchingNode.length > 0) {
+        const firstMatch = matchingNode.first();
+        firstMatch.addClass('highlighted');
+        
+        cy.animate({
+          center: { eles: firstMatch },
+          zoom: 1.5
+        }, {
+          duration: 500
+        });
+        console.log('NetworkGraph2D - Centered on matching node:', firstMatch.id());
+      } else {
+        console.warn('NetworkGraph2D - Node not found:', selectedNodeId);
+      }
+    }
+  }, [selectedNodeId]);
 
   const handleReset = () => {
     if (cyInstanceRef.current) {
