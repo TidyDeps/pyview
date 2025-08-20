@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Card, Button, Space, message, Slider, Tag } from 'antd';
+import { Card, Button, Space, message, Slider, Tag, Spin } from 'antd';
 import { 
   ReloadOutlined, 
   ExpandOutlined
@@ -88,6 +88,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   const layoutType = 'clustered'; // 레이아웃 고정 설정
   const [viewLevel, setViewLevel] = useState(1); // 0=package, 1=module, 2=class, 3=method, 4=field
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [isLevelChanging, setIsLevelChanging] = useState(false);
   // 고정 모드 설정
   const highlightMode = true; // 하이라이트 모드 고정
   const enableClustering = true; // 클러스터링 고정 설정
@@ -444,6 +445,12 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     
     // Step 4: 엣지 필터링 (자기 자신으로의 엣지 제외)
     const nodeIds = new Set(visibleNodes.map(n => n.id));
+    console.log('🔗 Processing edges for clustering:', {
+      totalEdges: edges.length,
+      nodeIds: Array.from(nodeIds).slice(0, 5),
+      sampleEdges: edges.slice(0, 5)
+    });
+    
     const filteredEdges = edges.filter(edge => 
       nodeIds.has(edge.source) && 
       nodeIds.has(edge.target) &&
@@ -456,6 +463,11 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         type: edge.type || 'dependency'
       }
     }));
+    
+    console.log('✅ Filtered edges for clustering:', {
+      filteredCount: filteredEdges.length,
+      sampleFiltered: filteredEdges.slice(0, 3)
+    });
     
     return [...containerElements, ...clusteredNodes, ...filteredEdges];
   };
@@ -1179,10 +1191,21 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   };
 
   // 레벨 변경 핸들러
-  const handleLevelChange = (newLevel: number) => {
+  const handleLevelChange = async (newLevel: number) => {
+    setIsLevelChanging(true);
+    message.loading(`Switching to ${getLevelName(newLevel)} level...`, 0.5);
+    
+    // Give UI time to show loading state
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     setViewLevel(newLevel);
     setExpandedNodes(new Set()); // 레벨 변경 시 확장 상태 초기화
-    message.info(`Viewing ${getLevelName(newLevel)} level`);
+    
+    // Additional delay to prevent UI freezing
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    setIsLevelChanging(false);
+    message.success(`Now viewing ${getLevelName(newLevel)} level`);
   };
 
   const getLevelName = (level: number): string => {
@@ -1354,15 +1377,49 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
       {/* Cytoscape 컨테이너 */}
       <div 
-        ref={cyRef} 
         style={{ 
+          position: 'relative',
           width: '100%', 
-          flex: 1,
-          backgroundColor: '#fafafa',
-          border: '1px solid var(--ant-color-border)',
-          borderRadius: 6
-        }} 
-      />
+          flex: 1
+        }}
+      >
+        <div 
+          ref={cyRef} 
+          style={{ 
+            width: '100%', 
+            height: '100%',
+            backgroundColor: '#fafafa',
+            border: '1px solid var(--ant-color-border)',
+            borderRadius: 6
+          }} 
+        />
+        
+        {/* Level Changing Loading Overlay */}
+        {isLevelChanging && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            borderRadius: 6
+          }}>
+            <Spin size="large" />
+            <div style={{ marginTop: 16, fontSize: 16, fontWeight: 500 }}>
+              Rendering {getLevelName(viewLevel)} Level...
+            </div>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
+              Optimizing layout for better performance
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

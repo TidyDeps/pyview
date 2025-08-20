@@ -16,7 +16,7 @@ export class WebSocketService {
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const wsUrl = `ws://localhost:3000/ws/progress/${this.analysisId}`
+      const wsUrl = `ws://localhost:8000/ws/progress/${this.analysisId}`
       this.ws = new WebSocket(wsUrl)
 
       this.ws.onopen = () => {
