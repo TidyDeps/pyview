@@ -1,13 +1,9 @@
 // Visualization Page with Graph and Controls
 import React, { useState, useEffect } from 'react'
-import { Row, Col, message, Alert, Spin, Card, Switch, Space } from 'antd'
-import { ExperimentOutlined, ApartmentOutlined, BranchesOutlined } from '@ant-design/icons'
-import NetworkGraph2D from './NetworkGraph2D'
-import EnhancedNetworkGraph from './EnhancedNetworkGraph'
+import { Row, Col, message, Alert, Spin } from 'antd'
 import { ApiService } from '@/services/api'
 import HierarchicalNetworkGraph from './HierarchicalNetworkGraph'
 import FileTreeSidebar from '../FileTree/FileTreeSidebar'
-import AppLayout from '../Layout/AppLayout'
 
 interface VisualizationPageProps {
   analysisId: string | null
@@ -35,14 +31,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
-  // Graph control states
-  const [selectedLevel, setSelectedLevel] = useState<string>('module')
-  const [nodeSize, setNodeSize] = useState<number>(5)
-  const [edgeOpacity, setEdgeOpacity] = useState<number>(0.6)
-  const [showLabels, setShowLabels] = useState<boolean>(true)
-  const [layoutMode, setLayoutMode] = useState<string>('force')
-  const [useEnhancedMode, setUseEnhancedMode] = useState<boolean>(false)
-  const [useHierarchicalMode, setUseHierarchicalMode] = useState<boolean>(false)
+  // Graph control states - only hierarchical mode
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [analysisResults, setAnalysisResults] = useState<any>(null)
 
@@ -270,31 +259,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     return { nodes, edges }
   }
 
-  const handleExport = () => {
-    if (!graphData) return
-    
-    const dataStr = JSON.stringify(graphData, null, 2)
-    const dataBlob = new Blob([dataStr], { type: 'application/json' })
-    
-    const url = URL.createObjectURL(dataBlob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `dependency-graph-${analysisId || 'sample'}.json`
-    link.click()
-    
-    URL.revokeObjectURL(url)
-    message.success('Graph data exported successfully')
-  }
 
-  const handleResetLayout = () => {
-    // Reset to default values
-    setSelectedLevel('module')
-    setNodeSize(5)
-    setEdgeOpacity(0.6)
-    setShowLabels(true)
-    setLayoutMode('force')
-    message.info('Layout reset to defaults')
-  }
 
   // File tree node selection handler
   const handleFileTreeNodeSelect = (nodeId: string, nodeType: string) => {
@@ -343,42 +308,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     )
   }
 
-  // File tree content
-  const fileTreeContent = analysisResults ? (
-    <FileTreeSidebar
-      analysisData={analysisResults}
-      onNodeSelect={handleFileTreeNodeSelect}
-      selectedNodeId={selectedNodeId}
-      style={{ height: '100%' }}
-    />
-  ) : null
-
   return (
     <div>
-      {/* Graph Mode Toggle */}
-      <Card 
-        size="small" 
-        style={{ marginBottom: 16 }}
-        title="🚀 Visualization Controls"
-      >
-        <Space align="center">
-          <Switch
-            checked={useEnhancedMode}
-            onChange={setUseEnhancedMode}
-            checkedChildren={<ExperimentOutlined />}
-            unCheckedChildren={<ApartmentOutlined />}
-          />
-          <span style={{ fontWeight: 500 }}>
-            {useEnhancedMode ? 'Enhanced Mode' : 'Standard Mode'}
-          </span>
-          <span style={{ color: '#666', fontSize: 12 }}>
-            {useEnhancedMode 
-              ? '✨ Click highlighting + Container grouping' 
-              : '📊 Basic network visualization'
-            }
-          </span>
-        </Space>
-      </Card>
 
       <Row gutter={[16, 16]}>
         {/* File Tree Column - 조건부 렌더링 */}
@@ -387,7 +318,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
             <FileTreeSidebar
               analysisData={analysisResults}
               onNodeSelect={handleFileTreeNodeSelect}
-              selectedNodeId={selectedNodeId}
+              selectedNodeId={selectedNodeId || undefined}
               style={{ height: 'calc(100vh - 200px)' }}
             />
           </Col>
@@ -395,49 +326,12 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
         
         {/* Graph Column */}
         <Col xs={24} sm={analysisResults ? 18 : 24} md={analysisResults ? 18 : 24} lg={analysisResults ? 19 : 24}>
-          {/* 모드 선택 */}
-          <Card size="small" style={{ marginBottom: 16 }}>
-            <Space>
-              <Switch
-                checked={useEnhancedMode}
-                onChange={setUseEnhancedMode}
-                checkedChildren={<ExperimentOutlined />}
-                unCheckedChildren={<ApartmentOutlined />}
-              />
-              <span>Enhanced Mode</span>
-              
-              <Switch
-                checked={useHierarchicalMode}
-                onChange={setUseHierarchicalMode}
-                checkedChildren={<BranchesOutlined />}
-                unCheckedChildren="Hierarchical"
-              />
-              <span>Hierarchical Mode</span>
-            </Space>
-          </Card>
-
-          {/* 그래프 렌더링 */}
-          {useHierarchicalMode ? (
-            <HierarchicalNetworkGraph
-              data={graphData}
-              onNodeClick={handleGraphNodeClick}
-              selectedNodeId={selectedNodeId}
-            />
-          ) : useEnhancedMode ? (
-            <EnhancedNetworkGraph
-              data={graphData}
-              onNodeClick={handleGraphNodeClick}
-              selectedNodeId={selectedNodeId}
-            />
-          ) : (
-            <NetworkGraph2D
-              data={graphData}
-              onNodeClick={(node) => {
-                handleGraphNodeClick(node.id || node.name)
-              }}
-              selectedNodeId={selectedNodeId}
-            />
-          )}
+          {/* 계층형 네트워크 그래프 */}
+          <HierarchicalNetworkGraph
+            data={graphData || undefined}
+            onNodeClick={handleGraphNodeClick}
+            selectedNodeId={selectedNodeId || undefined}
+          />
         </Col>
       </Row>
     </div>
