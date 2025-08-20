@@ -1100,7 +1100,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
 
   return (
-    <div style={{ width: '100%', height: '700px', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100%', height: '85vh', display: 'flex', flexDirection: 'column' }}>
       {/* 컨트롤 패널 - 상단 고정 */}
       <Card 
         size="small" 
