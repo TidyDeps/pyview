@@ -1110,10 +1110,10 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           minWidth: '100%'
         }}
       >
-        {/* 컨트롤 패널을 좌우로 분할 */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
-          {/* 왼쪽: View Level 컨트롤 (축소) */}
-          <div style={{ flex: '0 0 300px', marginRight: 16 }}>
+        {/* 컨트롤 패널을 3분할로 구성 */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', width: '100%', gap: 16 }}>
+          {/* 왼쪽: View Level 컨트롤 */}
+          <div style={{ flex: '0 0 280px' }}>
             <div style={{ marginBottom: 4, fontSize: 12, fontWeight: 500 }}>
               Level: <Tag color="blue">{getLevelName(viewLevel)}</Tag>
             </div>
@@ -1133,8 +1133,8 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
             />
           </div>
 
-          {/* 오른쪽: 나머지 컨트롤들 */}
-          <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+          {/* 가운데: 기타 컨트롤들 */}
+          <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}>
             <Space wrap>
               <span style={{ fontSize: 12 }}>여백:</span>
               <Slider 
@@ -1158,27 +1158,94 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
               </Button>
             </Space>
           </div>
-        </div>
-        
-        {/* 선택된 노드 정보 - 컨트롤 패널 내부로 이동 */}
-        {selectedNode && (
-          <div style={{ 
-            marginTop: 12, 
-            padding: 8, 
-            backgroundColor: '#f8f9fa', 
-            borderRadius: 4,
-            border: '1px solid #e0e0e0'
-          }}>
-            <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4 }}>📋 Selected Node:</div>
-            <div style={{ fontSize: 11 }}>
-              <div><strong>ID:</strong> {selectedNode}</div>
-              <div><strong>Expanded:</strong> {expandedNodes.size} nodes</div>
-              {hierarchicalData.hierarchy[selectedNode] && (
-                <div><strong>Children:</strong> {hierarchicalData.hierarchy[selectedNode].length}</div>
-              )}
-            </div>
+
+          {/* 오른쪽: Selected Node 정보 (간략화) */}
+          <div style={{ flex: '1', minWidth: 0 }}>
+            {selectedNode && (() => {
+              const nodeInfo = hierarchicalData.nodes.find(n => n.id === selectedNode);
+              const nodeEdges = hierarchicalData.edges.filter(e => 
+                e.source === selectedNode || e.target === selectedNode
+              );
+              const incoming = nodeEdges.filter(e => e.target === selectedNode);
+              const outgoing = nodeEdges.filter(e => e.source === selectedNode);
+              
+              return (
+                <div style={{ 
+                  padding: 10, 
+                  backgroundColor: '#f8f9fa', 
+                  borderRadius: 6,
+                  border: '1px solid #d9d9d9',
+                  height: 'fit-content'
+                }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#1890ff' }}>
+                    📋 Selected Node
+                  </div>
+                  
+                  {nodeInfo ? (
+                    <div style={{ fontSize: 10, lineHeight: 1.3, display: 'flex', gap: 12 }}>
+                      {/* 왼쪽: 기본 정보 */}
+                      <div style={{ flex: '0 0 auto' }}>
+                        <div><strong>Name:</strong> {nodeInfo.name}</div>
+                        <div><strong>Type:</strong> 
+                          <Tag color={
+                            nodeInfo.type === 'package' ? 'green' :
+                            nodeInfo.type === 'module' ? 'blue' :
+                            nodeInfo.type === 'class' ? 'orange' :
+                            nodeInfo.type === 'method' ? 'purple' :
+                            nodeInfo.type === 'field' ? 'cyan' : 'default'
+                          } style={{ marginLeft: 4, fontSize: 9 }}>
+                            {nodeInfo.type.toUpperCase()}
+                          </Tag>
+                        </div>
+                      </div>
+                      
+                      {/* 오른쪽: 연결된 노드 정보 */}
+                      {(incoming.length > 0 || outgoing.length > 0) && (
+                        <div style={{ flex: 1, minWidth: 0, paddingLeft: 8, borderLeft: '1px solid #e0e0e0' }}>
+                          {incoming.length > 0 && (
+                            <div style={{ marginBottom: 2 }}>
+                              <div style={{ fontSize: 10, fontWeight: 500, color: '#52c41a' }}>← In ({incoming.length}):</div>
+                              <div style={{ fontSize: 9, color: '#666' }}>
+                                {incoming.slice(0, 2).map((e, idx) => {
+                                  const sourceName = hierarchicalData.nodes.find(n => n.id === e.source)?.name || e.source;
+                                  return <span key={idx}>{sourceName}{idx < incoming.slice(0, 2).length - 1 ? ', ' : ''}</span>;
+                                })}
+                                {incoming.length > 2 && <span>... +{incoming.length - 2}</span>}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {outgoing.length > 0 && (
+                            <div>
+                              <div style={{ fontSize: 10, fontWeight: 500, color: '#1890ff' }}>→ Out ({outgoing.length}):</div>
+                              <div style={{ fontSize: 9, color: '#666' }}>
+                                {outgoing.slice(0, 2).map((e, idx) => {
+                                  const targetName = hierarchicalData.nodes.find(n => n.id === e.target)?.name || e.target;
+                                  return <span key={idx}>{targetName}{idx < outgoing.slice(0, 2).length - 1 ? ', ' : ''}</span>;
+                                })}
+                                {outgoing.length > 2 && <span>... +{outgoing.length - 2}</span>}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {nodeInfo.children && nodeInfo.children.length > 0 && (
+                        <div style={{ marginTop: 4, fontSize: 9, color: '#666' }}>
+                          👶 Children: {nodeInfo.children.length}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 10, color: '#999' }}>
+                      No node selected
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
-        )}
+        </div>
       </Card>
 
 
