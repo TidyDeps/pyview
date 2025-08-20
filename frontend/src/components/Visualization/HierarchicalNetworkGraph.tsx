@@ -1112,18 +1112,14 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   };
 
   return (
-    <div style={{ width: '100%', height: '700px', position: 'relative' }}>
-      {/* 향상된 컨트롤 패널 */}
+    <div style={{ width: '100%', height: '700px', display: 'flex', flexDirection: 'column' }}>
+      {/* 컨트롤 패널 - 상단 고정 */}
       <Card 
         size="small" 
         title="🎛️ Hierarchical Controls"
         style={{ 
-          position: 'absolute', 
-          top: 10, 
-          left: 10, 
-          zIndex: 10,
-          minWidth: 350,
-          maxWidth: 400
+          marginBottom: 16,
+          minWidth: '100%'
         }}
       >
         <Space direction="vertical" size="small" style={{ width: '100%' }}>
@@ -1246,30 +1242,27 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
             </Button>
           </Space>
         </Space>
-      </Card>
-
-      {/* 선택된 노드 정보 */}
-      {selectedNode && (
-        <Card
-          size="small"
-          title="📋 Node Info"
-          style={{
-            position: 'absolute',
-            top: 10,
-            right: 10,
-            zIndex: 10,
-            maxWidth: 250
-          }}
-        >
-          <div style={{ fontSize: 12 }}>
-            <div><strong>ID:</strong> {selectedNode}</div>
-            <div><strong>Expanded:</strong> {expandedNodes.size} nodes</div>
-            {hierarchicalData.hierarchy[selectedNode] && (
-              <div><strong>Children:</strong> {hierarchicalData.hierarchy[selectedNode].length}</div>
-            )}
+        
+        {/* 선택된 노드 정보 - 컨트롤 패널 내부로 이동 */}
+        {selectedNode && (
+          <div style={{ 
+            marginTop: 12, 
+            padding: 8, 
+            backgroundColor: '#f8f9fa', 
+            borderRadius: 4,
+            border: '1px solid #e0e0e0'
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4 }}>📋 Selected Node:</div>
+            <div style={{ fontSize: 11 }}>
+              <div><strong>ID:</strong> {selectedNode}</div>
+              <div><strong>Expanded:</strong> {expandedNodes.size} nodes</div>
+              {hierarchicalData.hierarchy[selectedNode] && (
+                <div><strong>Children:</strong> {hierarchicalData.hierarchy[selectedNode].length}</div>
+              )}
+            </div>
           </div>
-        </Card>
-      )}
+        )}
+      </Card>
 
       {/* 미니맵 */}
       {showMinimap && (
@@ -1297,7 +1290,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         ref={cyRef} 
         style={{ 
           width: '100%', 
-          height: '100%',
+          flex: 1,
           backgroundColor: '#fafafa',
           border: '1px solid var(--ant-color-border)',
           borderRadius: 6
