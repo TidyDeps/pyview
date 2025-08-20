@@ -41,7 +41,7 @@ const loadCytoscapeExtensions = async () => {
 interface HierarchicalNode {
   id: string;
   name: string;
-  type: 'package' | 'module' | 'class' | 'method' | 'field';
+  type: 'package' | 'module' | 'class' | 'method' | 'field' | 'function';
   parent?: string;
   children?: string[];
   level: number;
@@ -177,8 +177,12 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       const packageId = `pkg:${packageName}`;
       return allNodes.find(n => n.id === packageId)?.id;
     } else if (nodeId.startsWith('meth:') || nodeId.startsWith('field:')) {
-      const classId = nodeId.split(':').slice(0, 3).join(':');
-      return allNodes.find(n => n.id === classId)?.id;
+      // meth:cls:module_id:class_name:method_name:line_number → cls:module_id:class_name
+      const parts = nodeId.split(':');
+      if (parts.length >= 4 && parts[1] === 'cls') {
+        const classId = `${parts[1]}:${parts[2]}:${parts[3]}`;
+        return allNodes.find(n => n.id === classId)?.id;
+      }
     }
     
     return undefined;
@@ -460,6 +464,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   const identifyClusters = (nodes: HierarchicalNode[]) => {
     const packageClusters = new Map<string, ClusterContainer>();
     const moduleClusters = new Map<string, ClusterContainer>();
+    const classClusters = new Map<string, ClusterContainer>();
     
     nodes.forEach(node => {
       // Package 클러스터 식별 (모듈 노드들을 그룹핑)
@@ -493,11 +498,35 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           moduleClusters.get(moduleId)!.children.push(node.id);
         }
       }
+      
+      // Class 클러스터 식별 (method/field 노드들을 그룹핑)
+      if (node.type === 'method' || node.type === 'field' || node.type === 'function') {
+        console.log('🔍 Processing node for class clustering:', { id: node.id, type: node.type });
+        const classId = extractClassId(node.id);
+        console.log('🎯 Extracted class ID:', classId);
+        if (classId && !classClusters.has(classId)) {
+          const moduleId = extractModuleId(classId);
+          const cluster = {
+            id: `class-cluster-${classId}`,
+            type: 'class-cluster',
+            name: `🏷️ ${classId.split(':').pop() || classId}`,
+            children: [],
+            parentCluster: moduleId ? `module-cluster-${moduleId}` : undefined
+          };
+          classClusters.set(classId, cluster);
+          console.log('📦 Created new class cluster:', cluster);
+        }
+        if (classId) {
+          classClusters.get(classId)!.children.push(node.id);
+          console.log('➕ Added node to class cluster:', node.id, '→', classId);
+        }
+      }
     });
     
     return {
       packages: Array.from(packageClusters.values()),
-      modules: Array.from(moduleClusters.values())
+      modules: Array.from(moduleClusters.values()),
+      classes: Array.from(classClusters.values())
     };
   };
 
@@ -521,8 +550,23 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     return null;
   };
 
-  // 컨테이너 요소 생성
-  const createContainerElements = (clusters: { packages: ClusterContainer[], modules: ClusterContainer[] }) => {
+
+  // 클래스 ID 추출 (method/field에서)
+  const extractClassId = (nodeId: string): string | null => {
+    // meth:cls:module_id:class_name:method_name:line_number → cls:module_id:class_name
+    // field:cls:module_id:class_name:field_name → cls:module_id:class_name
+    if (nodeId.startsWith('meth:') || nodeId.startsWith('field:')) {
+      const parts = nodeId.split(':');
+      // meth:cls:module_id:class_name:... → cls:module_id:class_name
+      if (parts.length >= 4 && parts[1] === 'cls') {
+        return `${parts[1]}:${parts[2]}:${parts[3]}`;
+      }
+    }
+    return null;
+  };
+
+  // 컨테이너 요소 생성  
+  const createContainerElements = (clusters: { packages: ClusterContainer[], modules: ClusterContainer[], classes: ClusterContainer[] }) => {
     const containerElements: any[] = [];
     
     // 패키지 컨테이너
@@ -554,12 +598,27 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       }
     });
     
+    // 클래스 컨테이너
+    clusters.classes.forEach(cluster => {
+      if (cluster.children.length > 0) {
+        containerElements.push({
+          data: {
+            id: cluster.id,
+            label: cluster.name,
+            type: 'class-container',
+            parent: cluster.parentCluster
+          },
+          classes: 'class-container'
+        });
+      }
+    });
+    
     console.log('📦 Created container elements:', containerElements.length);
     return containerElements;
   };
 
   // 노드를 컨테이너에 할당
-  const assignNodesToContainers = (nodes: HierarchicalNode[], clusters: { packages: ClusterContainer[], modules: ClusterContainer[] }) => {
+  const assignNodesToContainers = (nodes: HierarchicalNode[], clusters: { packages: ClusterContainer[], modules: ClusterContainer[], classes: ClusterContainer[] }) => {
     const nodeElements: any[] = [];
     
     nodes.forEach(node => {
@@ -581,6 +640,17 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           const moduleCluster = clusters.modules.find(c => c.id === `module-cluster-${moduleId}`);
           if (moduleCluster && moduleCluster.children?.includes(node.id)) {
             parentContainer = moduleCluster.id;
+          }
+        }
+      }
+      
+      // Method/Field 노드 → 클래스 컨테이너
+      if (node.type === 'method' || node.type === 'field' || node.type === 'function') {
+        const classId = extractClassId(node.id);
+        if (classId) {
+          const classCluster = clusters.classes.find(c => c.id === `class-cluster-${classId}`);
+          if (classCluster && classCluster.children?.includes(node.id)) {
+            parentContainer = classCluster.id;
           }
         }
       }
@@ -618,7 +688,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       setSelectedNode(nodeId);
       
       // 하이라이트 모드 (컨테이너가 아닌 모든 실제 노드에 적용)
-      if (highlightMode && nodeData.type !== 'package-container' && nodeData.type !== 'module-container') {
+      if (highlightMode && nodeData.type !== 'package-container' && nodeData.type !== 'module-container' && nodeData.type !== 'class-container') {
         console.log('🌟 Applying highlight to:', nodeId, 'type:', nodeData.type);
         handleHierarchicalHighlight(cy, nodeId);
       }
@@ -689,14 +759,14 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       // 연결된 노드들 하이라이트 (컨테이너 제외)
       const actualConnectedNodes = connectedNodes.filter(node => {
         const nodeType = node.data('type');
-        return nodeType !== 'package-container' && nodeType !== 'module-container';
+        return nodeType !== 'package-container' && nodeType !== 'module-container' && nodeType !== 'class-container';
       });
       actualConnectedNodes.addClass('connected');
       
       // 관련 노드들 하이라이트 (컨테이너 제외)
       const actualRelatedNodes = relatedNodes.filter(node => {
         const nodeType = node.data('type');
-        return nodeType !== 'package-container' && nodeType !== 'module-container';
+        return nodeType !== 'package-container' && nodeType !== 'module-container' && nodeType !== 'class-container';
       });
       actualRelatedNodes.addClass('hierarchical');
       
@@ -705,7 +775,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       // 나머지 흐리게 (컨테이너는 dimmed에서 제외)
       const nonContainerNodes = cy.nodes().filter(node => {
         const nodeType = node.data('type');
-        return nodeType !== 'package-container' && nodeType !== 'module-container';
+        return nodeType !== 'package-container' && nodeType !== 'module-container' && nodeType !== 'class-container';
       });
       
       nonContainerNodes.not(targetNode).not(actualConnectedNodes).not(actualRelatedNodes).addClass('dimmed');
@@ -803,6 +873,27 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'width': 150,
         'height': 100,
         'z-index': 2,
+        'overlay-opacity': 0,
+        'events': 'no'
+      }
+    },    
+    // 클래스 컨테이너 스타일
+    {
+      selector: '.class-container',
+      style: {
+        'shape': 'round-rectangle',
+        'background-color': '#f0f9ff',
+        'background-opacity': 0.06,
+        'border-width': 1,
+        'border-style': 'dotted',
+        'border-color': '#1890ff',
+        'border-opacity': 0.6,
+        'content': '',  // 클러스터 라벨 숨김
+        'text-opacity': 0,  // 텍스트 완전 숨김
+        'padding': `${Math.round(containerPadding * 0.5)}px`,
+        'width': 100,
+        'height': 80,
+        'z-index': 3,
         'overlay-opacity': 0,
         'events': 'no'
       }
