@@ -114,3 +114,17 @@ tasklist.md
 
 # Personal work artifacts (individual work process)
 PROJECT_STATUS.md
+
+# Backup/duplicate files (copies created during development)
+*\ 2.*
+*\ 2/
+*\ copy.*
+*/components\ 2/
+**/components\ 2/
+package-lock\ 2.json
+cache_manager\ 2.py
+performance_optimizer\ 2.py
+
+# TypeScript config files (auto-generated/temporary)
+frontend/tsconfig.json
+frontend/tsconfig.node.json
