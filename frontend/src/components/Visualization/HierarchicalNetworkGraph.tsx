@@ -462,6 +462,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
   // 클러스터 식별
   const identifyClusters = (nodes: HierarchicalNode[]) => {
+    console.log('🎯 identifyClusters called with nodes:', nodes.length);
+    console.log('🔍 First 5 nodes:', nodes.slice(0, 5).map(n => ({ id: n.id, type: n.type, name: n.name })));
+    
     const packageClusters = new Map<string, ClusterContainer>();
     const moduleClusters = new Map<string, ClusterContainer>();
     const classClusters = new Map<string, ClusterContainer>();
@@ -553,15 +556,43 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
   // 클래스 ID 추출 (method/field에서)
   const extractClassId = (nodeId: string): string | null => {
-    // meth:cls:module_id:class_name:method_name:line_number → cls:module_id:class_name
-    // field:cls:module_id:class_name:field_name → cls:module_id:class_name
+    console.log('🔎 extractClassId called with:', nodeId);
+    
+    // PyView 형식: meth:cls:module_id:class_name:method_name:line_number → cls:module_id:class_name
+    // PyView 형식: field:cls:module_id:class_name:field_name → cls:module_id:class_name
     if (nodeId.startsWith('meth:') || nodeId.startsWith('field:')) {
       const parts = nodeId.split(':');
       // meth:cls:module_id:class_name:... → cls:module_id:class_name
       if (parts.length >= 4 && parts[1] === 'cls') {
-        return `${parts[1]}:${parts[2]}:${parts[3]}`;
+        const classId = `${parts[1]}:${parts[2]}:${parts[3]}`;
+        console.log('✅ Extracted class ID (PyView format):', classId);
+        return classId;
       }
     }
+    
+    // Demo 데이터 형식: method_cls_ClassName → cls_ClassName
+    // 또는 클래스명이 ID에 포함된 경우
+    if (nodeId.includes('_cls_') || nodeId.includes('cls_')) {
+      const clsMatch = nodeId.match(/cls_([^_]+)/);
+      if (clsMatch) {
+        const classId = `cls_${clsMatch[1]}`;
+        console.log('✅ Extracted class ID (demo format):', classId);
+        return classId;
+      }
+    }
+    
+    // 직접적인 클래스 참조가 있는 경우
+    // method ID에서 클래스 이름을 찾으려고 시도
+    const parts = nodeId.split('_');
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (parts[i] === 'cls' || parts[i] === 'class') {
+        const classId = `cls_${parts[i + 1]}`;
+        console.log('✅ Extracted class ID (generic format):', classId);
+        return classId;
+      }
+    }
+    
+    console.log('❌ Could not extract class ID from:', nodeId);
     return null;
   };
 
