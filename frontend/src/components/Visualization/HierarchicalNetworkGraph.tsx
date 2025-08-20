@@ -1110,11 +1110,12 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           minWidth: '100%'
         }}
       >
-        <Space direction="vertical" size="small" style={{ width: '100%' }}>
-          {/* 레벨 컨트롤 */}
-          <div>
-            <div style={{ marginBottom: 8, fontWeight: 500 }}>
-              View Level: <Tag color="blue">{getLevelName(viewLevel)}</Tag>
+        {/* 컨트롤 패널을 좌우로 분할 */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+          {/* 왼쪽: View Level 컨트롤 (축소) */}
+          <div style={{ flex: '0 0 300px', marginRight: 16 }}>
+            <div style={{ marginBottom: 4, fontSize: 12, fontWeight: 500 }}>
+              Level: <Tag color="blue">{getLevelName(viewLevel)}</Tag>
             </div>
             <Slider
               min={0}
@@ -1132,40 +1133,32 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
             />
           </div>
 
-          {/* 모드 스위치들 */}
-          <Space wrap>
+          {/* 오른쪽: 나머지 컨트롤들 */}
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+            <Space wrap>
+              <span style={{ fontSize: 12 }}>여백:</span>
+              <Slider 
+                min={10} 
+                max={50} 
+                value={containerPadding} 
+                onChange={setContainerPadding}
+                style={{ width: 80 }}
+              />
+              
+              <Button size="small" onClick={expandAll} icon={<ExpandOutlined />}>
+                Expand All
+              </Button>
 
-          </Space>
-
-          {/* 클러스터링 컨트롤 */}
-          <Space wrap>
-            <span>컨테이너 여백:</span>
-            <Slider 
-              min={10} 
-              max={50} 
-              value={containerPadding} 
-              onChange={setContainerPadding}
-              style={{ width: 80 }}
-            />
-          </Space>
-
-
-
-          {/* 확장/축소 버튼들 */}
-          <Space>
-            <Button size="small" onClick={expandAll} icon={<ExpandOutlined />}>
-              Expand All
-            </Button>
-
-            <Button 
-              size="small" 
-              onClick={() => cyInstanceRef.current?.fit()}
-              icon={<ReloadOutlined />}
-            >
-              Fit
-            </Button>
-          </Space>
-        </Space>
+              <Button 
+                size="small" 
+                onClick={() => cyInstanceRef.current?.fit()}
+                icon={<ReloadOutlined />}
+              >
+                Fit
+              </Button>
+            </Space>
+          </div>
+        </div>
         
         {/* 선택된 노드 정보 - 컨트롤 패널 내부로 이동 */}
         {selectedNode && (
