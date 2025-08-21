@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Graphviz interface.
+Graphviz 인터페이스
 """
 import os
 import platform
@@ -15,7 +15,7 @@ win32 = sys.platform == 'win32'
 
 
 def is_unicode(s):  # pragma: nocover
-    """Test unicode with py3 support.
+    """Python3 지원하면서 유니코드 테스트
     """
     try:
         return isinstance(s, unicode)
@@ -24,7 +24,7 @@ def is_unicode(s):  # pragma: nocover
 
 
 def to_bytes(s):  # pragma: nocover
-    """Convert an item into bytes.
+    """아이템을 바이트로 변환
     """
     if isinstance(s, bytes):
         return s
@@ -37,7 +37,7 @@ def to_bytes(s):  # pragma: nocover
 
 
 def cmd2args(cmd):
-    """Prepare a command line for execution by Popen.
+    """Popen으로 실행할 명령행 준비
     """
     if isinstance(cmd, str):
         return cmd if win32 else shlex.split(cmd)

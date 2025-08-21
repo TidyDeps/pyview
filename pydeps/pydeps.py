@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""cli entrypoints.
+"""CLI 진입점들
 """
 from __future__ import print_function
 import json
@@ -15,15 +15,15 @@ log = logging.getLogger(__name__)
 
 
 def _pydeps(trgt, **kw):
-    # Pass args as a **kw dict since we need to pass it down to functions
-    # called, but extract locally relevant parameters first to make the
-    # code prettier (and more fault tolerant).
-    # print("KW:", kw, '\n', os.getcwd())
-    # print('abspath:', os.path.abspath(kw.get('deps_out')))
-    # print('target', trgt.workdir)
-    # print('target', trgt)
+    # 함수들한테 넘겨야 해서 args를 **kw dict로 전달하는데,
+    # 코드 좀 더 예쁘게 (그리고 에러 덜 나게) 만들려고
+    # 로컬에서 쓸 파라미터들 먼저 빼둠
+    # print("KW:", kw, '\n', os.getcwd())  # 디버깅용
+    # print('abspath:', os.path.abspath(kw.get('deps_out')))  # 경로 확인
+    # print('target', trgt.workdir)  # 타겟 작업 디렉토리
+    # print('target', trgt)  # 타겟 객체
     colors.START_COLOR = kw.get('start_color')
-    # show_cycles = kw.get('show_cycles')
+    # show_cycles = kw.get('show_cycles')  # 순환 의존성 보여줄지
     nodot = kw.get('no_dot')
     no_output = kw.get('no_output')
     output = kw.get('output')
@@ -31,9 +31,9 @@ def _pydeps(trgt, **kw):
     show_svg = kw.get('show')
     deps_out = kw.get('deps_out')
     dot_out = kw.get('dot_out')
-    # reverse = kw.get('reverse')
+    # reverse = kw.get('reverse')  # 역방향으로 그릴지
     if os.getcwd() != trgt.workdir:
-        # the tests are calling _pydeps directoy
+        # 테스트에서 _pydeps 직접 호출하는 경우
         os.chdir(trgt.workdir)
 
     dep_graph = py2depgraph.py2dep(trgt, **kw)
@@ -41,7 +41,7 @@ def _pydeps(trgt, **kw):
     if kw.get('show_deps'):
         cli.verbose("DEPS:")
         if deps_out:
-            # make sure output files are written to sensible directories
+            # 출력 파일이 이상한 곳에 안 가도록 체크
             directory, _fname = os.path.split(deps_out)
             if not directory:
                 deps_out = os.path.join(trgt.calling_dir, deps_out)

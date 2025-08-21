@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*-
+# utf-8
 """
-Generate requirements.txt from pydeps output...
+pydeps 출력에서 requirements.txt 생성하기...
 
-Usage::
+사용법::
 
     pydeps <packagename> --max-bacon=0 \
            --show-raw-deps --nodot \
@@ -19,15 +19,14 @@ from pydeps.package_names import find_package_names
 
 WIDTH = 80
 
-# packages that are difficult to eliminate but shouldn't ever be part
-# of a package's requirements.
+# 제거하기 어렵지만 패키지 requirements에는 절대 포함되면 안 되는 패키지들
 skiplist = {
     '_markerlib', 'pkg_resources'
 }
 
 
 def dep2req(name, package, imported_by):
-    """Convert dependency to requirement.
+    """의존성을 requirement로 변환
     """
     lst = [item for item in sorted(imported_by) if not item.startswith(name)]
     res = '%-15s # from: ' % package

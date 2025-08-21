@@ -6,7 +6,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
-# from devtools import debug
+# from devtools import debug  # 디버깅용인데 안 쓰고 있음
 
 
 HAVE_TOML = False
@@ -40,7 +40,7 @@ def boolval(v):
             return True
         if v in {'n', 'nei', 'no', '0', 'false'}:
             return False
-    raise ValueError("Don't know how to convert %r to bool" % v)
+    raise ValueError("Don't know how to convert %r to bool" % v)  # 에러 메시지는 그대로
 
 
 def listval(v):

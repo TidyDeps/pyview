@@ -3,7 +3,7 @@ from io import StringIO
 import textwrap
 import json
 import argparse
-# from devtools import debug
+# from devtools import debug  # 디버깅용인데 안 쓰고 있음
 from .configs import Config, typefns, identity
 
 DEFAULT_NONE = '____'
@@ -17,7 +17,7 @@ class Argument(object):
             del args['container']
         self._args = args
         self._flags = flags
-        # self.__dict__.update(args)
+        # self.__dict__.update(args)  # 예전 방식이었는데 주석처리
 
     def __json__(self):
         return self.__dict__

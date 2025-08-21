@@ -14,9 +14,9 @@ import sys
 import logging
 log = logging.getLogger(__name__)
 
-# we're normally not interested in imports of std python packages.
+# 보통 파이썬 표준 라이브러리 import는 관심 없어서 제외
 PYLIB_PATH = {
-    # in virtualenvs that see the system libs, these will be different.
+    # 가상환경에서 시스템 라이브러리 보는 경우엔 경로가 다를 수 있음
     os.path.split(os.path.split(pprint.__file__)[0])[0].lower(),
     os.path.split(os.__file__)[0].lower()
 }
@@ -36,18 +36,18 @@ class imp(enum.Enum):
 
 
 class Source(object):
-    """A node (contained) in the dependency graph.
+    """의존성 그래프의 노드 하나
 
-       It contains info about which modules are imported by this source,
-       and which modules import this source.
+       이 소스가 어떤 모듈들을 import하는지,
+       어떤 모듈들이 이 소스를 import하는지 정보를 담고 있음
     """
     def __init__(self, name, path=None, imports=(), exclude=False, args=None):
         self.args = args or {}
         self.name = name
-        # self.kind = kind
-        self.path = path             # needed here..?
-        self.imports = set(imports)  # modules we import
-        self.imported_by = set()     # modules that import us
+        # self.kind = kind  # 나중에 쓸 수도 있어서 주석으로 남겨둠
+        self.path = path             # 여기서 필요한지는 모르겠지만..
+        self.imports = set(imports)  # 우리가 import하는 모듈들
+        self.imported_by = set()     # 우리를 import하는 모듈들
         self.bacon = sys.maxsize      # bacon distance
         self.excluded = exclude
 

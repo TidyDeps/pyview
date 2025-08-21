@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Abstracting the target for pydeps to work on.
+pydeps가 작업할 대상 추상화
 """
 from __future__ import print_function
 import json
@@ -15,24 +15,24 @@ log = logging.getLogger(__name__)
 
 
 class Target(object):
-    """The compilation target.
+    """컴파일 대상 클래스
     """
     is_pysource = False
     is_module = False
     is_dir = False
 
     def __init__(self, path, **kwargs):
-        """Initialise target
+        """타겟 초기화
 
         Args:
-            path: module path
+            path: 모듈 경로
 
         Keyword Args:
-            use_calling_fname (bool): flag to use the `calling_fname` instead of `fname` in `self.get_src_fname`
+            use_calling_fname (bool): `self.get_src_fname`에서 `fname` 대신 `calling_fname` 쓸지 결정
         """
 
-        # log.debug("CURDIR: %s, path: %s, exists: %s", os.getcwd(), path, os.path.exists(path))
-        # print("Target::CURDIR: %s, path: %s, exists: %s" % (os.getcwd(), path, os.path.exists(path)))
+        # log.debug("CURDIR: %s, path: %s, exists: %s", os.getcwd(), path, os.path.exists(path))  # 디버깅용
+        # print("Target::CURDIR: %s, path: %s, exists: %s" % (os.getcwd(), path, os.path.exists(path)))  # 디버깅용
 
         self.calling_fname = path
         self.calling_dir = os.getcwd()
@@ -41,7 +41,7 @@ class Target(object):
 
         if self.exists:
             self.path = os.path.realpath(path)
-        else:  # pragma: nocover
+        else:  # pragma: nocover  # 테스트에서 안 다루는 경우
             print("No such file or directory:", repr(path), file=sys.stderr)
             if os.path.exists(path + '.py'):
                 print("..did you mean:", path + '.py', '?', file=sys.stderr)

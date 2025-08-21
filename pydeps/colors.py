@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
-"""Color calculations.
+"""색상 계산 관련
 """
 import colorsys
 
-# noinspection PyAugmentAssignment
-# import hashlib
+# noinspection PyAugmentAssignment  # PyCharm 경고 무시
+# import hashlib  # 안 쓰는데 혹시 몰라서 남겨둠
 
-START_COLOR = 0  # Value can be changed from command-line argument
+START_COLOR = 0  # 명령행에서 바꿀 수 있음
 
 
 def frange(start, end, step):
-    """Like range(), but with floats.
+    """range() 같은데 float 버전
     """
     val = start
     while val < end:
@@ -19,7 +19,7 @@ def frange(start, end, step):
 
 
 def distinct_hues(count):
-    """Return ``count`` hues, equidistantly spaced.
+    """count개의 색상을 고르게 배치해서 리턴
     """
     for i in frange(0., 360., 360. / count):
         hue = ((i + START_COLOR) % 360) / 360.

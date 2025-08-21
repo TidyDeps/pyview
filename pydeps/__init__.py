@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Python module dependency visualization. This package installs the ``pydeps``
-command, and normal usage will be to use it from the command line.
+Python 모듈 의존성 시각화. 이 패키지는 ``pydeps``
+명령어를 설치하고, 보통은 명령행에서 사용한다.
 """
 __version__ = "3.0.1"

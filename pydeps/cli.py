@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
+"""명령행 인터페이스 (CLI) 코드
 """
-command line interface (cli) code.
-"""
-# pylint: disable=line-too-long
+# pylint: disable=line-too-long  # 긴 줄들은 그냥 두자
 from __future__ import print_function
 import argparse
 
 from pydeps.configs import Config
 from .arguments import Arguments
-# import json
-# from .pycompat import configparser
+# import json  # 나중에 쓸 수도 있어서
+# from .pycompat import configparser  # 설정 파일용
 import logging
 import os
 import sys
@@ -19,7 +18,7 @@ from . import __version__
 
 
 def error(*args, **kwargs):  # pragma: nocover
-    """Print an error message and exit.
+    """에러 메시지 출력하고 나가기
     """
     kwargs['file'] = sys.stderr
     print("\n\tERROR:", *args, **kwargs)
@@ -28,7 +27,7 @@ def error(*args, **kwargs):  # pragma: nocover
     sys.exit(1)
 
 
-#: the (will become) verbose function
+#: 상세 정보 출력 함수 (나중에 바뀐 예정)
 verbose = None
 
 
