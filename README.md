@@ -1,13 +1,13 @@
 # PyView - Interactive Python Dependency Visualization
 
 <div align="center">
-  <img src=".claude/claude-code-chat-images/image_1755781456859.png" alt="PyView Main Interface" width="800px">
-  
+<img width="902" height="523" alt="image" src="https://github.com/user-attachments/assets/5d0e2d12-d925-4970-a7dc-c193124979e2" />
+
+
+
   🏆 **2025 오픈소스 개발자대회 출품작**
   
-  **프로젝트 기간** : 2024.10.01 ~ 2025.01.20
-  
-  🔗 [PyView 웹 데모 체험하기](#빠른-시작) | [📖 Documentation](docs/) | [🎥 Demo Video](#)
+  **프로젝트 기간** : 2025.06.30 ~
 </div>
 
 <br/>
@@ -18,8 +18,8 @@
 
 - PyView는 Python 프로젝트의 복잡한 의존성을 **실시간 상호작용형 웹 인터페이스**로 시각화하는 차세대 개발자 도구입니다.
 - **5계층 분석** (Package → Module → Class → Method → Field)을 통한 심층적 코드 구조 탐색
-- 기존 pydeps의 정적 이미지 생성을 넘어 **WebGL 기반 고성능 시각화**와 **실시간 검색** 제공
-- **대규모 코드베이스** 리팩토링, 아키텍처 분석, 의존성 관리를 위한 전문가급 도구
+- 기존 pydeps의 정적 이미지 생성을 넘어 **고성능 시각화**와 **실시간 검색** 제공
+- **대규모 코드베이스** 리팩토링, 아키텍처 분석, 의존성 관리를 위한 도구
 
 <br/>
 
@@ -97,29 +97,26 @@
 ### ⚡ 1단계: 설치
 
 ```bash
-# PyPI에서 설치 (추후 릴리스)
-pip install pyview
-
-# 또는 개발용 설치
+# 개발용 설치
 git clone https://github.com/TidyDeps/pyview.git
 cd pyview
 pip install -e .
 ```
 
-### ⚡ 2단계: 웹 서버 실행
+### ⚡ 2단계: 실행
 
 ```bash
-# Python 프로젝트 디렉토리에서 실행
-pyview serve your_project_path
-
-# 또는 개발 서버 실행 (개발자용)
+# 백엔드 서버 실행 
 cd server && python app.py
+
+# 프론트엔드 실행
+cd frontend && npm install && npm run dev
 ```
 
 ### ⚡ 3단계: 웹 브라우저에서 분석
 
 ```
-http://localhost:8000
+http://localhost:3000
 ```
 
 프로젝트 경로를 입력하고 분석 옵션을 설정한 후, **Start Analysis** 버튼을 클릭하세요!
@@ -131,33 +128,59 @@ http://localhost:8000
 ## 🗂 프로젝트 구조
 
 ```
-📦 pyview
-├── 📂 frontend/                 # React + TypeScript 프론트엔드
-│   ├── 📂 src/
-│   │   ├── 📂 components/       # UI 컴포넌트
-│   │   │   ├── 📂 Analysis/     # 분석 설정 UI
-│   │   │   ├── 📂 FileTree/     # 파일 탐색기
-│   │   │   ├── 📂 Search/       # 검색 시스템
-│   │   │   └── 📂 Visualization/ # 그래프 시각화
-│   │   ├── 📂 hooks/            # React 커스텀 훅
-│   │   ├── 📂 services/         # API 통신
-│   │   └── 📂 types/            # TypeScript 타입 정의
+📦 PyView Project
+├── 📂 pydeps/                   # 기존 pydeps (Legacy 분석 도구)
+│   ├── 📜 pydeps.py             # CLI 진입점
+│   ├── 📜 py2depgraph.py        # 모듈 의존성 분석
+│   ├── 📜 depgraph.py           # 의존성 그래프 구조
+│   ├── 📜 depgraph2dot.py       # DOT 포맷 변환
+│   └── 📜 dot.py                # GraphViz 렌더링
+│
+├── 📂 pyview/                   # 새로운 분석 엔진 (Core)
+│   ├── 📜 analyzer_engine.py    # 분석 오케스트레이터
+│   ├── 📜 ast_analyzer.py       # AST 기반 코드 분석
+│   ├── 📜 models.py             # 5-Layer 데이터 모델
+│   ├── 📜 legacy_bridge.py      # pydeps 연동 브리지
+│   ├── 📜 cache_manager.py      # 캐싱 및 증분 분석
+│   └── 📜 performance_optimizer.py # 대규모 성능 최적화
+│
+├── 📂 frontend/                 # 프론트엔드 (React + TS)
+│   ├── 📜 App.tsx               # 메인 앱
+│   ├── 📂 components/           # UI 컴포넌트
+│   │   ├── 📂 Analysis/         # 분석 폼, 진행상황
+│   │   ├── 📂 Visualization/    # 그래프 시각화
+│   │   ├── 📂 Search/           # 검색 UI
+│   │   ├── 📂 QualityMetrics/   # 품질 메트릭
+│   │   └── 📂 MultiView/        # 다중 뷰 모드
+│   ├── 📂 hooks/                # React 훅
+│   ├── 📂 services/             # API 통신
+│   ├── 📂 types/                # TS 타입 정의
 │   ├── 📜 package.json
 │   └── 📜 vite.config.ts
-├── 📂 server/                   # FastAPI 백엔드 서버
-│   ├── 📜 app.py                # 메인 서버 애플리케이션
-│   └── 📜 requirements.txt
-├── 📂 pydeps/                   # 원본 pydeps 코드 (BSD 라이센스)
-├── 📂 pyview/                   # 확장 분석 엔진
-│   ├── 📜 analyzer_engine.py    # 5계층 분석 엔진
-│   ├── 📜 ast_analyzer.py       # AST 기반 상세 분석
-│   ├── 📜 models.py             # 데이터 모델
-│   ├── 📜 legacy_bridge.py      # pydeps 통합 브리지
-│   └── 📜 cache_manager.py      # 분석 결과 캐싱
-├── 📂 tests/                    # 테스트 코드
-├── 📜 setup.py                  # 패키지 설정
-├── 📜 requirements.txt          # Python 의존성
-└── 📜 LICENSE                   # BSD 2-Clause License
+│
+├── 📂 server/                   # 백엔드 (FastAPI)
+│   ├── 📜 app.py                # 메인 서버
+│   ├── 📜 requirements.txt      # 의존성
+│   └── 📜 demo_complex_data.py  # 데모 데이터
+│
+├── 📂 tests/                    # 테스트
+│   ├── 📜 test_cli.py
+│   ├── 📜 test_py2dep.py
+│   └── 📂 pyview/               # 엔진 단위 테스트
+│       ├── 📜 test_analyzer_engine.py
+│       ├── 📜 test_ast_analyzer.py
+│       └── 📜 test_models.py
+│
+├── 📂 docs/                     # 문서 (Sphinx)
+│   ├── 📜 conf.py
+│   ├── 📜 index.rst
+│   └── 📂 _static/
+│
+├── 📜 setup.py                  # Python 패키지 설정
+├── 📜 requirements.txt          # 개발 의존성
+├── 📜 pytest.ini               # pytest 설정
+├── 📜 .pydeps                   # pydeps 설정
+└── 📜 README.md                 # 프로젝트 설명서
 ```
 
 <br/>
@@ -207,101 +230,6 @@ PyView는 기존 도구들과 달리 **5단계 계층**으로 코드를 분석�
 <br/>
 <br/>
 
-## ⚙️ CLI 명령어
-
-```bash
-# 기본 분석 (기존 pydeps 호환)
-pyview your_project_path
-
-# 웹 서버 실행
-pyview serve your_project_path --port 8000
-
-# 결과 내보내기
-pyview export your_project_path --format svg,png,json
-
-# 고급 분석 옵션
-pyview analyze your_project_path \
-    --levels package,module,class \
-    --exclude "*/tests/*,*/__pycache__/*" \
-    --max-depth 10
-```
-
-### 📝 설정 파일 예시
-
-`.pyview.json`
-```json
-{
-  "analysis": {
-    "levels": ["package", "module", "class"],
-    "max_depth": 10,
-    "exclude_patterns": ["*/tests/*", "*/__pycache__/*"],
-    "include_standard_library": false
-  },
-  "visualization": {
-    "layout": "hierarchical",
-    "node_size": "complexity",
-    "edge_style": "curved"
-  }
-}
-```
-
-<br/>
-<br/>
-
-## 🧪 개발 및 테스트
-
-### 개발 환경 설정
-
-```bash
-# 저장소 클론
-git clone https://github.com/TidyDeps/pyview.git
-cd pyview
-
-# Python 백엔드 설정
-pip install -r requirements.txt
-pip install -r server/requirements.txt
-
-# 프론트엔드 설정 (개발용)
-cd frontend
-npm install
-npm run dev
-```
-
-### 테스트 실행
-
-```bash
-# Python 테스트
-pytest
-
-# 특정 테스트 실행
-pytest tests/test_analyzer_engine.py
-
-# 커버리지 측정
-pytest --cov=pyview
-```
-
-<br/>
-<br/>
-
-## 🤝 기여하기
-
-우리는 오픈소스 커뮤니티의 기여를 환영합니다!
-
-### 🐛 이슈 리포팅
-- [GitHub Issues](https://github.com/TidyDeps/pyview/issues)에서 버그 신고
-- 재현 가능한 최소 예제 포함 필요
-
-### 💡 기능 제안
-- [Feature Request 템플릿](https://github.com/TidyDeps/pyview/issues/new?template=feature_request.md) 사용
-- 사용 사례와 기대 효과 설명
-
-### 🔧 코드 기여
-- `main` 브랜치에서 새 브랜치 생성
-- [기여 가이드라인](CONTRIBUTING.md) 참고
-- Pull Request 전에 테스트 실행 확인
-
-<br/>
-<br/>
 
 ## 📄 라이센스 & 법적 고지
 
@@ -315,8 +243,6 @@ PyView는 [thebjorn/pydeps](https://github.com/thebjorn/pydeps) 프로젝트를 
 - **원본 저작자**: Bjorn Pettersen (BP Consulting)
 - **라이센스**: BSD 2-Clause License
 - **Copyright**: (c) 2014, Bjorn Pettersen
-
-우리는 원본 프로젝트의 뛰어난 기초 작업에 깊은 감사를 표합니다.
 
 ### 📦 의존성 라이센스
 
