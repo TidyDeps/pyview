@@ -1,8 +1,8 @@
 """
-PyView AST Analysis Engine
+PyView AST 분석 엔진
 
-Provides detailed analysis of Python source code using the Abstract Syntax Tree (AST).
-Extracts class, method, field definitions and their relationships.
+AST를 사용해서 Python 소스 코드를 상세하게 분석함.
+클래스, 메소드, 필드 정의와 관계들을 추출함.
 """
 
 import ast
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class FileAnalysis:
-    """Analysis result for a single Python file"""
+    """Python 파일 하나에 대한 분석 결과"""
     file_path: str
     module_info: ModuleInfo
     classes: List[ClassInfo]

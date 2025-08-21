@@ -1,15 +1,15 @@
 """
-PyView - Interactive Python module dependency visualization with WebGL
+PyView - WebGL 기반 Python 모듈 의존성 시각화 도구
 
-Enhanced version of pydeps with 5-layer analysis:
-- Package level
-- Module level  
-- Class level
-- Method level
-- Field level
+5단계 분석이 가능한 pydeps 강화 버전:
+- 패키지 레벨
+- 모듈 레벨  
+- 클래스 레벨
+- 메소드 레벨
+- 필드 레벨
 
-Based on thebjorn/pydeps (https://github.com/thebjorn/pydeps)
-Licensed under BSD 2-Clause License
+thebjorn/pydeps 기반 (https://github.com/thebjorn/pydeps)
+BSD 2-Clause 라이선스
 """
 
 __version__ = "1.0.0"

@@ -1,8 +1,8 @@
 """
-Legacy Bridge for PyView
+PyView 레거시 브리지
 
-Integrates existing pydeps functionality with PyView's 5-layer analysis.
-Converts pydeps DepGraph results into PyView data models.
+기존 pydeps 기능과 PyView의 5단계 분석을 연결.
+pydeps DepGraph 결과를 PyView 데이터 모델로 변환.
 """
 
 import os
@@ -11,7 +11,7 @@ import logging
 from typing import List, Dict, Set, Optional, Tuple
 from pathlib import Path
 
-# Import existing pydeps modules
+# 기존 pydeps 모듈들 import
 from pydeps.depgraph import DepGraph, Source
 from pydeps import py2depgraph
 from pydeps.target import Target
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class LegacyBridge:
-    """Bridge between existing pydeps and PyView data models"""
+    """기존 pydeps와 PyView 데이터 모델 사이의 브리지"""
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)

@@ -1,8 +1,8 @@
 """
-PyView 5-Layer Data Models
+PyView 5단계 데이터 모델
 
-Defines the data structures for PyView's 5-layer dependency analysis:
-Package → Module → Class → Method → Field
+PyView의 5단계 의존성 분석을 위한 데이터 구조 정의:
+패키지 → 모듈 → 클래스 → 메소드 → 필드
 """
 
 from dataclasses import dataclass, field
@@ -13,7 +13,7 @@ from datetime import datetime
 
 
 class DependencyType(Enum):
-    """Types of dependencies between entities"""
+    """엔티티 간의 의존성 종류"""
     IMPORT = "import"
     INHERITANCE = "inheritance"
     COMPOSITION = "composition"
@@ -23,7 +23,7 @@ class DependencyType(Enum):
 
 
 class EntityType(Enum):
-    """Types of code entities"""
+    """코드 엔티티 종류"""
     PACKAGE = "package"
     MODULE = "module"
     CLASS = "class"
@@ -34,18 +34,18 @@ class EntityType(Enum):
 
 @dataclass
 class ImportInfo:
-    """Information about an import statement"""
+    """import 문에 대한 정보"""
     module: str
     name: Optional[str] = None
     alias: Optional[str] = None
     line_number: int = 0
-    import_type: str = "import"  # "import" or "from_import"
+    import_type: str = "import"  # "import" 또는 "from_import"
     is_relative: bool = False
 
 
 @dataclass
 class FieldInfo:
-    """Information about a class field/attribute"""
+    """클래스 필드/어트리뷰트 정보"""
     id: str
     name: str
     class_id: str

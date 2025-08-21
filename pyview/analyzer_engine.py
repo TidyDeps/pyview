@@ -1,8 +1,8 @@
 """
-PyView Unified Analysis Engine
+PyView 통합 분석 엔진
 
-Combines pydeps module-level analysis with AST-based class/method/field analysis
-to provide complete 5-layer dependency analysis.
+pydeps 모듈 레벨 분석과 AST 기반 클래스/메소드/필드 분석을 결합하여
+완전한 5단계 의존성 분석을 제공
 """
 
 import os
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class AnalysisOptions:
-    """Configuration options for analysis"""
+    """분석을 위한 설정 옵션들"""
     
     def __init__(self,
                  max_depth: int = 0,
