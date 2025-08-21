@@ -1,7 +1,7 @@
 # PyView - Interactive Python Dependency Visualization
 
 <div align="center">
-<img alt="PyView 대표 이미지" src="images/pyview 대표 이미지.png" width="480" style="max-width:100%; height:auto;" />
+<img alt="PyView 대표 이미지" src="images/pyview_main_image.png" width="480" style="max-width:100%; height:auto;" />
 
   🏆 **2025 오픈소스 개발자대회 출품작**
   
@@ -26,7 +26,7 @@
 ## 🏗️ 시스템 아키텍처
 
 <div align="center">
-    <img alt="PyView 시스템 아키텍처" src="images/시스템 아키텍쳐.png" />
+    <img alt="PyView 시스템 아키텍처" src="images/system_architecture.png" />
 </div>
 
 <br/>
@@ -39,7 +39,7 @@
 
 | **프로젝트 분석 설정** | **실시간 분석 진행률** |
 |:---:|:---:|
-| <img alt="프로젝트 분석 설정 화면" src="images/프로젝트 분석 설정.png" /> | <img alt="실시간 분석 진행률 표시" src="images/실시간 분석 진행률.png" /> |
+| <img alt="프로젝트 분석 설정 화면" src="images/project_analysis_setup.png" /> | <img alt="실시간 분석 진행률 표시" src="images/realtime_analysis_progress.png" /> |
 
 </div>
 
@@ -49,11 +49,11 @@
 
 | **모듈 레벨 시각화** | **클래스 레벨 시각화** |
 |:---:|:---:|
-| <img alt="모듈 간 의존성 관계" src="images/모듈 레벨 시각화.png" /> | <img alt="클래스 간 상속 및 조합 관계" src="images/클래스 레벨 시각화.png" /> |
+| <img alt="모듈 간 의존성 관계" src="images/module_level_visualization.png" /> | <img alt="클래스 간 상속 및 조합 관계" src="images/class_level_visualization.png" /> |
 
 | **메서드 레벨 시각화** | **필드 레벨 시각화** |
 |:---:|:---:|
-| <img alt="메서드 간 호출 관계" src="images/메서드 레벨 시각화.png" /> | <img alt="클래스 멤버 변수 참조 관계" src="images/필드 레벨 시각화.png" /> |
+| <img alt="메서드 간 호출 관계" src="images/method_level_visualization.png" /> | <img alt="클래스 멤버 변수 참조 관계" src="images/field_level_visualization.png" /> |
 
 </div>
 
@@ -63,11 +63,11 @@
 
 | **의존성 경로 하이라이트** | **파일 탐색기에서 노드 선택** |
 |:---:|:---:|
-| <img alt="의존성 경로 추적 및 하이라이트" src="images/의존성 경로 하이라이트.png" /> | <img alt="파일 탐색기에서 노드 선택 및 상세 정보" src="images/파일 탐색기에서 노드 선택.png" /> |
+| <img alt="의존성 경로 추적 및 하이라이트" src="images/dependency_path_highlight.png" /> | <img alt="파일 탐색기에서 노드 선택 및 상세 정보" src="images/file_explorer_node_selection.png" /> |
 
 | **통합 검색 시스템** | **코드 품질 메트릭** |
 |:---:|:---:|
-| <img alt="통합 검색 및 자동완성" src="images/통합 검색 시스템.png" /> | <img alt="코드 품질 분석 및 메트릭" src="images/코드 품질 메트릭.png" /> |
+| <img alt="통합 검색 및 자동완성" src="images/integrated_search_system.png" /> | <img alt="코드 품질 분석 및 메트릭" src="images/code_quality_metrics.png" /> |
 
 </div>
 
