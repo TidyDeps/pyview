@@ -8,6 +8,8 @@
   🏆 **2025 오픈소스 개발자대회 출품작**
   
   **프로젝트 기간** : 2025.06.30 ~
+
+  [🎥 Demo Video](https://youtu.be/gdDv0QxzrF8)
 </div>
 
 <br/>
