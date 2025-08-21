@@ -265,8 +265,4 @@ PyView는 [thebjorn/pydeps](https://github.com/thebjorn/pydeps) 프로젝트를 
 
 **PyView** - *Interactive Python Dependency Visualization*
 
-Made with ❤️ by **TidyDeps Team**
-
-[⭐ Star on GitHub](https://github.com/TidyDeps/pyview) | [📖 Documentation](docs/) | [🐛 Report Issues](https://github.com/TidyDeps/pyview/issues)
-
 </div>
