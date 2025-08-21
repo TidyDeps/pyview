@@ -1,4 +1,4 @@
-// Main Application Component
+// 메인 애플리케이션 컴포넌트
 import React, { useState } from 'react'
 import { ConfigProvider, message } from 'antd'
 import AppLayout from '@/components/Layout/AppLayout'
@@ -27,7 +27,7 @@ const App: React.FC = () => {
   const handleAnalysisStart = async (request: AnalysisRequest) => {
     try {
       clearError()
-      messageApi.info('Starting project analysis...')
+      messageApi.info('프로젝트 분석을 시작합니다...')
       await startAnalysis(request)
     } catch (err) {
       messageApi.error('Failed to start analysis')

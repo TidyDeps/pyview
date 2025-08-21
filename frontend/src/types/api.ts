@@ -1,5 +1,5 @@
-// API Types for PyView Frontend
-// Matches the FastAPI backend models
+// PyView 프론트엔드용 API 타입들
+// FastAPI 백엔드 모델과 매칭됨
 
 export enum AnalysisStatus {
   PENDING = 'pending',

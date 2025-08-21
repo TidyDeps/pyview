@@ -1,4 +1,4 @@
-// Visualization Page with Graph and Controls
+// 그래프와 컨트롤이 있는 시각화 페이지
 import React, { useState, useEffect } from 'react'
 import { Row, Col, message, Alert, Spin, Progress } from 'antd'
 import { ApiService } from '@/services/api'
