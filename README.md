@@ -1,7 +1,7 @@
 # PyView - Interactive Python Dependency Visualization
 
 <div align="center">
-<img width="800" height="463" alt="PyView 메인 화면" src="https://github.com/user-attachments/assets/5d0e2d12-d925-4970-a7dc-c193124979e2" />
+<img alt="PyView 대표 이미지" src="images/pyview 대표 이미지.png" width="480" style="max-width:100%; height:auto;" />
 
   🏆 **2025 오픈소스 개발자대회 출품작**
   
@@ -26,7 +26,7 @@
 ## 🏗️ 시스템 아키텍처
 
 <div align="center">
-    <img width="800" height="387" alt="PyView 시스템 아키텍처" src="https://github.com/user-attachments/assets/78856e02-1241-48cc-9945-6ea16e78e008" />
+    <img alt="PyView 시스템 아키텍처" src="images/시스템 아키텍쳐.png" />
 </div>
 
 <br/>
@@ -39,11 +39,7 @@
 
 | **프로젝트 분석 설정** | **실시간 분석 진행률** |
 |:---:|:---:|
-| <img width="600" height="334" alt="프로젝트 분석 설정 화면" src="https://github.com/user-attachments/assets/c0e5fe0c-c8cf-44ea-a467-463da875c636" /> | <img width="600" height="177" alt="실시간 분석 진행률 표시" src="https://github.com/user-attachments/assets/db43b915-3a3e-4344-945a-ad95c735b7b6" /> |
-
-| **파일 탐색기** | **계층적 의존성 그래프** |
-|:---:|:---:|
-| <img width="400" height="400" alt="파일 탐색기 인터페이스" src="https://github.com/user-attachments/assets/5eb0c67d-dcec-4cfe-bd0b-6a6c98bf54ea" /> | <img width="600" height="344" alt="계층적 의존성 그래프 시각화" src="https://github.com/user-attachments/assets/b1c15ef5-e0e6-4bdf-a1fc-061a549856fd" /> |
+| <img alt="프로젝트 분석 설정 화면" src="images/프로젝트 분석 설정.png" /> | <img alt="실시간 분석 진행률 표시" src="images/실시간 분석 진행률.png" /> |
 
 </div>
 
@@ -53,25 +49,25 @@
 
 | **모듈 레벨 시각화** | **클래스 레벨 시각화** |
 |:---:|:---:|
-| <img width="400" height="341" alt="모듈 간 의존성 관계" src="https://github.com/user-attachments/assets/0cc0e2cd-2cd5-47bc-8cd0-143e05d13464" /> | <img width="400" height="293" alt="클래스 간 상속 및 조합 관계" src="https://github.com/user-attachments/assets/27c6f4f8-b616-4fc9-93b8-1cfbc1dd8a73" /> |
+| <img alt="모듈 간 의존성 관계" src="images/모듈 레벨 시각화.png" /> | <img alt="클래스 간 상속 및 조합 관계" src="images/클래스 레벨 시각화.png" /> |
 
 | **메서드 레벨 시각화** | **필드 레벨 시각화** |
 |:---:|:---:|
-| <img width="400" height="306" alt="메서드 간 호출 관계" src="https://github.com/user-attachments/assets/498159a5-1414-47af-aca6-ea54674b85bd" /> | <img width="400" height="210" alt="클래스 멤버 변수 참조 관계" src="https://github.com/user-attachments/assets/1b829ed0-f286-4af4-93a0-7f249c261d1b" /> |
+| <img alt="메서드 간 호출 관계" src="images/메서드 레벨 시각화.png" /> | <img alt="클래스 멤버 변수 참조 관계" src="images/필드 레벨 시각화.png" /> |
 
 </div>
 
-### 🎯 고급 기능
+### 🎯 핵심 기능
 
 <div align="center">
 
 | **의존성 경로 하이라이트** | **파일 탐색기에서 노드 선택** |
 |:---:|:---:|
-| <img width="400" height="417" alt="의존성 경로 추적 및 하이라이트" src="https://github.com/user-attachments/assets/9fdc5591-8335-453a-8301-8b26f3684e67" /> | <img width="400" height="283" alt="파일 탐색기에서 노드 선택 및 상세 정보" src="https://github.com/user-attachments/assets/79697768-fb99-4e68-a7b2-a6acfad170ae" /> |
+| <img alt="의존성 경로 추적 및 하이라이트" src="images/의존성 경로 하이라이트.png" /> | <img alt="파일 탐색기에서 노드 선택 및 상세 정보" src="images/파일 탐색기에서 노드 선택.png" /> |
 
 | **통합 검색 시스템** | **코드 품질 메트릭** |
 |:---:|:---:|
-| <img width="600" height="252" alt="통합 검색 및 자동완성" src="https://github.com/user-attachments/assets/e6456f68-3ddd-4b1e-aee5-2e5ea5a9bd45" /> | <img width="600" height="277" alt="코드 품질 분석 및 메트릭" src="https://github.com/user-attachments/assets/c3b89586-9809-4e6c-a083-44a9ffb57a57" /> |
+| <img alt="통합 검색 및 자동완성" src="images/통합 검색 시스템.png" /> | <img alt="코드 품질 분석 및 메트릭" src="images/코드 품질 메트릭.png" /> |
 
 </div>
 
