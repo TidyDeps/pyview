@@ -1,5 +1,5 @@
 """
-Tests for PyView data models
+PyView 데이터 모델 테스트
 """
 
 import pytest
@@ -12,10 +12,10 @@ from pyview.models import (
 
 
 class TestDataModels:
-    """Test PyView data models"""
+    """PyView 데이터 모델 테스트"""
     
     def test_package_info_creation(self):
-        """Test PackageInfo creation"""
+        """PackageInfo 생성 테스트"""
         package = PackageInfo(
             id="pkg:mypackage",
             name="mypackage",

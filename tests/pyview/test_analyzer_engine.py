@@ -1,5 +1,5 @@
 """
-Tests for PyView analyzer engine
+PyView 분석 엔진 테스트
 """
 
 import pytest
@@ -12,13 +12,13 @@ from pyview.models import AnalysisResult
 
 
 class TestAnalysisOptions:
-    """Test analysis options configuration"""
+    """분석 옵션 설정 테스트"""
     
     def test_default_options(self):
-        """Test default analysis options"""
+        """기본 분석 옵션 테스트"""
         options = AnalysisOptions()
         
-        assert options.max_depth == 0  # No depth limit
+        assert options.max_depth == 0  # 깊이 제한 없음
         assert '__pycache__' in options.exclude_patterns
         assert '.git' in options.exclude_patterns
         assert options.include_stdlib is False
