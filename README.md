@@ -1,7 +1,8 @@
 # PyView - Interactive Python Dependency Visualization
 
 <div align="center">
-![PyView 대표 이미지](images/pyview_main_image.png)
+<img width="931" height="522" alt="image" src="https://github.com/user-attachments/assets/ee71b6ac-671b-4b52-8c27-89048f0119d5" />
+
 
   🏆 **2025 오픈소스 개발자대회 출품작**
   
@@ -26,7 +27,8 @@
 ## 🏗️ 시스템 아키텍처
 
 <div align="center">
-![PyView 시스템 아키텍처](images/system_architecture.png)
+<img width="2881" height="1392" alt="image" src="https://github.com/user-attachments/assets/cecee27a-9728-430a-b0d5-e9431c39a43f" />
+
 </div>
 
 <br/>
@@ -39,7 +41,7 @@
 
 | **프로젝트 분석 설정** | **실시간 분석 진행률** |
 |:---:|:---:|
-| ![프로젝트 분석 설정 화면](images/project_analysis_setup.png) | ![실시간 분석 진행률 표시](images/realtime_analysis_progress.png) |
+| <img width="3360" height="1824" alt="image" src="https://github.com/user-attachments/assets/0d5e8da6-6e7e-4658-9e59-c3e11163d52e" /> | <img width="1744" height="516" alt="image" src="https://github.com/user-attachments/assets/3243adef-c4b0-4aca-afdc-a7aae8ebb74d" />|
 
 </div>
 
@@ -49,11 +51,11 @@
 
 | **모듈 레벨 시각화** | **클래스 레벨 시각화** |
 |:---:|:---:|
-| ![모듈 간 의존성 관계](images/module_level_visualization.png) | ![클래스 간 상속 및 조합 관계](images/class_level_visualization.png) |
+| <img width="703" height="599" alt="image" src="https://github.com/user-attachments/assets/3123f440-7139-449d-ad77-9ded4bb72163" /> | <img width="651" height="477" alt="image" src="https://github.com/user-attachments/assets/cb1a7b30-d72e-425a-8ac4-06a5c9410f1d" /> |
 
 | **메서드 레벨 시각화** | **필드 레벨 시각화** |
 |:---:|:---:|
-| ![메서드 간 호출 관계](images/method_level_visualization.png) | ![클래스 멤버 변수 참조 관계](images/field_level_visualization.png) |
+| <img width="816" height="624" alt="image" src="https://github.com/user-attachments/assets/e196948e-deb7-4e93-91ea-af9d22eb880c" /> | <img width="1140" height="597" alt="image" src="https://github.com/user-attachments/assets/6e6598d0-d6f2-4a52-aab5-0402f98b86b5" /> |
 
 </div>
 
@@ -63,11 +65,11 @@
 
 | **의존성 경로 하이라이트** | **파일 탐색기에서 노드 선택** |
 |:---:|:---:|
-| ![의존성 경로 추적 및 하이라이트](images/dependency_path_highlight.png) | ![파일 탐색기에서 노드 선택 및 상세 정보](images/file_explorer_node_selection.png) |
+| <img width="522" height="544" alt="image" src="https://github.com/user-attachments/assets/5b9efda8-d790-423e-90f9-c42fd6546fc1" /> | <img width="620" height="439" alt="image" src="https://github.com/user-attachments/assets/35435051-dfbd-4abb-925c-dd47016cd294" /> |
 
 | **통합 검색 시스템** | **코드 품질 메트릭** |
 |:---:|:---:|
-| ![통합 검색 및 자동완성](images/integrated_search_system.png) | ![코드 품질 분석 및 메트릭](images/code_quality_metrics.png) |
+| <img width="1637" height="687" alt="image" src="https://github.com/user-attachments/assets/95fae1fd-1450-4f77-af60-c2871da3cd5d" /> | <img width="1675" height="776" alt="image" src="https://github.com/user-attachments/assets/6b1fa522-7b1e-4ec6-bb86-00320ca44b48" /> |
 
 </div>
 
