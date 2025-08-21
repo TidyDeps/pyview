@@ -145,3 +145,4 @@ performance_optimizer\ 2.py
 # TypeScript config files (auto-generated/temporary)
 frontend/tsconfig.json
 frontend/tsconfig.node.json
+.venv/pyvenv.cfg
