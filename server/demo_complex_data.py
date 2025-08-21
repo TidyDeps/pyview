@@ -1,14 +1,14 @@
 """
-Complex Demo Data for Testing Enhanced Visualization Features
+향상된 시각화 기능 테스트를 위한 복잡한 데모 데이터
 
-Creates realistic complex dependency structures for testing:
-- Large Django/Flask-like web application
-- Microservices architecture
-- Legacy monolith with circular dependencies
+테스트를 위한 리얼한 복잡한 의존성 구조 생성:
+- 대규모 Django/Flask 스타일 웹 애플리케이션
+- 마이크로서비스 아키텍처
+- 순환 의존성이 있는 레거시 모놀리스
 """
 
 def create_complex_web_app_demo():
-    """Generate complex web application structure"""
+    """복잡한 웹 애플리케이션 구조 생성"""
     return {
         "summary": {
             "total_packages": 8,

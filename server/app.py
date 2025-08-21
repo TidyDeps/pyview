@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-PyView FastAPI Server
-Interactive Python dependency visualization server
+PyView FastAPI 서버
+Python 의존성 시각화 인터랙티브 서버
 """
 import os
 import sys
@@ -18,23 +18,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-# Import complex demo data
+# 복잡한 데모 데이터 import
 from demo_complex_data import create_complex_web_app_demo, create_microservices_demo
 
-# Add parent directory to Python path for pyview imports
+# pyview import를 위해 상위 디렉토리를 Python path에 추가
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
     from pyview.analyzer_engine import AnalyzerEngine
     from pyview.models import AnalysisResult
 except ImportError as e:
-    print(f"Error importing pyview modules: {e}")
-    print("Make sure pyview package is installed or in Python path")
+    print(f"pyview 모듈 import 에러: {e}")
+    print("pyview 패키지가 설치되어 있거나 Python path에 있는지 확인하세요")
     sys.exit(1)
 
 app = FastAPI(
     title="PyView API",
-    description="Python dependency analysis and visualization service",
+    description="Python 의존성 분석 및 시각화 서비스",
     version="1.0.0"
 )
 
