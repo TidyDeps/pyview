@@ -163,3 +163,18 @@ backend/*.log
 .DS_Store
 Thumbs.db
 desktop.ini
+# 개인 작업 과정에서 생성되는 파일들
+*.log
+*_2.py
+*_debug.*
+*_restart.*
+*_backup.*
+*_temp.*
+
+# 작업 진행 상황 문서들
+backend_analysis.md
+design_integration.md
+integration_analysis.md
+work_division_interfaces.md
+PROJECT_STATUS.md
+tasklist.md
