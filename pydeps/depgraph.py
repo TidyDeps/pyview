@@ -9,10 +9,25 @@ import pprint
 import re
 import enum
 
-from . import colors, cli
+# colors and cli modules removed - using simplified replacements
 import sys
 import logging
 log = logging.getLogger(__name__)
+
+# Simple replacements for removed modules
+def verbose(level, *args):
+    """Simple verbose function replacement"""
+    if level <= 1:  # Only show important messages
+        print(*args)
+
+def name2rgb(name):
+    """Simple color function replacement"""
+    # Return a simple color tuple
+    return (100, 100, 100)
+
+def foreground(bg, black, white):
+    """Simple foreground color function replacement"""
+    return black
 
 # 보통 파이썬 표준 라이브러리 import는 관심 없어서 제외
 PYLIB_PATH = {
@@ -304,7 +319,7 @@ class DepGraph(object):
                 self.add_source(src)
 
         self.module_count = len(self.sources)
-        cli.verbose(1, "there are", self.module_count, "total modules")
+        verbose(1, "there are", self.module_count, "total modules")
 
         self.connect_generations()
         # if self.args['show_cycles']:
@@ -320,10 +335,10 @@ class DepGraph(object):
         excluded = [v for v in list(self.sources.values()) if v.excluded]
         # print "EXCLUDED:", excluded
         self.skip_count = len(excluded)
-        cli.verbose(1, "skipping", self.skip_count, "modules")
+        verbose(1, "skipping", self.skip_count, "modules")
         for module in excluded:
             # print 'exclude:', module.name
-            cli.verbose(2, "  ", module.name)
+            verbose(2, "  ", module.name)
 
         self.remove_excluded()
 
@@ -331,7 +346,7 @@ class DepGraph(object):
         self.find_import_cycles()
         
         if not self.args['show_deps']:
-            cli.verbose(3, self)
+            verbose(3, self)
 
     def source_name(self, name, path=None):
         """Returns the module name, possibly limited by --max-module-depth.
@@ -367,10 +382,10 @@ class DepGraph(object):
                 self.curhue += 37  # relative prime with 360
                 self.curhue %= 360
                 # print "NAME:", src.name, "BASENAME:", src.basename
-                bg = colors.name2rgb(h)
+                bg = name2rgb(h)
                 black = (0, 0, 0)
                 white = (255, 255, 255)
-                fg = colors.foreground(bg, black, white)
+                fg = foreground(bg, black, white)
                 self.colors[src.basename] = bg, fg
             return self.colors[src.basename]
         else:
@@ -444,7 +459,7 @@ class DepGraph(object):
 
         for _src in self.sources.values():
             for source in visit(_src):
-                cli.verbose(4, "Yielding", source[0], source[1])
+                verbose(4, "Yielding", source[0], source[1])
                 yield source
 
     def __repr__(self):
@@ -504,7 +519,7 @@ class DepGraph(object):
             if src.excluded:
                 continue
             if src.is_noise():
-                cli.verbose(2, "excluding", src, "because it is noisy:", src.degree)
+                verbose(2, "excluding", src, "because it is noisy:", src.degree)
                 src.excluded = True
                 self._add_skip(src.name)
 

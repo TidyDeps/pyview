@@ -4,7 +4,12 @@ import os
 import textwrap
 import logging
 
-from . import cli
+# cli module removed - using simplified replacement
+
+def verbose(level, *args):
+    """Simple verbose function replacement"""
+    if level <= 1:  # Only show important messages
+        print(*args)
 
 log = logging.getLogger(__name__)
 
@@ -58,7 +63,7 @@ class DummyModule(object):
         self.absname = os.path.join(temp_dir, self.fname)
 
         if target.is_module:
-            cli.verbose(1, "target is a PACKAGE")
+            verbose(1, "target is a PACKAGE")
             with open(self.absname, 'w') as fp:
                 for fname in python_sources_below(target.package_root):
                     modname = fname2modname(fname, target.syspath_dir)
@@ -67,7 +72,7 @@ class DummyModule(object):
         elif target.is_dir:
             # FIXME?: not sure what the intended semantics was here, as it is
             #         this will almost certainly not do the right thing...
-            cli.verbose(1, "target is a DIRECTORY")
+            verbose(1, "target is a DIRECTORY")
             log.debug('curdir: %r', os.getcwd())
             log.debug('fname: %r', self.fname)
             log.debug('target.dirname: %r', target.dirname)
@@ -87,7 +92,7 @@ class DummyModule(object):
 
         else:
             assert target.is_pysource
-            cli.verbose(1, "target is a FILE")
+            verbose(1, "target is a FILE")
             # if working on a single file, we don't need to create a dummy
             # module, this also avoids problems with file names that are
             # not importable (e.g. `foo.bar.py)
