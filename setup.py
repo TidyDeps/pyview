@@ -42,12 +42,6 @@ setuptools.setup(
     ],
     long_description=io.open('README.md', encoding='utf8').read(),
     long_description_content_type='text/markdown',
-    entry_points={
-        'console_scripts': [
-            'pydeps = pydeps.pydeps:pydeps',  # 기존 CLI 호환성 유지
-            'pyview = pydeps.pydeps:pydeps',  # 새로운 CLI (향후 확장)
-        ]
-    },
     url='https://github.com/yourusername/pyview',  # 실제 GitHub URL로 변경 필요
     cmdclass={'test': PyTest},
     license='BSD',
