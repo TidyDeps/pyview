@@ -118,12 +118,18 @@ pip install -e .
 ### ⚡ 2단계: 실행
 
 ```bash
-# 백엔드 서버 실행 
-cd server && python app.py
-
-# 프론트엔드 실행
-cd frontend && npm install && npm run dev
+# 한 번에 실행 🚀
+python start.py
 ```
+
+> **수동 실행 (선택사항) 🔄**
+> ```bash
+> # 백엔드만 실행
+> cd server && python app.py
+>
+> # 프론트엔드만 실행 (새 터미널)
+> cd frontend && npm install && npm run dev
+> ```
 
 ### ⚡ 3단계: 웹 브라우저에서 분석
 
@@ -183,13 +189,9 @@ http://localhost:3000
 │       ├── 📜 test_ast_analyzer.py
 │       └── 📜 test_models.py
 │
-├── 📂 docs/                     # 문서 (Sphinx)
-│   ├── 📜 conf.py
-│   ├── 📜 index.rst
-│   └── 📂 _static/
-│
 ├── 📜 setup.py                  # Python 패키지 설정
 ├── 📜 requirements.txt          # 개발 의존성
+├── 📜 start.py                  # 통합 실행 스크립트 🚀
 ├── 📜 pytest.ini               # pytest 설정
 ├── 📜 .pydeps                   # pydeps 설정
 └── 📜 README.md                 # 프로젝트 설명서

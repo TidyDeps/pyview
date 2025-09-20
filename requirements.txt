@@ -1,7 +1,18 @@
+# Core PyView dependencies
 setuptools>=70.0.0
 PyYAML==6.0.2
 stdlib-list>=0.6.0
 tomlkit>=0.7.0
+
+# Backend server dependencies
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+pydantic>=2.4.2
+python-multipart>=0.0.6
+websockets>=12.0
+psutil>=5.9.0
+
+# Development and testing
 coverage>=5.5
 pytest>=4.6
 pytest-cov>=2.12.1
