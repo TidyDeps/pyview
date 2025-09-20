@@ -22,8 +22,7 @@ venv/
 htmlcov/
 
 # Documentation
-docs/_build/
-notes/
+docs/
 
 # IDE/Editor
 .idea/
