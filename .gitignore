@@ -1,180 +1,59 @@
-.md5
-
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
-
-# C extensions
-*.so
-
-# Distribution / packaging
+*.pyc
+*.pyo
+*.pyd
 .Python
-env/
-bin/
 build/
 develop-eggs/
 dist/
-eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
 *.egg-info/
-.installed.cfg
 *.egg
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.coverage
-.cache
-nosetests.xml
-coverage.xml
-.pytest_cache
-
-# Translations
-*.mo
-
-# Mr Developer
-.mr.developer.cfg
-.project
-.pydevproject
-
-# Rope
-.ropeproject
-
-# Django stuff:
-*.log
-*.pot
-
-# Sphinx documentation
-docs/_build/
-
-# PyCharm files with paths
-.idea/
-
-# emacs temp files
-*.py~
-*.py#
-
-# pydeps build files.
-./pydeps.svg
-README.html
-*.rst#
-./pydeps-pylib-all.svg
-./pydeps-pylib.svg
-.pydeps~
-.lintscore6
-
-# *.json
-source.jdb
-docs/.md5
-pydeps.svg
-.dkdeps 
-dot0
-dot1
-dot2
-dot3
-dot4
-pydeps.0.svg
-pydeps.1.svg
-pydeps.2.svg
-pydeps.3.svg
-pydeps.4.svg
-pydeps1.svg
-
-# devcontainer json file exception
-!devcontainer.json
-
-# Node.js / Frontend files
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Frontend build outputs
-frontend/dist/
-frontend/build/
-frontend/.vite/
-frontend/.next/
-
-# Node.js / Frontend files
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Frontend build outputs
-frontend/dist/
-frontend/build/
-frontend/.vite/
-frontend/.next/
-
-# Backup/duplicate files (copies created during development)
-*\ 2.*
-*\ 2/
-*\ copy.*
-*/components\ 2/
-**/components\ 2/
-package-lock\ 2.json
-cache_manager\ 2.py
-performance_optimizer\ 2.py
-
-# TypeScript config files (auto-generated/temporary)
-frontend/tsconfig.json
-frontend/tsconfig.node.json
+# Virtual environments
+env/
 venv/
 .venv/
-.venv/pyvenv.cfg
 
-# log files
-frontend/*.log
-server/*.log
-backend/*.log
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
 
-# backup, temp files
-*_backup.*
-*_old.*
-*_temp.*
+# Documentation
+docs/_build/
+notes/
+
+# IDE/Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Frontend build
+frontend/dist/
+frontend/build/
+frontend/.vite/
+
+# Logs
+*.log
+
+# Backup files
+*_2.*
+*\ 2.*
 *.backup
 *.old
 *.temp
 
-# IDE/editor config files
-.vscode/settings.json
-.vscode/launch.json
-*.swp
-*.swo
-
-# system files
+# System files
 .DS_Store
 Thumbs.db
-desktop.ini
-# 개인 작업 과정에서 생성되는 파일들
-*.log
-*_2.py
-*_debug.*
-*_restart.*
-*_backup.*
-*_temp.*
 
-# 작업 진행 상황 문서들
-backend_analysis.md
-design_integration.md
-integration_analysis.md
-work_division_interfaces.md
-PROJECT_STATUS.md
-tasklist.md
+# PyDeps output
+*.svg
+.pydeps~
