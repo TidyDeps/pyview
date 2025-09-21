@@ -47,53 +47,52 @@ class imp(enum.Enum):
 
 class Source(object):
     """의존성 그래프의 노드 하나
-
        이 소스가 어떤 모듈들을 import하는지,
        어떤 모듈들이 이 소스를 import하는지 정보를 담고 있음
     """
     def __init__(self, name, path=None, imports=(), exclude=False, args=None):
-        self.args = args or {}
-        self.name = name
-        # self.kind = kind  # 나중에 쓸 수도 있어서 주석으로 남겨둠
-        self.path = path             # 여기서 필요한지는 모르겠지만..
-        self.imports = set(imports)  # 우리가 import하는 모듈들
-        self.imported_by = set()     # 우리를 import하는 모듈들
-        self.bacon = sys.maxsize      # bacon distance
-        self.excluded = exclude
+        self.name = name  # 모듈 이름 (예: "app.models")
+        self.path = path  # 파일 경로 (예: "/home/user/app/models.py"). 없어도 동작은 하지만, 시각화/분석에 활용 가능.
+        # self.kind = kind  # [TODO] 모듈 타입 , 노드 색깔 다르게 표시하는 로직 추가하기
+        self.imports = set(imports)  # 이 모듈이 import하는 모듈들의 집합 (outgoing edges)
+        self.imported_by = set()  # 이 모듈을 import하는 모듈들의 집합 (incoming edges)
+        self.bacon = sys.maxsize  # __main__에서 몇 단계 떨어져 있는지 (Bacon distance). 나중에 calculate_bacon()에서 업데이트됨.
+        self.excluded = exclude  # noise 제거/필터링 등으로 그래프에서 제외해야 할지 여부
+        self.args = args or {}  # 실행 시 옵션들 저장 (예: noise_level)
 
     @property
     def name_parts(self):
+        # "app.models.user" → ["app", "models", "user"]
         return self.name.split('.')
 
     @property
     def module_depth(self):
+        # 점(.) 개수 = 깊이 ("app.models" → 1)
         return self.name.count('.')
 
     @property
     def path_parts(self):
-        p = self.path or ""
-        return p.replace('\\', '/').lower().split('/')
+        # 경로를 / 기준으로 나눈 리스트 (플랫폼 무관)
+        if not self.path:
+            return []
+        return self.path.replace("\\", "/").split("/")
 
     @property
     def in_degree(self):
-        """Number of incoming arrows.
-        """
+        # 내가 import하는 모듈 개수
         return len(self.imports)
 
     @property
     def out_degree(self):
-        """Number of outgoing arrows.
-        """
+        # 나를 import하는 모듈 개수
         return len(self.imported_by)
 
     @property
     def degree(self):
+        # in_degree + out_degree (연결 정도)
         return self.in_degree + self.out_degree
 
     def is_noise(self):
-        """Is this module just noise?  (too common either at top or bottom of
-           the graph).
-        """
         noise = self.args['noise_level']
         if not (self.in_degree and self.out_degree):
             return self.degree > noise
@@ -249,7 +248,7 @@ class DepGraph(object):
     def __init__(self, depgraf, types, target, **args):
         # depgraph is py2depgraph.MyModulefinder._depgraph
         log.debug("DepGraph: depgraf=%r", depgraf)
-
+        # 색상/사이클/옵션/스킵리스트 등 내부 상태 초기화
         self.curhue = 150  # start with a green-ish color
         self.colors = {}
 
@@ -292,7 +291,7 @@ class DepGraph(object):
         self.connect_generations()
         # if self.args['show_cycles']:
         #     self.find_import_cycles()
-        self.calculate_bacon()
+        self.calculate_bacon()  # bacon distance 계산
         self.exclude_noise()
         self.exclude_bacon(self.args['max_bacon'])
         self.only_filter(self.args.get('only'))
@@ -416,6 +415,7 @@ class DepGraph(object):
 
 
     def find_import_cycles(self):
+        # 내부 Graph로 옮겨 Kosaraju 알고리즘 수행
         """Divide the graph into strongly connected components using kosaraju's algorithm.
         """
 
