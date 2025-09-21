@@ -38,6 +38,7 @@ log = logging.getLogger(__name__)
 PYLIB_PATH = depgraph.PYLIB_PATH
 
 
+# 모듈이 import 될 때, 그 종류를 9가지로 나눠서 분류
 class imp(enum.IntEnum):
     C_BUILTIN = 6
     C_EXTENSION = 3
@@ -49,20 +50,21 @@ class imp(enum.IntEnum):
     PY_RESOURCE = 4
     PY_SOURCE = 1
 
-
+#분석된 모듈 하나를 표현하는 데이터 구조
 class Module(object):
+    # import한 모듈 + 모듈이름/ 파일이름/ 패키지 경로 정보를 담음.
     def __init__(self, name, file=None, path=None):
-        self.__name__ = name
-        self.__file__ = file
-        self.__path__ = path
-        self.__code__ = None
+        self.__name__ = name # 모듈 이름
+        self.__file__ = file # 모듈 파일 이름
+        self.__path__ = path # 모듈 패키지 경로
+        self.__code__ = None # 모듈 코드 (사용안함)
         # The set of global names that are assigned to in the module.
         # This includes those names imported through starimports of
         # Python modules.
-        self.globalnames = {}
+        self.globalnames = {} # 모듈에 정의된 전역 변수 이름들
         # The set of starimports this module did that could not be
         # resolved, ie. a starimport from a non-Python module.
-        self.starimports = {}
+        self.starimports = {} # from x import * 형식으로 임포트한 모듈들
 
     @property
     def shortname(self):
@@ -78,6 +80,15 @@ class Module(object):
         )
 
 
+# 기본적으로 파이썬 표준 라이브러리 modulefinder를 상속한 뒤, import 과정을 가로채서 “누가 누구를 불렀는지” 기록
+# - 전체 동작 흐름
+#     - __main__모듈 실행
+#     - 실행 도중 import 발생
+#         - import hook 발동
+#     - import_module/load_module로 실제 모듈 로드
+#         - _types에 모듈 종류 기록
+#         - _add_import로 _depgraph에 의존성 기록
+#     - 최종적으로 _depgraph={caller: {callee:file}} 완성
 class MyModuleFinder(mf27.ModuleFinder):
     def __init__(self, syspath, *args, **kwargs):
         self.args = kwargs
