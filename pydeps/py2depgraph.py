@@ -208,17 +208,6 @@ class MyModuleFinder(mf27.ModuleFinder):
                 self._add_import(getattr(module, sub))
                 # print "  SUB:", sub, "lastcaller:", self._last_caller
 
-
-class RawDependencies(object):
-    def __init__(self, fname, **kw):
-        path = sys.path[:]
-        exclude = []
-        mf = MyModuleFinder(path, exclude, **kw)
-        mf.run_script(fname)
-        self.depgraph = mf._depgraph
-        self.types = mf._types
-
-
 def py2dep(target, **kw) -> depgraph.DepGraph:
     """"Calculate dependencies for ``pattern`` and return a DepGraph.
     """
@@ -297,15 +286,3 @@ def py2dep(target, **kw) -> depgraph.DepGraph:
 
     return depgraph.DepGraph(mf_depgraph, mf._types, target, **kw)
 
-
-def py2depgraph():
-    _fname = sys.argv[1]
-    _graph = RawDependencies(_fname)
-
-    sys.stdout.write(
-        json.dumps(_graph.__dict__, indent=4)
-    )
-
-
-if __name__ == '__main__':
-    py2depgraph()
