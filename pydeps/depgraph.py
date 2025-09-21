@@ -15,11 +15,6 @@ import logging
 log = logging.getLogger(__name__)
 
 # Simple replacements for removed modules
-def verbose(level, *args):
-    """Simple verbose function replacement"""
-    if level <= 1:  # Only show important messages
-        print(*args)
-
 def name2rgb(name):
     """Simple color function replacement"""
     # Return a simple color tuple
@@ -104,20 +99,6 @@ class Source(object):
             return self.degree > noise
         return False
 
-    def __json__(self):
-        res = dict(
-            name=self.name,
-            path=self.path,
-            # kind=str(self.kind),
-            bacon=self.bacon,
-        )
-        if self.excluded:
-            res['excluded'] = 'EXCLUDED'
-        if self.imports:
-            res['imports'] = list(sorted(self.imports))
-        if self.imported_by:
-            res['imported_by'] = list(sorted(self.imported_by))
-        return res
 
     def __str__(self):
         return "%s (%s)" % (self.name, self.path)
@@ -140,8 +121,6 @@ class Source(object):
     def __ge__(self, other):
         return self.name >= other.name
 
-    def __repr__(self):
-        return json.dumps(self.__json__(), indent=4)
 
     def __iadd__(self, other):
         """Merge other into self.
@@ -188,8 +167,6 @@ class GraphNode:
     def __str__(self):
         return self.src.name
     
-    def __repr__(self):
-        return self.src.name
 
     def __hash__(self):
         return hash(self.src.name)
@@ -209,14 +186,6 @@ class Graph:
         for u, v in edges:
             self.neighbours[u].append(v)
 
-    def __json__(self):
-        return {
-            "edges": [(u, v) for u, v in self.edges],
-            "neighbours": {u.src.name: [v.src.name for v in self.neighbours[u]] for u in self.V}
-        }
-    
-    def __str__(self):
-        return json.dumps(self, indent=4)
 
     def transpose(self):
         return Graph(self.V, [(v, u) for u, v in self.edges])
@@ -319,15 +288,11 @@ class DepGraph(object):
                 self.add_source(src)
 
         self.module_count = len(self.sources)
-        verbose(1, "there are", self.module_count, "total modules")
 
         self.connect_generations()
         # if self.args['show_cycles']:
         #     self.find_import_cycles()
         self.calculate_bacon()
-        if self.args['show_raw_deps']:
-            print(self)
-
         self.exclude_noise()
         self.exclude_bacon(self.args['max_bacon'])
         self.only_filter(self.args.get('only'))
@@ -335,18 +300,11 @@ class DepGraph(object):
         excluded = [v for v in list(self.sources.values()) if v.excluded]
         # print "EXCLUDED:", excluded
         self.skip_count = len(excluded)
-        verbose(1, "skipping", self.skip_count, "modules")
-        for module in excluded:
-            # print 'exclude:', module.name
-            verbose(2, "  ", module.name)
 
         self.remove_excluded()
 
         # if self.args['show_cycles']:
         self.find_import_cycles()
-        
-        if not self.args['show_deps']:
-            verbose(3, self)
 
     def source_name(self, name, path=None):
         """Returns the module name, possibly limited by --max-module-depth.
@@ -360,16 +318,11 @@ class DepGraph(object):
         if name == "__main__" and path:
             # use the path to the main module if we're working on a module.
             res = path.replace('\\', '/').replace('/', '.')
-            if self.args.get('verbose', 0) >= 2:  # pragma: nocover
-                print("changing __main__ =>", res)
 
         if self.max_module_depth > 0:
             res = '.'.join(res.split('.')[:self.max_module_depth])
         return res
 
-    def __json__(self):
-        return json.dumps(self.sources, indent=4, sort_keys=True,
-                          default=lambda obj: obj.__json__() if hasattr(obj, '__json__') else obj)
 
     def levelcounts(self):
         pass
@@ -459,12 +412,8 @@ class DepGraph(object):
 
         for _src in self.sources.values():
             for source in visit(_src):
-                verbose(4, "Yielding", source[0], source[1])
                 yield source
 
-    def __repr__(self):
-        return json.dumps(self.sources, indent=4, sort_keys=True,
-                          default=lambda obj: obj.__json__() if hasattr(obj, '__json__') else obj)
 
     def find_import_cycles(self):
         """Divide the graph into strongly connected components using kosaraju's algorithm.
@@ -519,7 +468,6 @@ class DepGraph(object):
             if src.excluded:
                 continue
             if src.is_noise():
-                verbose(2, "excluding", src, "because it is noisy:", src.degree)
                 src.excluded = True
                 self._add_skip(src.name)
 
