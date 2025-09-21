@@ -71,12 +71,14 @@ interface ClusterContainer {
 
 interface HierarchicalGraphProps {
   data: any;
+  cycleData?: any; // 순환 참조 데이터
   onNodeClick?: (nodeId: string) => void;
   selectedNodeId?: string | null;
 }
 
 const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({ 
   data, 
+  cycleData,
   onNodeClick,
   selectedNodeId 
 }) => {
@@ -100,6 +102,19 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     edges: any[];
     hierarchy: Record<string, string[]>;
   }>({ nodes: [], edges: [], hierarchy: {} });
+  
+  // 순환 참조 정보 처리
+  const [cycleInfo, setCycleInfo] = useState<{
+    cycleNodes: Set<string>;
+    cycleEdges: Set<string>;
+    nodeSeverity: Map<string, string>;
+    edgeSeverity: Map<string, string>;
+  }>({ 
+    cycleNodes: new Set(), 
+    cycleEdges: new Set(), 
+    nodeSeverity: new Map(), 
+    edgeSeverity: new Map() 
+  });
 
   // 데이터를 계층적 구조로 변환
   const buildHierarchicalStructure = useCallback((inputData: any) => {
@@ -272,6 +287,43 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     }
   }, [data, buildHierarchicalStructure]);
 
+  // 순환 참조 데이터 처리
+  useEffect(() => {
+    if (cycleData && cycleData.cycles) {
+      const cycleNodes = new Set<string>();
+      const cycleEdges = new Set<string>();
+      const nodeSeverity = new Map<string, string>();
+      const edgeSeverity = new Map<string, string>();
+
+      cycleData.cycles.forEach((cycle: any) => {
+        const severity = cycle.severity || 'medium';
+        
+        // 순환에 포함된 모든 엔티티 추가
+        cycle.entities.forEach((entity: string) => {
+          cycleNodes.add(entity);
+          nodeSeverity.set(entity, severity);
+        });
+
+        // 순환 경로의 엣지들 추가
+        if (cycle.paths) {
+          cycle.paths.forEach((path: any) => {
+            for (let i = 0; i < path.nodes.length - 1; i++) {
+              const edgeId = `${path.nodes[i]}-${path.nodes[i + 1]}`;
+              cycleEdges.add(edgeId);
+              edgeSeverity.set(edgeId, severity);
+            }
+          });
+        }
+      });
+
+      setCycleInfo({ cycleNodes, cycleEdges, nodeSeverity, edgeSeverity });
+      console.log('🔄 Cycle info processed:', { 
+        nodes: cycleNodes.size, 
+        edges: cycleEdges.size 
+      });
+    }
+  }, [cycleData]);
+
   // Cytoscape 그래프 업데이트
   useEffect(() => {
     if (!cyRef.current || !hierarchicalData.nodes.length) return;
@@ -398,6 +450,17 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
     // 노드 변환
     visibleNodes.forEach(node => {
+      const classes = [`node-${node.type}`];
+      
+      // 순환 참조 클래스 추가
+      if (cycleInfo.cycleNodes.has(node.id)) {
+        classes.push('in-cycle');
+        const severity = cycleInfo.nodeSeverity.get(node.id);
+        if (severity) {
+          classes.push(`cycle-${severity}`);
+        }
+      }
+      
       elements.push({
         data: {
           id: node.id,
@@ -408,20 +471,33 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           isExpanded: node.isExpanded,
           childCount: node.childCount
         },
-        classes: `node-${node.type}`
+        classes: classes.join(' ')
       });
     });
 
     // 엣지 변환 (보이는 노드들 간의 연결만, 자기 자신으로의 엣지 제외)
     edges.forEach(edge => {
       if (nodeIds.has(edge.source) && nodeIds.has(edge.target) && edge.source !== edge.target) {
+        const edgeId = `${edge.source}-${edge.target}`;
+        const classes = [];
+        
+        // 순환 참조 엣지 클래스 추가
+        if (cycleInfo.cycleEdges.has(edgeId)) {
+          classes.push('cycle-edge');
+          const severity = cycleInfo.edgeSeverity.get(edgeId);
+          if (severity) {
+            classes.push(`cycle-${severity}`);
+          }
+        }
+        
         elements.push({
           data: {
-            id: `${edge.source}-${edge.target}`,
+            id: edgeId,
             source: edge.source,
             target: edge.target,
             type: edge.type || 'dependency'
-          }
+          },
+          classes: classes.join(' ')
         });
       }
     });
@@ -1096,6 +1172,96 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'line-color': '#ff4d4f',
         'target-arrow-color': '#ff4d4f',
         'width': 4
+      }
+    },
+    // 순환 참조 노드 스타일
+    {
+      selector: 'node.in-cycle',
+      style: {
+        'border-color': '#ff4d4f',
+        'border-width': 4,
+        'border-style': 'solid',
+        'background-color': (node: any) => {
+          const originalColor = node.data('originalColor') || '#ff4d4f';
+          return originalColor;
+        },
+        'overlay-opacity': 0.2,
+        'overlay-color': '#ff4d4f'
+      }
+    },
+    // 고위험 순환 참조 노드
+    {
+      selector: 'node.cycle-high',
+      style: {
+        'border-color': '#ff4d4f',
+        'border-width': 6,
+        'background-color': '#fff1f0',
+        'text-outline-color': '#ff4d4f',
+        'text-outline-width': 2
+      }
+    },
+    // 중위험 순환 참조 노드
+    {
+      selector: 'node.cycle-medium',
+      style: {
+        'border-color': '#fa8c16',
+        'border-width': 4,
+        'background-color': '#fff7e6',
+        'text-outline-color': '#fa8c16',
+        'text-outline-width': 1
+      }
+    },
+    // 저위험 순환 참조 노드
+    {
+      selector: 'node.cycle-low',
+      style: {
+        'border-color': '#faad14',
+        'border-width': 3,
+        'background-color': '#fffbe6',
+        'text-outline-color': '#faad14',
+        'text-outline-width': 1
+      }
+    },
+    // 순환 참조 엣지 스타일
+    {
+      selector: 'edge.cycle-edge',
+      style: {
+        'line-color': '#ff4d4f',
+        'target-arrow-color': '#ff4d4f',
+        'width': 3,
+        'line-style': 'dashed',
+        'opacity': 0.9,
+        'curve-style': 'bezier'
+      }
+    },
+    // 고위험 순환 참조 엣지
+    {
+      selector: 'edge.cycle-high',
+      style: {
+        'line-color': '#ff4d4f',
+        'target-arrow-color': '#ff4d4f',
+        'width': 5,
+        'line-style': 'solid'
+      }
+    },
+    // 중위험 순환 참조 엣지
+    {
+      selector: 'edge.cycle-medium',
+      style: {
+        'line-color': '#fa8c16',
+        'target-arrow-color': '#fa8c16',
+        'width': 4,
+        'line-style': 'dashed'
+      }
+    },
+    // 저위험 순환 참조 엣지
+    {
+      selector: 'edge.cycle-low',
+      style: {
+        'line-color': '#faad14',
+        'target-arrow-color': '#faad14',
+        'width': 3,
+        'line-style': 'dotted'
       }
     },
     {

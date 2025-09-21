@@ -9,6 +9,7 @@ import type {
   SearchRequest,
   SearchResponse,
   QualityMetrics,
+  CycleDetectionResponse,
   ErrorResponse
 } from '@/types/api'
 
@@ -75,6 +76,20 @@ export class ApiService {
   // Get quality metrics for analysis
   static async getQualityMetrics(analysisId: string): Promise<QualityMetrics[]> {
     const response = await apiClient.get<QualityMetrics[]>(`/analysis/${analysisId}/quality-metrics`)
+    return response.data
+  }
+
+  // Get cycle detection results for analysis
+  static async getCycleDetection(analysisId: string): Promise<CycleDetectionResponse> {
+    const response = await apiClient.get<CycleDetectionResponse>(`/analysis/${analysisId}/cycles`)
+    return response.data
+  }
+
+  // Get cycle detection results by type (import/call)
+  static async getCycleDetectionByType(analysisId: string, relationshipType: 'import' | 'call'): Promise<CycleDetectionResponse> {
+    const response = await apiClient.get<CycleDetectionResponse>(`/analysis/${analysisId}/cycles`, {
+      params: { relationship_type: relationshipType }
+    })
     return response.data
   }
 }

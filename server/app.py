@@ -90,6 +90,8 @@ class SearchResult(BaseModel):
     file_path: str
     line_number: Optional[int] = None
     description: Optional[str] = None
+    is_in_cycle: Optional[bool] = False
+    cycle_severity: Optional[str] = None
 
 class SearchResponse(BaseModel):
     query: str
@@ -108,6 +110,58 @@ class QualityMetricsResponse(BaseModel):
     maintainability_index: float
     technical_debt_ratio: float
     quality_grade: str
+
+# 순환 참조 관련 모델들
+class CyclePath(BaseModel):
+    nodes: List[str]
+    relationship_type: str  # 'import' or 'call'
+    strength: float
+
+class CycleMetrics(BaseModel):
+    cycle_length: int
+    total_strength: float
+    average_strength: float
+    severity: str  # 'low', 'medium', 'high'
+
+class CyclicDependencyResponse(BaseModel):
+    cycle_id: str
+    entities: List[str]
+    relationship_type: str  # 'import' or 'call'
+    severity: str  # 'low', 'medium', 'high'
+    paths: List[CyclePath]
+    metrics: CycleMetrics
+    description: str
+
+class CycleDetectionResponse(BaseModel):
+    analysis_id: str
+    cycles: List[CyclicDependencyResponse]
+    total_cycles: int
+    cycle_statistics: Dict[str, int]
+
+def check_entity_in_cycles(entity_id: str, analysis_results: Dict) -> tuple[bool, Optional[str]]:
+    """엔티티가 순환 참조에 포함되어 있는지 확인"""
+    cycles = analysis_results.get("cycles", [])
+    
+    for cycle in cycles:
+        if entity_id in cycle.get("entities", []):
+            severity = cycle.get("severity", "medium")
+            return True, severity
+    
+    return False, None
+
+def build_cycle_entity_map(analysis_results: Dict) -> Dict[str, str]:
+    """순환 참조에 포함된 모든 엔티티의 맵 생성"""
+    cycle_map = {}
+    cycles = analysis_results.get("cycles", [])
+    
+    for cycle in cycles:
+        severity = cycle.get("severity", "medium")
+        for entity_id in cycle.get("entities", []):
+            # 더 높은 심각도로 업데이트
+            if entity_id not in cycle_map or severity == "high":
+                cycle_map[entity_id] = severity
+    
+    return cycle_map
 
 def create_analysis_record(analysis_id: str, request: AnalysisRequest) -> Dict:
     """Create a new analysis record"""
@@ -409,41 +463,62 @@ async def search_entities(request: SearchRequest):
             analysis_results = analysis_record.get("results")
             if not analysis_results:
                 continue
+            
+            # 순환 참조 맵 생성
+            cycle_map = build_cycle_entity_map(analysis_results)
                 
             # Search in modules
             for module in analysis_results.get("dependency_graph", {}).get("modules", []):
                 if query_lower in module.get("name", "").lower():
+                    module_id = module.get("id", module.get("name", ""))
+                    is_in_cycle = module_id in cycle_map
+                    cycle_severity = cycle_map.get(module_id)
+                    
                     results.append(SearchResult(
                         name=module.get("name", ""),
                         entity_type="module",
                         module_path=module.get("name", ""),
                         file_path=module.get("file_path", ""),
                         line_number=1,
-                        description=f"Module: {module.get('name', '')}"
+                        description=f"Module: {module.get('name', '')}",
+                        is_in_cycle=is_in_cycle,
+                        cycle_severity=cycle_severity
                     ))
             
             # Search in classes
             for cls in analysis_results.get("dependency_graph", {}).get("classes", []):
                 if query_lower in cls.get("name", "").lower():
+                    class_id = cls.get("id", cls.get("name", ""))
+                    is_in_cycle = class_id in cycle_map
+                    cycle_severity = cycle_map.get(class_id)
+                    
                     results.append(SearchResult(
                         name=cls.get("name", ""),
                         entity_type="class",
                         module_path=cls.get("module", ""),
                         file_path=cls.get("file_path", ""),
                         line_number=cls.get("line_number", 1),
-                        description=f"Class: {cls.get('name', '')} in {cls.get('module', '')}"
+                        description=f"Class: {cls.get('name', '')} in {cls.get('module', '')}",
+                        is_in_cycle=is_in_cycle,
+                        cycle_severity=cycle_severity
                     ))
             
             # Search in methods
             for method in analysis_results.get("dependency_graph", {}).get("methods", []):
                 if query_lower in method.get("name", "").lower():
+                    method_id = method.get("id", method.get("name", ""))
+                    is_in_cycle = method_id in cycle_map
+                    cycle_severity = cycle_map.get(method_id)
+                    
                     results.append(SearchResult(
                         name=method.get("name", ""),
                         entity_type="method",
                         module_path=method.get("class_name", ""),
                         file_path=method.get("file_path", ""),
                         line_number=method.get("line_number", 1),
-                        description=f"Method: {method.get('name', '')} in {method.get('class_name', '')}"
+                        description=f"Method: {method.get('name', '')} in {method.get('class_name', '')}",
+                        is_in_cycle=is_in_cycle,
+                        cycle_severity=cycle_severity
                     ))
     
     return SearchResponse(

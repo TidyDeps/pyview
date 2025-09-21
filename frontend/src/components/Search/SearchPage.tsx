@@ -13,7 +13,7 @@ import {
   Empty,
   Spin
 } from 'antd'
-import { SearchOutlined, FileTextOutlined } from '@ant-design/icons'
+import { SearchOutlined, FileTextOutlined, ExclamationCircleOutlined, WarningOutlined } from '@ant-design/icons'
 import { ApiService } from '@/services/api'
 import type { SearchRequest, SearchResponse, SearchResult } from '@/types/api'
 
@@ -94,7 +94,24 @@ const SearchPage: React.FC<SearchPageProps> = ({ analysisId }) => {
       render: (name: string, record: SearchResult) => (
         <Space>
           <FileTextOutlined />
-          <Text strong>{name}</Text>
+          <Text 
+            strong 
+            style={{ 
+              color: record.is_in_cycle ? '#ff4d4f' : undefined 
+            }}
+          >
+            {name}
+          </Text>
+          {record.is_in_cycle && (
+            <ExclamationCircleOutlined 
+              style={{ 
+                color: record.cycle_severity === 'high' ? '#ff4d4f' : 
+                       record.cycle_severity === 'medium' ? '#fa8c16' : '#faad14',
+                fontSize: '14px'
+              }}
+              title={`Circular dependency detected (${record.cycle_severity} severity)`}
+            />
+          )}
         </Space>
       )
     },
@@ -120,9 +137,28 @@ const SearchPage: React.FC<SearchPageProps> = ({ analysisId }) => {
       key: 'file_path',
       render: (path: string, record: SearchResult) => (
         <div>
-          <Text ellipsis style={{ maxWidth: 200 }} title={path}>
-            {path}
-          </Text>
+          <Space>
+            <Text 
+              ellipsis 
+              style={{ 
+                maxWidth: 200,
+                color: record.is_in_cycle ? '#ff4d4f' : undefined,
+                fontWeight: record.is_in_cycle ? 'bold' : 'normal'
+              }} 
+              title={path}
+            >
+              {path}
+            </Text>
+            {record.is_in_cycle && (
+              <WarningOutlined 
+                style={{ 
+                  color: '#ff4d4f',
+                  fontSize: '12px'
+                }}
+                title="File contains circular dependencies"
+              />
+            )}
+          </Space>
           {record.line_number && (
             <div>
               <Text type="secondary" style={{ fontSize: 12 }}>

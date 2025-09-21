@@ -8,7 +8,9 @@ import {
   FunctionOutlined,
   BlockOutlined,
   SearchOutlined,
-  FieldBinaryOutlined
+  FieldBinaryOutlined,
+  ExclamationCircleOutlined,
+  WarningOutlined
 } from '@ant-design/icons'
 import type { TreeProps } from 'antd/es/tree'
 
@@ -22,10 +24,13 @@ interface FileTreeNode {
   searchText: string
   nodeId: string
   isLeaf?: boolean
+  isInCycle?: boolean
+  cycleSeverity?: 'low' | 'medium' | 'high'
 }
 
 interface FileTreeSidebarProps {
   analysisData?: any
+  cycleData?: any // 순환 참조 데이터
   onNodeSelect?: (nodeId: string, nodeType: string) => void
   selectedNodeId?: string
   style?: React.CSSProperties
@@ -33,6 +38,7 @@ interface FileTreeSidebarProps {
 
 const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
   analysisData,
+  cycleData,
   onNodeSelect,
   selectedNodeId,
   style
@@ -40,6 +46,44 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
   const [searchValue, setSearchValue] = useState('')
   const [expandedKeys, setExpandedKeys] = useState<string[]>([])
   const [autoExpandParent, setAutoExpandParent] = useState(true)
+
+  // 순환 참조 정보 처리
+  const cycleInfo = useMemo(() => {
+    const cycleNodes = new Set<string>();
+    const nodeSeverity = new Map<string, string>();
+
+    if (cycleData && cycleData.cycles) {
+      cycleData.cycles.forEach((cycle: any) => {
+        const severity = cycle.severity || 'medium';
+        cycle.entities.forEach((entity: string) => {
+          cycleNodes.add(entity);
+          nodeSeverity.set(entity, severity);
+        });
+      });
+    }
+
+    return { cycleNodes, nodeSeverity };
+  }, [cycleData]);
+
+  // 순환 참조 아이콘 렌더링
+  const renderCycleIcon = (nodeId: string) => {
+    if (!cycleInfo.cycleNodes.has(nodeId)) return null;
+    
+    const severity = cycleInfo.nodeSeverity.get(nodeId);
+    const iconStyle = {
+      marginLeft: 8,
+      fontSize: '12px',
+      color: severity === 'high' ? '#ff4d4f' : 
+             severity === 'medium' ? '#fa8c16' : '#faad14'
+    };
+    
+    return (
+      <ExclamationCircleOutlined 
+        style={iconStyle}
+        title={`Circular dependency (${severity} severity)`}
+      />
+    );
+  };
 
   // Build proper hierarchical tree structure
   const treeData = useMemo(() => {
@@ -72,12 +116,15 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
             <span>
               <FolderOutlined style={{ marginRight: 8, color: '#1890ff' }} />
               {pkg.name || pkgId}
+              {renderCycleIcon(pkgId)}
             </span>
           ),
           entityType: 'package',
           searchText: pkg.name || pkgId,
           nodeId: pkgId,
-          children: []
+          children: [],
+          isInCycle: cycleInfo.cycleNodes.has(pkgId),
+          cycleSeverity: cycleInfo.nodeSeverity.get(pkgId) as any
         }
         packageMap.set(pkgId, packageNode)
       })
@@ -93,12 +140,15 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
             <span>
               <FileOutlined style={{ marginRight: 8, color: '#52c41a' }} />
               {mod.name || modId}
+              {renderCycleIcon(modId)}
             </span>
           ),
           entityType: 'module',
           searchText: mod.name || modId,
           nodeId: modId,
-          children: []
+          children: [],
+          isInCycle: cycleInfo.cycleNodes.has(modId),
+          cycleSeverity: cycleInfo.nodeSeverity.get(modId) as any
         }
         moduleMap.set(modId, moduleNode)
       })
@@ -114,12 +164,15 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
             <span>
               <BlockOutlined style={{ marginRight: 8, color: '#fa8c16' }} />
               {cls.name || clsId}
+              {renderCycleIcon(clsId)}
             </span>
           ),
           entityType: 'class',
           searchText: cls.name || clsId,
           nodeId: clsId,
-          children: []
+          children: [],
+          isInCycle: cycleInfo.cycleNodes.has(clsId),
+          cycleSeverity: cycleInfo.nodeSeverity.get(clsId) as any
         }
         classMap.set(clsId, classNode)
       })
@@ -135,12 +188,15 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
             <span>
               <FunctionOutlined style={{ marginRight: 8, color: '#eb2f96' }} />
               {method.name || methodId}
+              {renderCycleIcon(methodId)}
             </span>
           ),
           entityType: 'method',
           searchText: method.name || methodId,
           nodeId: methodId,
-          isLeaf: true
+          isLeaf: true,
+          isInCycle: cycleInfo.cycleNodes.has(methodId),
+          cycleSeverity: cycleInfo.nodeSeverity.get(methodId) as any
         }
         methodMap.set(methodId, methodNode)
       })
@@ -156,12 +212,15 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
             <span>
               <FieldBinaryOutlined style={{ marginRight: 8, color: '#722ed1' }} />
               {field.name || fieldId}
+              {renderCycleIcon(fieldId)}
             </span>
           ),
           entityType: 'field',
           searchText: field.name || fieldId,
           nodeId: fieldId,
-          isLeaf: true
+          isLeaf: true,
+          isInCycle: cycleInfo.cycleNodes.has(fieldId),
+          cycleSeverity: cycleInfo.nodeSeverity.get(fieldId) as any
         }
         fieldMap.set(fieldId, fieldNode)
       })

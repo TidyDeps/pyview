@@ -51,6 +51,8 @@ export interface SearchResult {
   file_path: string
   line_number?: number
   description?: string
+  is_in_cycle?: boolean
+  cycle_severity?: 'low' | 'medium' | 'high'
 }
 
 export interface SearchResponse {
@@ -87,4 +89,41 @@ export interface QualityMetrics {
   maintainability_index: number
   technical_debt_ratio: number
   quality_grade: string
+}
+
+// 순환 참조 관련 타입들
+export interface CyclePath {
+  nodes: string[]
+  relationship_type: 'import' | 'call'
+  strength: number
+}
+
+export interface CycleMetrics {
+  cycle_length: number
+  total_strength: number
+  average_strength: number
+  severity: 'low' | 'medium' | 'high'
+}
+
+export interface CyclicDependency {
+  cycle_id: string
+  entities: string[]
+  relationship_type: 'import' | 'call'
+  severity: 'low' | 'medium' | 'high'
+  paths: CyclePath[]
+  metrics: CycleMetrics
+  description: string
+}
+
+export interface CycleDetectionResponse {
+  analysis_id: string
+  cycles: CyclicDependency[]
+  total_cycles: number
+  cycle_statistics: {
+    import_cycles: number
+    call_cycles: number
+    high_severity: number
+    medium_severity: number
+    low_severity: number
+  }
 }
