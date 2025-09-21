@@ -94,13 +94,23 @@ class LegacyBridge:
         """Convert pydeps Source to PyView ModuleInfo"""
         module_id = create_module_id(source.name)
         
+        # Convert pydeps imports to ImportInfo objects
+        import_infos = []
+        for imported_module in source.imports:
+            import_info = ImportInfo(
+                module=imported_module,
+                import_type="import",
+                line_number=0  # pydeps doesn't provide line numbers
+            )
+            import_infos.append(import_info)
+        
         return ModuleInfo(
             id=module_id,
             name=source.name,
             file_path=source.path or "",
             classes=[],  # Will be populated by AST analysis
             functions=[],  # Will be populated by AST analysis
-            imports=[],  # Will be populated by AST analysis
+            imports=import_infos,  # Use pydeps import information
             loc=0  # Will be calculated later
         )
     
@@ -248,21 +258,96 @@ class LegacyBridge:
         return imports_by_module
     
     def detect_cycles_from_pydeps(self, dep_graph: DepGraph) -> List[Dict]:
-        """Extract cycle information from pydeps analysis"""
+        """Extract cycle information from pydeps analysis with detailed path info"""
         cycles = []
         
         if hasattr(dep_graph, 'cycles') and dep_graph.cycles:
             for i, cycle in enumerate(dep_graph.cycles):
+                # Extract detailed cycle path information
+                cycle_paths = []
+                cycle_entities = []
+                cycle_strengths = []
+                
+                for j, source in enumerate(cycle):
+                    cycle_entities.append(create_module_id(source.name))
+                    
+                    # Find relationship to next module in cycle
+                    next_source = cycle[(j + 1) % len(cycle)]
+                    next_module_name = next_source.name
+                    
+                    # Check if there's an import relationship
+                    if next_module_name in source.imports:
+                        # Calculate relationship strength based on coupling metrics
+                        strength = self._calculate_relationship_strength(source, next_source)
+                        
+                        cycle_paths.append({
+                            'from': create_module_id(source.name),
+                            'to': create_module_id(next_module_name),
+                            'relationship_type': 'import',
+                            'strength': strength,
+                            'source_info': {
+                                'path': source.path,
+                                'bacon_distance': source.bacon,
+                                'total_imports': len(source.imports),
+                                'imported_by_count': len(source.imported_by)
+                            }
+                        })
+                        cycle_strengths.append(strength)
+                
+                # Calculate cycle severity based on length and coupling strength
+                avg_strength = sum(cycle_strengths) / len(cycle_strengths) if cycle_strengths else 1.0
+                if len(cycle) <= 2:
+                    severity = 'low' if avg_strength < 2.0 else 'medium'
+                elif len(cycle) <= 4:
+                    severity = 'medium' if avg_strength < 3.0 else 'high'
+                else:
+                    severity = 'high'
+                
                 cycle_info = {
                     'id': f"cycle_{i}",
-                    'entities': [create_module_id(source.name) for source in cycle],
+                    'entities': cycle_entities,
+                    'paths': cycle_paths,  # Detailed import path information
                     'cycle_type': 'import',
-                    'severity': 'medium' if len(cycle) <= 3 else 'high',
-                    'description': f"Import cycle involving {len(cycle)} modules"
+                    'severity': severity,
+                    'metrics': {
+                        'length': len(cycle),
+                        'average_strength': avg_strength,
+                        'total_coupling': sum(cycle_strengths)
+                    },
+                    'description': f"Import cycle involving {len(cycle)} modules with {avg_strength:.1f} avg strength"
                 }
                 cycles.append(cycle_info)
         
         return cycles
+    
+    def _calculate_relationship_strength(self, source: Source, target: Source) -> float:
+        """Calculate relationship strength based on coupling metrics"""
+        # Base strength
+        strength = 1.0
+        
+        # Factor in source's total imports (more imports = weaker individual relationships)
+        if len(source.imports) > 0:
+            strength *= (1.0 + 1.0 / len(source.imports))
+        
+        # Factor in target's incoming dependencies (popular modules = stronger relationships)
+        if len(target.imported_by) > 0:
+            strength *= (1.0 + len(target.imported_by) * 0.1)
+        
+        # Factor in proximity (closer modules = stronger relationships)
+        source_parts = source.name.split('.')
+        target_parts = target.name.split('.')
+        common_prefix_len = 0
+        for s_part, t_part in zip(source_parts, target_parts):
+            if s_part == t_part:
+                common_prefix_len += 1
+            else:
+                break
+        
+        # Same package = stronger relationship
+        if common_prefix_len > 0:
+            strength *= (1.0 + common_prefix_len * 0.5)
+        
+        return min(strength, 5.0)  # Cap at 5.0
     
     def get_pydeps_metrics(self, dep_graph: DepGraph) -> Dict:
         """Extract metrics from pydeps analysis"""

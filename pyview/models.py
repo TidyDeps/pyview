@@ -158,6 +158,8 @@ class CyclicDependency:
     cycle_type: str  # "import", "inheritance", "call"
     severity: str = "medium"  # "low", "medium", "high"
     description: Optional[str] = None
+    paths: List[Dict[str, Any]] = field(default_factory=list)  # Detailed path information
+    metrics: Optional[Dict[str, Any]] = None  # Cycle metrics (length, strength, etc.)
 
 
 @dataclass

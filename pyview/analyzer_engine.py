@@ -638,51 +638,119 @@ class AnalyzerEngine:
         """Detect cycles at class and method level"""
         cycles = []
         
-        # Build adjacency graph from relationships
+        # Separate relationships by type for different cycle detection
+        import_rels = [r for r in relationships if r.relationship_type.value == 'import']
+        call_rels = [r for r in relationships if r.relationship_type.value == 'call']
+        
+        self.logger.info(f"Detecting cycles: {len(import_rels)} import, {len(call_rels)} call relationships")
+        
+        # Detect import cycles (module level)
+        import_cycles = self._detect_cycles_by_type(import_rels, 'import')
+        cycles.extend(import_cycles)
+        
+        # Detect call cycles (method/function level)  
+        call_cycles = self._detect_cycles_by_type(call_rels, 'call')
+        cycles.extend(call_cycles)
+        
+        self.logger.info(f"Found {len(cycles)} detailed cycles")
+        return cycles
+    
+    def _detect_cycles_by_type(self, relationships: List[Relationship], cycle_type: str) -> List[Dict]:
+        """Detect cycles for a specific relationship type"""
+        cycles = []
+        
+        if not relationships:
+            return cycles
+        
+        # Build adjacency graph
         graph = {}
+        edge_info = {}  # Store relationship details
+        
         for rel in relationships:
             if rel.from_entity not in graph:
                 graph[rel.from_entity] = set()
             graph[rel.from_entity].add(rel.to_entity)
+            edge_info[(rel.from_entity, rel.to_entity)] = rel
         
-        # Simple cycle detection using DFS
+        # Find strongly connected components using DFS
         visited = set()
-        rec_stack = set()
+        finished = set()
+        stack = []
         
-        def has_cycle(node, path):
-            if node in rec_stack:
-                # Found cycle, extract it
-                cycle_start = path.index(node)
-                cycle_entities = path[cycle_start:] + [node]
-                return cycle_entities
-            
+        def dfs1(node):
             if node in visited:
-                return None
-            
+                return
             visited.add(node)
-            rec_stack.add(node)
-            path.append(node)
-            
             for neighbor in graph.get(node, []):
-                cycle = has_cycle(neighbor, path)
-                if cycle:
-                    return cycle
-            
-            rec_stack.remove(node)
-            path.pop()
-            return None
+                dfs1(neighbor)
+            stack.append(node)
         
-        # Check for cycles starting from each node
+        # First DFS to get finish times
         for node in graph:
+            dfs1(node)
+        
+        # Build reverse graph
+        reverse_graph = {}
+        for node in graph:
+            for neighbor in graph[node]:
+                if neighbor not in reverse_graph:
+                    reverse_graph[neighbor] = set()
+                reverse_graph[neighbor].add(node)
+        
+        # Second DFS on reverse graph
+        visited.clear()
+        
+        def dfs2(node, component):
+            if node in visited:
+                return
+            visited.add(node)
+            component.append(node)
+            for neighbor in reverse_graph.get(node, []):
+                dfs2(neighbor, component)
+        
+        # Find SCCs
+        while stack:
+            node = stack.pop()
             if node not in visited:
-                cycle = has_cycle(node, [])
-                if cycle:
+                component = []
+                dfs2(node, component)
+                
+                # Only consider components with cycles (size > 1)
+                if len(component) > 1:
+                    # Extract cycle path
+                    cycle_paths = []
+                    for i, entity in enumerate(component):
+                        next_entity = component[(i + 1) % len(component)]
+                        # Check if direct edge exists
+                        if entity in graph and next_entity in graph[entity]:
+                            rel = edge_info.get((entity, next_entity))
+                            if rel:
+                                cycle_paths.append({
+                                    'from': entity,
+                                    'to': next_entity,
+                                    'relationship_type': cycle_type,
+                                    'strength': rel.strength if hasattr(rel, 'strength') else 1.0,
+                                    'line_number': rel.line_number,
+                                    'file_path': rel.file_path
+                                })
+                    
+                    # Calculate severity based on cycle type and length
+                    if cycle_type == 'import':
+                        severity = 'high' if len(component) > 3 else 'medium'
+                    else:
+                        severity = 'low' if len(component) <= 2 else 'medium'
+                    
                     cycle_info = {
-                        'id': f"detailed_cycle_{len(cycles)}",
-                        'entities': cycle,
-                        'cycle_type': 'call',  # Most detailed cycles are method calls
-                        'severity': 'low' if len(cycle) <= 2 else 'medium',
-                        'description': f"Call cycle involving {len(cycle)} entities"
+                        'id': f"{cycle_type}_cycle_{len(cycles)}",
+                        'entities': component,
+                        'paths': cycle_paths,
+                        'cycle_type': cycle_type,
+                        'severity': severity,
+                        'metrics': {
+                            'length': len(component),
+                            'edge_count': len(cycle_paths)
+                        },
+                        'description': f"{cycle_type.title()} cycle involving {len(component)} entities"
                     }
                     cycles.append(cycle_info)
         
@@ -857,7 +925,9 @@ class AnalyzerEngine:
                 entities=cycle_dict['entities'],
                 cycle_type=cycle_dict['cycle_type'],
                 severity=cycle_dict['severity'],
-                description=cycle_dict.get('description')
+                description=cycle_dict.get('description'),
+                paths=cycle_dict.get('paths', []),  # Include detailed path information
+                metrics=cycle_dict.get('metrics')  # Include cycle metrics
             )
             cycles.append(cycle)
         
