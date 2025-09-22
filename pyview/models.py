@@ -106,6 +106,10 @@ class ModuleInfo:
     imports: List[ImportInfo] = field(default_factory=list)
     loc: int = 0  # Lines of Code
     docstring: Optional[str] = None
+    # Additional fields from pydeps Source integration
+    display_label: Optional[str] = None  # Visualization label from pydeps
+    module_depth: int = 0  # Module hierarchy depth
+    degree: int = 0  # Total connectivity degree (in + out)
 
 
 @dataclass

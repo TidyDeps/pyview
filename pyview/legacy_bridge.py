@@ -59,7 +59,7 @@ class LegacyBridge:
         
         # Convert sources to modules
         for source in dep_graph.sources.values():
-            if source.excluded:
+            if source.excluded or source.is_noise():
                 continue
             
             # Create module info
@@ -67,7 +67,7 @@ class LegacyBridge:
             modules.append(module_info)
             
             # Extract package info
-            package_name = self._extract_package_name(source.name)
+            package_name = self._extract_package_name(source)
             if package_name and package_name not in seen_packages:
                 package_info = self._create_package_info(package_name, source)
                 packages.append(package_info)
@@ -111,28 +111,29 @@ class LegacyBridge:
             classes=[],  # Will be populated by AST analysis
             functions=[],  # Will be populated by AST analysis
             imports=import_infos,  # Use pydeps import information
-            loc=0  # Will be calculated later
+            loc=0,  # Will be calculated later
+            display_label=source.get_label(splitlength=20),  # Add visualization label
+            module_depth=source.module_depth,  # Add module depth info
+            degree=source.degree  # Add connectivity degree
         )
     
-    def _extract_package_name(self, module_name: str) -> Optional[str]:
-        """Extract package name from module name"""
-        parts = module_name.split('.')
-        if len(parts) > 1:
-            return parts[0]
+    def _extract_package_name(self, source: Source) -> Optional[str]:
+        """Extract package name from Source object using name_parts"""
+        if source.module_depth > 0:
+            return source.name_parts[0]
         return None
     
     def _create_package_info(self, package_name: str, sample_source: Source) -> PackageInfo:
-        """Create PackageInfo from package name and sample source"""
+        """Create PackageInfo from package name and sample source using path_parts"""
         package_id = create_package_id(package_name)
         
-        # Try to determine package path
+        # Try to determine package path using path_parts
         package_path = ""
-        if sample_source.path:
-            path_obj = Path(sample_source.path)
-            # Go up the directory tree to find the package root
-            for parent in path_obj.parents:
-                if parent.name == package_name:
-                    package_path = str(parent)
+        if sample_source.path and sample_source.path_parts:
+            # Use path_parts for more efficient package path finding
+            for i, part in enumerate(sample_source.path_parts):
+                if part == package_name:
+                    package_path = "/".join(sample_source.path_parts[:i+1])
                     break
         
         return PackageInfo(
@@ -148,7 +149,7 @@ class LegacyBridge:
         relationships = []
         
         for source in dep_graph.sources.values():
-            if source.excluded:
+            if source.excluded or source.is_noise():
                 continue
             
             from_module_id = create_module_id(source.name)
@@ -222,7 +223,10 @@ class LegacyBridge:
             functions=ast_analysis.module_info.functions,
             imports=ast_analysis.module_info.imports,
             loc=ast_analysis.module_info.loc,
-            docstring=ast_analysis.module_info.docstring
+            docstring=ast_analysis.module_info.docstring,
+            display_label=getattr(pydeps_module, 'display_label', pydeps_module.name),
+            module_depth=getattr(pydeps_module, 'module_depth', 0),
+            degree=getattr(pydeps_module, 'degree', 0)
         )
         
         return merged
@@ -321,23 +325,21 @@ class LegacyBridge:
         return cycles
     
     def _calculate_relationship_strength(self, source: Source, target: Source) -> float:
-        """Calculate relationship strength based on coupling metrics"""
+        """Calculate relationship strength based on coupling metrics using Source properties"""
         # Base strength
         strength = 1.0
         
-        # Factor in source's total imports (more imports = weaker individual relationships)
-        if len(source.imports) > 0:
-            strength *= (1.0 + 1.0 / len(source.imports))
+        # Factor in source's total imports using in_degree property
+        if source.in_degree > 0:
+            strength *= (1.0 + 1.0 / source.in_degree)
         
-        # Factor in target's incoming dependencies (popular modules = stronger relationships)
-        if len(target.imported_by) > 0:
-            strength *= (1.0 + len(target.imported_by) * 0.1)
+        # Factor in target's incoming dependencies using out_degree property
+        if target.out_degree > 0:
+            strength *= (1.0 + target.out_degree * 0.1)
         
-        # Factor in proximity (closer modules = stronger relationships)
-        source_parts = source.name.split('.')
-        target_parts = target.name.split('.')
+        # Factor in proximity using name_parts (more efficient than split)
         common_prefix_len = 0
-        for s_part, t_part in zip(source_parts, target_parts):
+        for s_part, t_part in zip(source.name_parts, target.name_parts):
             if s_part == t_part:
                 common_prefix_len += 1
             else:
@@ -347,26 +349,38 @@ class LegacyBridge:
         if common_prefix_len > 0:
             strength *= (1.0 + common_prefix_len * 0.5)
         
+        # Factor in module depth difference (same depth = stronger relationship)
+        depth_diff = abs(source.module_depth - target.module_depth)
+        if depth_diff == 0:
+            strength *= 1.2  # Same depth bonus
+        elif depth_diff == 1:
+            strength *= 1.1  # Adjacent depth bonus
+        
         return min(strength, 5.0)  # Cap at 5.0
     
     def get_pydeps_metrics(self, dep_graph: DepGraph) -> Dict:
         """Extract metrics from pydeps analysis"""
+        # Filter out excluded and noise modules for accurate metrics
+        valid_sources = [s for s in dep_graph.sources.values() if not s.excluded and not s.is_noise()]
+        
         metrics = {
-            'total_modules': len([s for s in dep_graph.sources.values() if not s.excluded]),
-            'total_relationships': sum(len(s.imports) for s in dep_graph.sources.values() if not s.excluded),
+            'total_modules': len(valid_sources),
+            'total_relationships': sum(s.in_degree for s in valid_sources),
             'cycles_found': len(dep_graph.cycles) if hasattr(dep_graph, 'cycles') else 0,
+            'average_degree': sum(s.degree for s in valid_sources) / len(valid_sources) if valid_sources else 0,
         }
         
-        # Calculate coupling metrics
+        # Calculate coupling metrics using Source properties
         coupling_metrics = {}
-        for source in dep_graph.sources.values():
-            if not source.excluded:
-                module_id = create_module_id(source.name)
-                coupling_metrics[module_id] = {
-                    'efferent_coupling': len(source.imports),  # Outgoing dependencies
-                    'afferent_coupling': len(source.imported_by),  # Incoming dependencies
-                    'instability': self._calculate_instability(source)
-                }
+        for source in valid_sources:
+            module_id = create_module_id(source.name)
+            coupling_metrics[module_id] = {
+                'efferent_coupling': source.in_degree,  # Use property instead of len()
+                'afferent_coupling': source.out_degree,  # Use property instead of len()
+                'instability': self._calculate_instability(source),
+                'total_degree': source.degree,
+                'module_depth': source.module_depth
+            }
         
         metrics['coupling_metrics'] = coupling_metrics
         return metrics

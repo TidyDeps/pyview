@@ -120,7 +120,7 @@ class Source(object):
     def __ge__(self, other):
         return self.name >= other.name
 
-
+    # 두 개의 Source 객체를 합치는 메서드
     def __iadd__(self, other):
         """Merge other into self.
         """
@@ -136,7 +136,7 @@ class Source(object):
         self.excluded = self.excluded or other.excluded
         log.debug("iadd result: %r", self)
         return self
-
+    # 시각화용 라벨 생성
     def get_label(self, splitlength=0, rmprefix=None):
         name = self.name
         if rmprefix:
