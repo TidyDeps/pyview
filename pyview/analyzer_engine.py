@@ -619,7 +619,10 @@ class AnalyzerEngine:
         # Also detect import cycles from AST analysis if pydeps failed
         ast_import_cycles = self._detect_import_cycles_from_ast(ast_analyses)
         
-        all_cycles = pydeps_result['cycles'] + additional_cycles + ast_import_cycles
+        # Augment with module-level import cycles built from aggregated ModuleInfo.imports
+        module_import_cycles = self._detect_import_cycles_from_modules(modules)
+        
+        all_cycles = pydeps_result['cycles'] + additional_cycles + ast_import_cycles + module_import_cycles
         
         # Calculate enhanced metrics
         enhanced_metrics = self._calculate_enhanced_metrics(
@@ -657,6 +660,78 @@ class AnalyzerEngine:
         cycles.extend(call_cycles)
         
         self.logger.info(f"Found {len(cycles)} detailed cycles")
+        return cycles
+
+    def _detect_import_cycles_from_modules(self, modules: List[ModuleInfo]) -> List[Dict]:
+        """Detect import cycles using consolidated ModuleInfo.imports.
+        This complements AST-based detection and helps catch cycles missed by path-based normalization."""
+        cycles: List[Dict] = []
+        if not modules:
+            return cycles
+
+        # Build module import graph: module_name -> set(imported_module_name)
+        graph: Dict[str, Set[str]] = {}
+        for m in modules:
+            src = m.name
+            graph.setdefault(src, set())
+            for imp in getattr(m, 'imports', []) or []:
+                target = imp.module
+                if target:
+                    graph[src].add(target)
+
+        # Kosaraju to find SCCs
+        visited: Set[str] = set()
+        order: List[str] = []
+        def dfs1(n: str) -> None:
+            visited.add(n)
+            for nb in graph.get(n, set()):
+                if nb not in visited and nb in graph:
+                    dfs1(nb)
+            order.append(n)
+        for n in list(graph.keys()):
+            if n not in visited:
+                dfs1(n)
+        transpose: Dict[str, Set[str]] = {}
+        for u, nbrs in graph.items():
+            transpose.setdefault(u, set())
+            for v in nbrs:
+                transpose.setdefault(v, set()).add(u)
+        visited.clear()
+        def dfs2(n: str, comp: List[str]) -> None:
+            visited.add(n)
+            comp.append(n)
+            for nb in transpose.get(n, set()):
+                if nb not in visited:
+                    dfs2(nb, comp)
+        cycle_id = 0
+        for n in reversed(order):
+            if n not in visited:
+                comp: List[str] = []
+                dfs2(n, comp)
+                if len(comp) >= 2:
+                    paths = []
+                    for u in comp:
+                        for v in graph.get(u, set()):
+                            if v in comp:
+                                paths.append({
+                                    'from': create_module_id(u),
+                                    'to': create_module_id(v),
+                                    'relationship_type': 'import',
+                                    'strength': 1.0
+                                })
+                    cycles.append({
+                        'id': f"mod_import_cycle_{cycle_id}",
+                        'entities': [create_module_id(x) for x in comp],
+                        'paths': paths,
+                        'cycle_type': 'import',
+                        'severity': 'high' if len(comp) > 3 else 'medium',
+                        'description': f"Module import cycle involving {len(comp)} modules",
+                        'metrics': {
+                            'length': len(comp),
+                            'detection_method': 'module_list'
+                        }
+                    })
+                    cycle_id += 1
         return cycles
     
     def _detect_cycles_by_type(self, relationships: List[Relationship], cycle_type: str) -> List[Dict]:
@@ -768,8 +843,8 @@ class AnalyzerEngine:
             return cycles
         
         # Build import graph from AST analysis
-        import_graph = {}
-        file_to_module = {}
+        import_graph: Dict[str, Set[str]] = {}
+        file_to_module: Dict[str, str] = {}
         
         for analysis in ast_analyses:
             if not analysis or not analysis.file_path:
@@ -777,77 +852,105 @@ class AnalyzerEngine:
             
             module_name = self._file_path_to_module_name(analysis.file_path)
             file_to_module[analysis.file_path] = module_name
-            import_graph[module_name] = set()
+            import_graph.setdefault(module_name, set())
             
             # Extract imports from AST analysis
             for import_info in analysis.imports:
-                # Convert relative imports to absolute module names
+                # Convert relative imports to absolute module names (best-effort)
                 imported_module = self._resolve_import_name(
                     import_info.module, analysis.file_path
                 )
                 if imported_module:
                     import_graph[module_name].add(imported_module)
-        
-        # Detect cycles using DFS
-        visited = set()
-        rec_stack = set()
-        
-        def detect_cycle_dfs(node, path):
-            if node in rec_stack:
-                # Found a cycle! Find where the cycle starts
-                if node in path:
-                    cycle_start = path.index(node)
-                    cycle_nodes = path[cycle_start:] + [node]
-                    return cycle_nodes
-                else:
-                    # Node is in recursion stack but not in current path
-                    return [node, node]  # Self-loop
-            
-            if node in visited or node not in import_graph:
-                return None
-            
+
+        # Use Kosaraju's algorithm to find all strongly connected components
+        # Step 1: Order vertices by finish time
+        visited: Set[str] = set()
+        order: List[str] = []
+
+        def dfs1(node: str) -> None:
             visited.add(node)
-            rec_stack.add(node)
-            
             for neighbor in import_graph.get(node, set()):
-                result = detect_cycle_dfs(neighbor, path + [node])
-                if result:
-                    return result
-            
-            rec_stack.remove(node)
-            return None
-        
-        # Find all cycles
-        cycle_id = 0
-        for node in import_graph:
+                if neighbor not in visited and neighbor in import_graph:
+                    dfs1(neighbor)
+            order.append(node)
+
+        for node in list(import_graph.keys()):
             if node not in visited:
-                cycle_nodes = detect_cycle_dfs(node, [])
-                if cycle_nodes:
-                    # Create cycle info
-                    cycle_paths = []
-                    for i in range(len(cycle_nodes) - 1):
-                        cycle_paths.append({
-                            'from': create_module_id(cycle_nodes[i]),
-                            'to': create_module_id(cycle_nodes[i + 1]),
-                            'relationship_type': 'import',
-                            'strength': 1.0
-                        })
-                    
-                    cycle_info = {
+                dfs1(node)
+
+        # Step 2: Transpose graph
+        transpose: Dict[str, Set[str]] = {}
+        for u, neighbors in import_graph.items():
+            transpose.setdefault(u, set())
+            for v in neighbors:
+                transpose.setdefault(v, set()).add(u)
+
+        # Step 3: DFS on transposed graph to get SCCs
+        visited.clear()
+
+        def dfs2(node: str, component: List[str]) -> None:
+            visited.add(node)
+            component.append(node)
+            for neighbor in transpose.get(node, set()):
+                if neighbor not in visited:
+                    dfs2(neighbor, component)
+
+        cycle_id = 0
+        for node in reversed(order):
+            if node not in visited:
+                component: List[str] = []
+                dfs2(node, component)
+
+                # Emit cycles for SCCs with size >= 2
+                if len(component) >= 2:
+                    cycle_paths: List[Dict] = []
+                    # Add edges within the component as cycle paths
+                    for u in component:
+                        for v in import_graph.get(u, set()):
+                            if v in component:
+                                cycle_paths.append({
+                                    'from': create_module_id(u),
+                                    'to': create_module_id(v),
+                                    'relationship_type': 'import',
+                                    'strength': 1.0
+                                })
+                    cycles.append({
                         'id': f"ast_import_cycle_{cycle_id}",
-                        'entities': [create_module_id(node) for node in cycle_nodes[:-1]],
+                        'entities': [create_module_id(x) for x in component],
                         'paths': cycle_paths,
                         'cycle_type': 'import',
-                        'severity': 'high' if len(cycle_nodes) > 3 else 'medium',
-                        'description': f"AST-detected import cycle involving {len(cycle_nodes)-1} modules",
+                        'severity': 'high' if len(component) > 3 else 'medium',
+                        'description': f"AST-detected import cycle involving {len(component)} modules",
                         'metrics': {
-                            'length': len(cycle_nodes) - 1,
+                            'length': len(component),
                             'detection_method': 'ast'
                         }
-                    }
-                    cycles.append(cycle_info)
+                    })
                     cycle_id += 1
-        
+                # Handle self-loop (module importing itself)
+                elif len(component) == 1:
+                    u = component[0]
+                    if u in import_graph.get(u, set()):
+                        cycles.append({
+                            'id': f"ast_import_cycle_{cycle_id}",
+                            'entities': [create_module_id(u)],
+                            'paths': [{
+                                'from': create_module_id(u),
+                                'to': create_module_id(u),
+                                'relationship_type': 'import',
+                                'strength': 1.0
+                            }],
+                            'cycle_type': 'import',
+                            'severity': 'medium',
+                            'description': "AST-detected self import cycle",
+                            'metrics': {
+                                'length': 1,
+                                'detection_method': 'ast'
+                            }
+                        })
+                        cycle_id += 1
+
         return cycles
     
     def _file_path_to_module_name(self, file_path: str) -> str:

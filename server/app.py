@@ -247,7 +247,7 @@ async def run_analysis_task(analysis_id: str, request: AnalysisRequest):
                 max_depth=min(request.options.max_depth, 3),  # Further limit depth
                 exclude_patterns=request.options.exclude_patterns + ["tests", "__pycache__", ".git", "node_modules", ".venv"],  # Add more exclusions
                 include_stdlib=False,  # Disable stdlib to reduce complexity
-                analysis_levels=["package", "module"],  # Start with basic levels only
+                analysis_levels=["package", "module", "class", "method"],  # Include more levels for better cycle detection
                 enable_type_inference=False,  # Disable type inference for speed
                 enable_quality_metrics=False,  # Disable quality metrics to prevent hanging
                 enable_caching=False,  # Disable caching for now

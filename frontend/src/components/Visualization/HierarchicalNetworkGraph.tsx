@@ -313,6 +313,23 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           cycleNodes.add(entity);
           nodeSeverity.set(entity, severity);
           console.log(`🔄 Added cycle node: ${entity} (severity: ${severity})`);
+          
+          // mod: 접두사 제거한 버전도 추가
+          if (entity.startsWith('mod:')) {
+            const withoutPrefix = entity.substring(4);
+            cycleNodes.add(withoutPrefix);
+            nodeSeverity.set(withoutPrefix, severity);
+            console.log(`🔄 Also added without mod prefix: ${withoutPrefix}`);
+          }
+          
+          // 다른 가능한 ID 패턴들도 추가
+          if (entity.includes('.')) {
+            const parts = entity.split('.');
+            const lastPart = parts[parts.length - 1];
+            cycleNodes.add(lastPart);
+            nodeSeverity.set(lastPart, severity);
+            console.log(`🔄 Also added last part: ${lastPart}`);
+          }
         });
 
         // 순환 경로의 엣지들 추가
@@ -342,6 +359,20 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         totalNodes: cycleNodes.size, 
         totalEdges: cycleEdges.size 
       });
+      
+      // 실제 그래프 노드 ID와 비교를 위한 디버깅
+      if (data && data.nodes) {
+        console.log('🔍 Graph node IDs (first 20):', data.nodes.slice(0, 20).map((n: any) => n.id));
+        console.log('🔍 All cycle nodes:', Array.from(cycleNodes));
+        
+        // 실제 매칭 테스트
+        const moduleNodes = data.nodes.filter((n: any) => n.type === 'module');
+        console.log('🔍 Module nodes in graph:');
+        moduleNodes.forEach((node: any) => {
+          const isInCycle = cycleNodes.has(node.id);
+          console.log(`  - ${node.id} (${node.name}) -> in cycle: ${isInCycle ? '✅' : '❌'}`);
+        });
+      }
     } else {
       console.log('🔄 No cycle data received or cycles is empty');
       setCycleInfo({ 

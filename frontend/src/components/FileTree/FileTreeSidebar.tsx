@@ -60,6 +60,24 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           cycle.entities.forEach((entity: string) => {
             cycleNodes.add(entity);
             nodeSeverity.set(entity, severity);
+            console.log(`🔄 FileTree: Added cycle node: ${entity}`);
+            
+            // mod: 접두사 제거한 버전도 추가
+            if (entity.startsWith('mod:')) {
+              const withoutPrefix = entity.substring(4);
+              cycleNodes.add(withoutPrefix);
+              nodeSeverity.set(withoutPrefix, severity);
+              console.log(`🔄 FileTree: Also added without mod prefix: ${withoutPrefix}`);
+            }
+            
+            // 다른 가능한 ID 패턴들도 추가
+            if (entity.includes('.')) {
+              const parts = entity.split('.');
+              const lastPart = parts[parts.length - 1];
+              cycleNodes.add(lastPart);
+              nodeSeverity.set(lastPart, severity);
+              console.log(`🔄 FileTree: Also added last part: ${lastPart}`);
+            }
           });
         }
       });
