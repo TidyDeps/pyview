@@ -3,35 +3,36 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { Tree, Input, Card, Empty } from 'antd'
 import { 
   FolderOutlined, 
-  FolderOpenOutlined, 
   FileOutlined,
   FunctionOutlined,
   BlockOutlined,
   SearchOutlined,
   FieldBinaryOutlined,
-  ExclamationCircleOutlined,
-  WarningOutlined
+  ExclamationCircleOutlined
 } from '@ant-design/icons'
 import type { TreeProps } from 'antd/es/tree'
 
 const { Search } = Input
 
+type EntityType = 'package' | 'module' | 'class' | 'method' | 'field'
+type CycleSeverity = 'low' | 'medium' | 'high'
+
 interface FileTreeNode {
   key: string
   title: React.ReactNode
-  children?: FileTreeNode[]
-  entityType: 'package' | 'module' | 'class' | 'method' | 'field'
+  children: FileTreeNode[]
+  entityType: EntityType
   searchText: string
   nodeId: string
   isLeaf?: boolean
   isInCycle?: boolean
-  cycleSeverity?: 'low' | 'medium' | 'high'
+  cycleSeverity?: CycleSeverity
 }
 
 interface FileTreeSidebarProps {
   analysisData?: any
   cycleData?: any // 순환 참조 데이터
-  onNodeSelect?: (nodeId: string, nodeType: string) => void
+  onNodeSelect?: (nodeId: string, nodeType: EntityType) => void
   selectedNodeId?: string
   style?: React.CSSProperties
 }
@@ -43,22 +44,24 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
   selectedNodeId,
   style
 }) => {
-  const [searchValue, setSearchValue] = useState('')
-  const [expandedKeys, setExpandedKeys] = useState<string[]>([])
-  const [autoExpandParent, setAutoExpandParent] = useState(true)
+  const [searchValue, setSearchValue] = useState<string>('')
+  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([])
+  const [autoExpandParent, setAutoExpandParent] = useState<boolean>(true)
 
   // 순환 참조 정보 처리
   const cycleInfo = useMemo(() => {
     const cycleNodes = new Set<string>();
-    const nodeSeverity = new Map<string, string>();
+    const nodeSeverity = new Map<string, CycleSeverity>();
 
-    if (cycleData && cycleData.cycles) {
+    if (cycleData && Array.isArray(cycleData.cycles)) {
       cycleData.cycles.forEach((cycle: any) => {
-        const severity = cycle.severity || 'medium';
-        cycle.entities.forEach((entity: string) => {
-          cycleNodes.add(entity);
-          nodeSeverity.set(entity, severity);
-        });
+        const severity: CycleSeverity = cycle.severity || 'medium';
+        if (Array.isArray(cycle.entities)) {
+          cycle.entities.forEach((entity: string) => {
+            cycleNodes.add(entity);
+            nodeSeverity.set(entity, severity);
+          });
+        }
       });
     }
 
@@ -68,7 +71,6 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
   // 순환 참조 아이콘 렌더링
   const renderCycleIcon = (nodeId: string) => {
     if (!cycleInfo.cycleNodes.has(nodeId)) return null;
-    
     const severity = cycleInfo.nodeSeverity.get(nodeId);
     const iconStyle = {
       marginLeft: 8,
@@ -76,7 +78,6 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
       color: severity === 'high' ? '#ff4d4f' : 
              severity === 'medium' ? '#fa8c16' : '#faad14'
     };
-    
     return (
       <ExclamationCircleOutlined 
         style={iconStyle}
@@ -86,30 +87,24 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
   };
 
   // Build proper hierarchical tree structure
-  const treeData = useMemo(() => {
+  const treeData: FileTreeNode[] = useMemo(() => {
     if (!analysisData) {
-      console.log('FileTreeSidebar - No analysis data')
       return []
     }
 
-    console.log('FileTreeSidebar - Analysis data:', analysisData)
-    console.log('FileTreeSidebar - Dependency graph:', analysisData.dependency_graph)
-    
-    // Extract dependency graph from analysis data
     const dependencyGraph = analysisData.dependency_graph || {}
-    
-    // Create maps for quick lookup
-    const packageMap = new Map()
-    const moduleMap = new Map()
-    const classMap = new Map()
-    const methodMap = new Map()
-    const fieldMap = new Map()
+
+    // Use correct types for maps
+    const packageMap = new Map<string, FileTreeNode>()
+    const moduleMap = new Map<string, FileTreeNode>()
+    const classMap = new Map<string, FileTreeNode>()
+    const methodMap = new Map<string, FileTreeNode>()
+    const fieldMap = new Map<string, FileTreeNode>()
 
     // First, create all entities and populate maps
-    if (dependencyGraph.packages) {
-      console.log('FileTreeSidebar - Found packages:', dependencyGraph.packages.length)
+    if (Array.isArray(dependencyGraph.packages)) {
       dependencyGraph.packages.forEach((pkg: any) => {
-        const pkgId = pkg.id || pkg.package_id || pkg.name
+        const pkgId: string = pkg.id || pkg.package_id || pkg.name
         const packageNode: FileTreeNode = {
           key: `package_${pkgId}`,
           title: (
@@ -124,16 +119,17 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           nodeId: pkgId,
           children: [],
           isInCycle: cycleInfo.cycleNodes.has(pkgId),
-          cycleSeverity: cycleInfo.nodeSeverity.get(pkgId) as any
+          cycleSeverity: cycleInfo.nodeSeverity.get(pkgId)
         }
         packageMap.set(pkgId, packageNode)
       })
     }
 
-    if (dependencyGraph.modules) {
-      console.log('FileTreeSidebar - Found modules:', dependencyGraph.modules.length)
+    if (Array.isArray(dependencyGraph.modules)) {
       dependencyGraph.modules.forEach((mod: any) => {
-        const modId = mod.id || mod.module_id || mod.name
+        const modId: string = mod.id || mod.module_id || mod.name
+        const isInCycle = cycleInfo.cycleNodes.has(modId);
+        const cycleSeverity = cycleInfo.nodeSeverity.get(modId);
         const moduleNode: FileTreeNode = {
           key: `module_${modId}`,
           title: (
@@ -147,17 +143,16 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           searchText: mod.name || modId,
           nodeId: modId,
           children: [],
-          isInCycle: cycleInfo.cycleNodes.has(modId),
-          cycleSeverity: cycleInfo.nodeSeverity.get(modId) as any
+          isInCycle,
+          cycleSeverity
         }
         moduleMap.set(modId, moduleNode)
       })
     }
 
-    if (dependencyGraph.classes) {
-      console.log('FileTreeSidebar - Found classes:', dependencyGraph.classes.length)
+    if (Array.isArray(dependencyGraph.classes)) {
       dependencyGraph.classes.forEach((cls: any) => {
-        const clsId = cls.id || cls.class_id || cls.name
+        const clsId: string = cls.id || cls.class_id || cls.name
         const classNode: FileTreeNode = {
           key: `class_${clsId}`,
           title: (
@@ -172,16 +167,15 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           nodeId: clsId,
           children: [],
           isInCycle: cycleInfo.cycleNodes.has(clsId),
-          cycleSeverity: cycleInfo.nodeSeverity.get(clsId) as any
+          cycleSeverity: cycleInfo.nodeSeverity.get(clsId)
         }
         classMap.set(clsId, classNode)
       })
     }
 
-    if (dependencyGraph.methods) {
-      console.log('FileTreeSidebar - Found methods:', dependencyGraph.methods.length)
+    if (Array.isArray(dependencyGraph.methods)) {
       dependencyGraph.methods.forEach((method: any) => {
-        const methodId = method.id || method.method_id || method.name
+        const methodId: string = method.id || method.method_id || method.name
         const methodNode: FileTreeNode = {
           key: `method_${methodId}`,
           title: (
@@ -194,18 +188,18 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           entityType: 'method',
           searchText: method.name || methodId,
           nodeId: methodId,
+          children: [],
           isLeaf: true,
           isInCycle: cycleInfo.cycleNodes.has(methodId),
-          cycleSeverity: cycleInfo.nodeSeverity.get(methodId) as any
+          cycleSeverity: cycleInfo.nodeSeverity.get(methodId)
         }
         methodMap.set(methodId, methodNode)
       })
     }
 
-    if (dependencyGraph.fields) {
-      console.log('FileTreeSidebar - Found fields:', dependencyGraph.fields.length)
+    if (Array.isArray(dependencyGraph.fields)) {
       dependencyGraph.fields.forEach((field: any) => {
-        const fieldId = field.id || field.field_id || field.name
+        const fieldId: string = field.id || field.field_id || field.name
         const fieldNode: FileTreeNode = {
           key: `field_${fieldId}`,
           title: (
@@ -218,29 +212,27 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           entityType: 'field',
           searchText: field.name || fieldId,
           nodeId: fieldId,
+          children: [],
           isLeaf: true,
           isInCycle: cycleInfo.cycleNodes.has(fieldId),
-          cycleSeverity: cycleInfo.nodeSeverity.get(fieldId) as any
+          cycleSeverity: cycleInfo.nodeSeverity.get(fieldId)
         }
         fieldMap.set(fieldId, fieldNode)
       })
     }
 
     // Build hierarchy using direct relationships from demo data structure
-    // Package -> Module relationships (from demo data structure)
-    if (dependencyGraph.packages) {
+    if (Array.isArray(dependencyGraph.packages)) {
       dependencyGraph.packages.forEach((pkg: any) => {
-        const pkgId = pkg.id || pkg.package_id || pkg.name
+        const pkgId: string = pkg.id || pkg.package_id || pkg.name
         const packageNode = packageMap.get(pkgId)
-        
-        if (packageNode && dependencyGraph.modules) {
-          // Find modules that belong to this package by matching package_id
+        if (packageNode && Array.isArray(dependencyGraph.modules)) {
           dependencyGraph.modules.forEach((mod: any) => {
             if (mod.package_id === pkgId) {
-              const modId = mod.id || mod.module_id || mod.name
+              const modId: string = mod.id || mod.module_id || mod.name
               const moduleNode = moduleMap.get(modId)
               if (moduleNode) {
-                packageNode.children!.push(moduleNode)
+                packageNode.children.push(moduleNode)
               }
             }
           })
@@ -248,128 +240,112 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
       })
     }
 
-    // Module -> Class relationships (from demo data structure)
-    if (dependencyGraph.classes) {
+    if (Array.isArray(dependencyGraph.classes)) {
       dependencyGraph.classes.forEach((cls: any) => {
-        const clsId = cls.id || cls.class_id || cls.name
+        const clsId: string = cls.id || cls.class_id || cls.name
         const classNode = classMap.get(clsId)
-        
         if (classNode && cls.module_id) {
           const moduleNode = moduleMap.get(cls.module_id)
           if (moduleNode) {
-            moduleNode.children!.push(classNode)
+            moduleNode.children.push(classNode)
           }
         }
       })
     }
 
-    // Class -> Method relationships (from demo data structure)
-    if (dependencyGraph.methods) {
+    if (Array.isArray(dependencyGraph.methods)) {
       dependencyGraph.methods.forEach((method: any) => {
-        const methodId = method.id || method.method_id || method.name
+        const methodId: string = method.id || method.method_id || method.name
         const methodNode = methodMap.get(methodId)
-        
         if (methodNode && method.class_id) {
           const classNode = classMap.get(method.class_id)
           if (classNode) {
-            classNode.children!.push(methodNode)
+            classNode.children.push(methodNode)
           }
         }
       })
     }
 
-    // Class -> Field relationships (from demo data structure)
-    if (dependencyGraph.fields) {
+    if (Array.isArray(dependencyGraph.fields)) {
       dependencyGraph.fields.forEach((field: any) => {
-        const fieldId = field.id || field.field_id || field.name
+        const fieldId: string = field.id || field.field_id || field.name
         const fieldNode = fieldMap.get(fieldId)
-        
         if (fieldNode && field.class_id) {
           const classNode = classMap.get(field.class_id)
           if (classNode) {
-            classNode.children!.push(fieldNode)
+            classNode.children.push(fieldNode)
           }
         }
       })
     }
 
     // If no relationships exist, try to infer hierarchy from naming conventions
-    if (!analysisData.relationships || analysisData.relationships.length === 0) {
-      console.log('No relationships found, attempting to infer hierarchy from names')
-      
+    if (!Array.isArray(analysisData.relationships) || analysisData.relationships.length === 0) {
       // Try to match modules to packages based on name prefixes
-      moduleMap.forEach((moduleNode, moduleId) => {
+      moduleMap.forEach((moduleNode) => {
         const moduleName = moduleNode.searchText
-        let bestMatch = null
+        let bestMatch: FileTreeNode | null = null
         let bestMatchLength = 0
-        
-        packageMap.forEach((packageNode, packageId) => {
+        packageMap.forEach((packageNode) => {
           const packageName = packageNode.searchText
           if (moduleName.startsWith(packageName) && packageName.length > bestMatchLength) {
             bestMatch = packageNode
             bestMatchLength = packageName.length
           }
         })
-        
         if (bestMatch) {
-          bestMatch.children!.push(moduleNode)
+          (bestMatch as FileTreeNode).children.push(moduleNode)
         }
       })
 
       // Try to match classes to modules based on name prefixes
-      classMap.forEach((classNode, classId) => {
+      classMap.forEach((classNode) => {
         const className = classNode.searchText
-        let bestMatch = null
+        let bestMatch: FileTreeNode | null = null
         let bestMatchLength = 0
-        
-        moduleMap.forEach((moduleNode, moduleId) => {
+        moduleMap.forEach((moduleNode) => {
           const moduleName = moduleNode.searchText
           if (className.startsWith(moduleName) && moduleName.length > bestMatchLength) {
             bestMatch = moduleNode
             bestMatchLength = moduleName.length
           }
         })
-        
         if (bestMatch) {
-          bestMatch.children!.push(classNode)
+          (bestMatch as FileTreeNode).children.push(classNode)
         }
       })
 
       // Try to match methods to classes based on name prefixes
-      methodMap.forEach((methodNode, methodId) => {
+      methodMap.forEach((methodNode) => {
         const methodName = methodNode.searchText
-        let bestMatch = null
+        let bestMatch: FileTreeNode | null = null
         let bestMatchLength = 0
-        
-        classMap.forEach((classNode, classId) => {
+        classMap.forEach((classNode) => {
           const className = classNode.searchText
           if (methodName.startsWith(className) && className.length > bestMatchLength) {
             bestMatch = classNode
             bestMatchLength = className.length
           }
         })
-        
         if (bestMatch) {
-          bestMatch.children!.push(methodNode)
+          (bestMatch as FileTreeNode).children.push(methodNode)
         }
       })
 
       // Try to match fields to classes based on name prefixes
-      fieldMap.forEach((fieldNode, fieldId) => {
+      fieldMap.forEach((fieldNode) => {
         const fieldName = fieldNode.searchText
-        let bestMatch = null
+        let bestMatch: FileTreeNode | null = null
         let bestMatchLength = 0
-        
-        classMap.forEach((classNode, classId) => {
+        classMap.forEach((classNode) => {
           const className = classNode.searchText
           if (fieldName.startsWith(className) && className.length > bestMatchLength) {
             bestMatch = classNode
             bestMatchLength = className.length
           }
         })
-        
         if (bestMatch) {
-          bestMatch.children!.push(fieldNode)
+          (bestMatch as FileTreeNode).children.push(fieldNode)
         }
       })
     }
@@ -386,7 +362,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
     moduleMap.forEach((moduleNode) => {
       let isOrphaned = true
       packageMap.forEach((packageNode) => {
-        if (packageNode.children!.some(child => child.nodeId === moduleNode.nodeId)) {
+        if (packageNode.children.some(child => child.nodeId === moduleNode.nodeId)) {
           isOrphaned = false
         }
       })
@@ -395,16 +371,16 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
       }
     })
 
-    // Add orphaned classes (classes not contained in any module)
+    // Add orphaned classes (classes not contained in any module or package)
     classMap.forEach((classNode) => {
       let isOrphaned = true
       moduleMap.forEach((moduleNode) => {
-        if (moduleNode.children!.some(child => child.nodeId === classNode.nodeId)) {
+        if (moduleNode.children.some(child => child.nodeId === classNode.nodeId)) {
           isOrphaned = false
         }
       })
       packageMap.forEach((packageNode) => {
-        if (packageNode.children!.some(child => child.nodeId === classNode.nodeId)) {
+        if (packageNode.children.some(child => child.nodeId === classNode.nodeId)) {
           isOrphaned = false
         }
       })
@@ -417,7 +393,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
     methodMap.forEach((methodNode) => {
       let isOrphaned = true
       classMap.forEach((classNode) => {
-        if (classNode.children!.some(child => child.nodeId === methodNode.nodeId)) {
+        if (classNode.children.some(child => child.nodeId === methodNode.nodeId)) {
           isOrphaned = false
         }
       })
@@ -429,7 +405,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
     fieldMap.forEach((fieldNode) => {
       let isOrphaned = true
       classMap.forEach((classNode) => {
-        if (classNode.children!.some(child => child.nodeId === fieldNode.nodeId)) {
+        if (classNode.children.some(child => child.nodeId === fieldNode.nodeId)) {
           isOrphaned = false
         }
       })
@@ -441,14 +417,13 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
     // Sort children for better display
     const sortChildren = (nodes: FileTreeNode[]) => {
       nodes.forEach(node => {
-        if (node.children && node.children.length > 0) {
+        if (node.children.length > 0) {
           node.children.sort((a, b) => {
             // Sort by type first (packages, modules, classes, methods, fields)
-            const typeOrder = { package: 0, module: 1, class: 2, method: 3, field: 4 }
-            const typeA = typeOrder[a.entityType] || 5
-            const typeB = typeOrder[b.entityType] || 5
+            const typeOrder: Record<EntityType, number> = { package: 0, module: 1, class: 2, method: 3, field: 4 }
+            const typeA = typeOrder[a.entityType] ?? 5
+            const typeB = typeOrder[b.entityType] ?? 5
             if (typeA !== typeB) return typeA - typeB
-            
             // Then sort by name
             return a.searchText.localeCompare(b.searchText)
           })
@@ -459,49 +434,37 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
 
     sortChildren(rootNodes)
 
-    console.log('FileTreeSidebar - Built hierarchical tree with', rootNodes.length, 'root nodes')
-    console.log('FileTreeSidebar - Sample tree structure:', rootNodes.slice(0, 2))
-
     // If no root nodes found, create a simple flat list for debugging
     if (rootNodes.length === 0) {
-      console.log('FileTreeSidebar - No hierarchy built, creating simple list')
       const simpleNodes: FileTreeNode[] = []
-      
-      // Add all modules as simple list
       moduleMap.forEach((moduleNode) => {
         simpleNodes.push(moduleNode)
       })
-      
       if (simpleNodes.length === 0) {
-        // Add all packages if no modules
         packageMap.forEach((packageNode) => {
           simpleNodes.push(packageNode)
         })
       }
-      
-      console.log('FileTreeSidebar - Simple list has', simpleNodes.length, 'nodes')
       return simpleNodes
     }
 
     return rootNodes
-  }, [analysisData])
+  }, [analysisData, cycleInfo])
 
   // Filter tree data based on search
-  const filteredTreeData = useMemo(() => {
+  const filteredTreeData: FileTreeNode[] = useMemo(() => {
     if (!searchValue) return treeData
 
     const filterTree = (nodes: FileTreeNode[]): FileTreeNode[] => {
       return nodes.reduce((filtered: FileTreeNode[], node) => {
         const isMatch = node.searchText.toLowerCase().includes(searchValue.toLowerCase())
         const filteredChildren = node.children ? filterTree(node.children) : []
-        
         if (isMatch || filteredChildren.length > 0) {
           filtered.push({
             ...node,
             children: filteredChildren.length > 0 ? filteredChildren : node.children
           })
         }
-        
         return filtered
       }, [])
     }
@@ -512,8 +475,8 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
   // Auto expand matching nodes when searching
   useEffect(() => {
     if (searchValue) {
-      const getAllKeys = (nodes: FileTreeNode[]): string[] => {
-        let keys: string[] = []
+      const getAllKeys = (nodes: FileTreeNode[]): React.Key[] => {
+        let keys: React.Key[] = []
         nodes.forEach(node => {
           keys.push(node.key)
           if (node.children) {
@@ -532,21 +495,21 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
   }, [searchValue, filteredTreeData, treeData])
 
   const onExpand: TreeProps['onExpand'] = (expandedKeysValue) => {
-    setExpandedKeys(expandedKeysValue as string[])
+    setExpandedKeys(expandedKeysValue as React.Key[])
     setAutoExpandParent(false)
   }
 
   const onSelect: TreeProps['onSelect'] = (selectedKeys, info) => {
     if (selectedKeys.length > 0 && info.node) {
-      const nodeData = info.node as any
-      console.log('FileTreeSidebar - Selected node:', nodeData.nodeId, nodeData.entityType)
+      // info.node is TreeDataNode, but we need our FileTreeNode fields
+      const nodeData = info.node as any as FileTreeNode
       onNodeSelect?.(nodeData.nodeId, nodeData.entityType)
     }
   }
 
   // Highlight selected node
-  const selectedKeys = selectedNodeId ? 
-    treeData.map(node => {
+  const selectedKeys: React.Key[] = selectedNodeId ? 
+    (() => {
       const findMatchingKey = (nodes: FileTreeNode[]): string | null => {
         for (const node of nodes) {
           if (node.nodeId === selectedNodeId) return node.key
@@ -557,10 +520,9 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
         }
         return null
       }
-      return findMatchingKey([node])
-    }).filter(key => key !== null) : []
-
-  console.log('FileTreeSidebar - Rendering with tree data:', treeData.length, 'nodes')
+      const keys: (string | null)[] = treeData.map(node => findMatchingKey([node]))
+      return keys.filter((key): key is string => key !== null)
+    })() : []
 
   return (
     <div style={{ height: '100%', ...style }}>
@@ -593,7 +555,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
               autoExpandParent={autoExpandParent}
               onSelect={onSelect}
               selectedKeys={selectedKeys}
-              treeData={filteredTreeData}
+              treeData={filteredTreeData as any}
               blockNode
             />
           ) : (

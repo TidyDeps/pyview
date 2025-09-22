@@ -615,7 +615,11 @@ class AnalyzerEngine:
         
         # Detect additional cycles at class/method level
         additional_cycles = self._detect_detailed_cycles(all_classes, all_methods, relationships)
-        all_cycles = pydeps_result['cycles'] + additional_cycles
+        
+        # Also detect import cycles from AST analysis if pydeps failed
+        ast_import_cycles = self._detect_import_cycles_from_ast(ast_analyses)
+        
+        all_cycles = pydeps_result['cycles'] + additional_cycles + ast_import_cycles
         
         # Calculate enhanced metrics
         enhanced_metrics = self._calculate_enhanced_metrics(
@@ -755,6 +759,118 @@ class AnalyzerEngine:
                     cycles.append(cycle_info)
         
         return cycles
+    
+    def _detect_import_cycles_from_ast(self, ast_analyses: List[FileAnalysis]) -> List[Dict]:
+        """Detect import cycles from AST analysis when pydeps fails"""
+        cycles = []
+        
+        if not ast_analyses:
+            return cycles
+        
+        # Build import graph from AST analysis
+        import_graph = {}
+        file_to_module = {}
+        
+        for analysis in ast_analyses:
+            if not analysis or not analysis.file_path:
+                continue
+            
+            module_name = self._file_path_to_module_name(analysis.file_path)
+            file_to_module[analysis.file_path] = module_name
+            import_graph[module_name] = set()
+            
+            # Extract imports from AST analysis
+            for import_info in analysis.imports:
+                # Convert relative imports to absolute module names
+                imported_module = self._resolve_import_name(
+                    import_info.module, analysis.file_path
+                )
+                if imported_module:
+                    import_graph[module_name].add(imported_module)
+        
+        # Detect cycles using DFS
+        visited = set()
+        rec_stack = set()
+        
+        def detect_cycle_dfs(node, path):
+            if node in rec_stack:
+                # Found a cycle! Find where the cycle starts
+                if node in path:
+                    cycle_start = path.index(node)
+                    cycle_nodes = path[cycle_start:] + [node]
+                    return cycle_nodes
+                else:
+                    # Node is in recursion stack but not in current path
+                    return [node, node]  # Self-loop
+            
+            if node in visited or node not in import_graph:
+                return None
+            
+            visited.add(node)
+            rec_stack.add(node)
+            
+            for neighbor in import_graph.get(node, set()):
+                result = detect_cycle_dfs(neighbor, path + [node])
+                if result:
+                    return result
+            
+            rec_stack.remove(node)
+            return None
+        
+        # Find all cycles
+        cycle_id = 0
+        for node in import_graph:
+            if node not in visited:
+                cycle_nodes = detect_cycle_dfs(node, [])
+                if cycle_nodes:
+                    # Create cycle info
+                    cycle_paths = []
+                    for i in range(len(cycle_nodes) - 1):
+                        cycle_paths.append({
+                            'from': create_module_id(cycle_nodes[i]),
+                            'to': create_module_id(cycle_nodes[i + 1]),
+                            'relationship_type': 'import',
+                            'strength': 1.0
+                        })
+                    
+                    cycle_info = {
+                        'id': f"ast_import_cycle_{cycle_id}",
+                        'entities': [create_module_id(node) for node in cycle_nodes[:-1]],
+                        'paths': cycle_paths,
+                        'cycle_type': 'import',
+                        'severity': 'high' if len(cycle_nodes) > 3 else 'medium',
+                        'description': f"AST-detected import cycle involving {len(cycle_nodes)-1} modules",
+                        'metrics': {
+                            'length': len(cycle_nodes) - 1,
+                            'detection_method': 'ast'
+                        }
+                    }
+                    cycles.append(cycle_info)
+                    cycle_id += 1
+        
+        return cycles
+    
+    def _file_path_to_module_name(self, file_path: str) -> str:
+        """Convert file path to module name"""
+        # Simple conversion: remove .py extension and convert path separators to dots
+        if file_path.endswith('.py'):
+            module_path = file_path[:-3]
+        else:
+            module_path = file_path
+        
+        # Convert to module name
+        import os
+        module_name = os.path.basename(module_path)
+        return module_name
+    
+    def _resolve_import_name(self, import_name: str, current_file: str) -> Optional[str]:
+        """Resolve import name to absolute module name"""
+        # For now, return the import name as is
+        # In a full implementation, this would handle relative imports properly
+        if import_name.startswith('.'):
+            # Relative import - for now, just strip the dot
+            return import_name.lstrip('.')
+        return import_name
     
     def _calculate_enhanced_metrics(self, packages: List[PackageInfo], modules: List[ModuleInfo],
                                   classes: List[ClassInfo], methods: List[MethodInfo],

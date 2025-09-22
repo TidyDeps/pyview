@@ -37,6 +37,18 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [analysisResults, setAnalysisResults] = useState<any>(null)
 
+  // 순환참조 데이터 추출 함수
+  const extractCycleData = (analysisResults: any) => {
+    if (!analysisResults || !analysisResults.cycles) {
+      return { cycles: [] };
+    }
+    
+    console.log('📊 Extracted cycle data:', analysisResults.cycles);
+    return {
+      cycles: analysisResults.cycles
+    };
+  };
+
   // Load analysis data
   useEffect(() => {
     if (!analysisId) return
@@ -49,6 +61,10 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
         setLoadingProgress(10)
         
         const results = await ApiService.getAnalysisResults(analysisId)
+        
+        // Log cycle data for debugging
+        console.log('🔍 Analysis results received:', results)
+        console.log('🔄 Cycle data in results:', results?.cycles)
         
         // Store raw analysis results for file tree
         setAnalysisResults(results)
@@ -692,6 +708,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
           <Col xs={24} sm={6} md={6} lg={5}>
             <FileTreeSidebar
               analysisData={analysisResults}
+              cycleData={extractCycleData(analysisResults)}
               onNodeSelect={handleFileTreeNodeSelect}
               selectedNodeId={selectedNodeId || undefined}
               style={{ height: 'calc(100vh - 200px)' }}
@@ -704,6 +721,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
           {/* 계층형 네트워크 그래프 */}
           <HierarchicalNetworkGraph
             data={graphData || undefined}
+            cycleData={extractCycleData(analysisResults)}
             onNodeClick={handleGraphNodeClick}
             selectedNodeId={selectedNodeId || undefined}
           />

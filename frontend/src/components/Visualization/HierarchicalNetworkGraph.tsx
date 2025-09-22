@@ -289,28 +289,48 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
   // 순환 참조 데이터 처리
   useEffect(() => {
+    console.log('🔄 HierarchicalNetworkGraph received cycleData:', cycleData);
+    
     if (cycleData && cycleData.cycles) {
       const cycleNodes = new Set<string>();
       const cycleEdges = new Set<string>();
       const nodeSeverity = new Map<string, string>();
       const edgeSeverity = new Map<string, string>();
 
-      cycleData.cycles.forEach((cycle: any) => {
+      console.log('🔄 Processing cycles:', cycleData.cycles);
+
+      cycleData.cycles.forEach((cycle: any, index: number) => {
         const severity = cycle.severity || 'medium';
+        console.log(`🔄 Processing cycle ${index + 1}:`, {
+          id: cycle.id,
+          entities: cycle.entities,
+          severity: severity,
+          cycle_type: cycle.cycle_type
+        });
         
         // 순환에 포함된 모든 엔티티 추가
         cycle.entities.forEach((entity: string) => {
           cycleNodes.add(entity);
           nodeSeverity.set(entity, severity);
+          console.log(`🔄 Added cycle node: ${entity} (severity: ${severity})`);
         });
 
         // 순환 경로의 엣지들 추가
         if (cycle.paths) {
           cycle.paths.forEach((path: any) => {
-            for (let i = 0; i < path.nodes.length - 1; i++) {
-              const edgeId = `${path.nodes[i]}-${path.nodes[i + 1]}`;
+            // cycle.paths 구조에 따라 처리 방식을 조정
+            if (path.from && path.to) {
+              // {from: string, to: string} 형태
+              const edgeId = `${path.from}-${path.to}`;
               cycleEdges.add(edgeId);
               edgeSeverity.set(edgeId, severity);
+            } else if (path.nodes && Array.isArray(path.nodes)) {
+              // {nodes: string[]} 형태
+              for (let i = 0; i < path.nodes.length - 1; i++) {
+                const edgeId = `${path.nodes[i]}-${path.nodes[i + 1]}`;
+                cycleEdges.add(edgeId);
+                edgeSeverity.set(edgeId, severity);
+              }
             }
           });
         }
@@ -318,8 +338,17 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
       setCycleInfo({ cycleNodes, cycleEdges, nodeSeverity, edgeSeverity });
       console.log('🔄 Cycle info processed:', { 
-        nodes: cycleNodes.size, 
-        edges: cycleEdges.size 
+        cycleNodes: Array.from(cycleNodes),
+        totalNodes: cycleNodes.size, 
+        totalEdges: cycleEdges.size 
+      });
+    } else {
+      console.log('🔄 No cycle data received or cycles is empty');
+      setCycleInfo({ 
+        cycleNodes: new Set(), 
+        cycleEdges: new Set(), 
+        nodeSeverity: new Map(), 
+        edgeSeverity: new Map() 
       });
     }
   }, [cycleData]);
