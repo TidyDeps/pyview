@@ -105,12 +105,15 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
     if (Array.isArray(dependencyGraph.packages)) {
       dependencyGraph.packages.forEach((pkg: any) => {
         const pkgId: string = pkg.id || pkg.package_id || pkg.name
+        const isInCycle = cycleInfo.cycleNodes.has(pkgId);
         const packageNode: FileTreeNode = {
           key: `package_${pkgId}`,
           title: (
             <span>
               <FolderOutlined style={{ marginRight: 8, color: '#1890ff' }} />
-              {pkg.name || pkgId}
+              <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
+                {pkg.name || pkgId}
+              </span>
               {renderCycleIcon(pkgId)}
             </span>
           ),
@@ -118,7 +121,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           searchText: pkg.name || pkgId,
           nodeId: pkgId,
           children: [],
-          isInCycle: cycleInfo.cycleNodes.has(pkgId),
+          isInCycle,
           cycleSeverity: cycleInfo.nodeSeverity.get(pkgId)
         }
         packageMap.set(pkgId, packageNode)
@@ -135,7 +138,9 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           title: (
             <span>
               <FileOutlined style={{ marginRight: 8, color: '#52c41a' }} />
-              {mod.name || modId}
+              <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
+                {mod.name || modId}
+              </span>
               {renderCycleIcon(modId)}
             </span>
           ),
@@ -153,12 +158,15 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
     if (Array.isArray(dependencyGraph.classes)) {
       dependencyGraph.classes.forEach((cls: any) => {
         const clsId: string = cls.id || cls.class_id || cls.name
+        const isInCycle = cycleInfo.cycleNodes.has(clsId);
         const classNode: FileTreeNode = {
           key: `class_${clsId}`,
           title: (
             <span>
               <BlockOutlined style={{ marginRight: 8, color: '#fa8c16' }} />
-              {cls.name || clsId}
+              <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
+                {cls.name || clsId}
+              </span>
               {renderCycleIcon(clsId)}
             </span>
           ),
@@ -166,7 +174,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           searchText: cls.name || clsId,
           nodeId: clsId,
           children: [],
-          isInCycle: cycleInfo.cycleNodes.has(clsId),
+          isInCycle,
           cycleSeverity: cycleInfo.nodeSeverity.get(clsId)
         }
         classMap.set(clsId, classNode)
@@ -176,12 +184,15 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
     if (Array.isArray(dependencyGraph.methods)) {
       dependencyGraph.methods.forEach((method: any) => {
         const methodId: string = method.id || method.method_id || method.name
+        const isInCycle = cycleInfo.cycleNodes.has(methodId);
         const methodNode: FileTreeNode = {
           key: `method_${methodId}`,
           title: (
             <span>
               <FunctionOutlined style={{ marginRight: 8, color: '#eb2f96' }} />
-              {method.name || methodId}
+              <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
+                {method.name || methodId}
+              </span>
               {renderCycleIcon(methodId)}
             </span>
           ),
@@ -190,7 +201,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           nodeId: methodId,
           children: [],
           isLeaf: true,
-          isInCycle: cycleInfo.cycleNodes.has(methodId),
+          isInCycle,
           cycleSeverity: cycleInfo.nodeSeverity.get(methodId)
         }
         methodMap.set(methodId, methodNode)
@@ -200,12 +211,15 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
     if (Array.isArray(dependencyGraph.fields)) {
       dependencyGraph.fields.forEach((field: any) => {
         const fieldId: string = field.id || field.field_id || field.name
+        const isInCycle = cycleInfo.cycleNodes.has(fieldId);
         const fieldNode: FileTreeNode = {
           key: `field_${fieldId}`,
           title: (
             <span>
               <FieldBinaryOutlined style={{ marginRight: 8, color: '#722ed1' }} />
-              {field.name || fieldId}
+              <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
+                {field.name || fieldId}
+              </span>
               {renderCycleIcon(fieldId)}
             </span>
           ),
@@ -214,7 +228,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           nodeId: fieldId,
           children: [],
           isLeaf: true,
-          isInCycle: cycleInfo.cycleNodes.has(fieldId),
+          isInCycle,
           cycleSeverity: cycleInfo.nodeSeverity.get(fieldId)
         }
         fieldMap.set(fieldId, fieldNode)
