@@ -29,8 +29,6 @@ class EntityType(Enum):
     CLASS = "class"
     METHOD = "method"
     FIELD = "field"
-    FUNCTION = "function"
-
 
 @dataclass
 class ImportInfo:
