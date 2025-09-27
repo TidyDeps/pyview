@@ -58,26 +58,29 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
         setLoading(true)
         setError(null)
         setLoadingStage('Fetching analysis results...')
-        setLoadingProgress(10)
-        
+        setLoadingProgress(5)
+
         const results = await ApiService.getAnalysisResults(analysisId)
-        
+
         // Log cycle data for debugging
         console.log('🔍 Analysis results received:', results)
         console.log('🔄 Cycle data in results:', results?.cycles)
-        
+
         // Store raw analysis results for file tree
         setAnalysisResults(results)
-        setLoadingProgress(30)
-        
+        setLoadingProgress(10)
+
         // Transform backend data to graph format with progress
         setLoadingStage('Processing graph data...')
-        setLoadingProgress(50)
-        
+        setLoadingProgress(15)
+
         // Use setTimeout to allow UI to update before heavy computation
         await new Promise(resolve => setTimeout(resolve, 100))
-        
-        const transformedData = await transformAnalysisToGraphAsync(results)
+
+        const transformedData = await transformAnalysisToGraphAsync(results, (progress: number, stage: string) => {
+          setLoadingProgress(15 + progress * 80) // 15% ~ 95%
+          setLoadingStage(stage)
+        })
         setGraphData(transformedData)
         
         setLoadingProgress(100)
@@ -326,7 +329,10 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
   }
 
   // Async version with progress updates and data limiting
-  const transformAnalysisToGraphAsync = async (analysisResults: any): Promise<GraphData> => {
+  const transformAnalysisToGraphAsync = async (
+    analysisResults: any,
+    onProgress?: (progress: number, stage: string) => void
+  ): Promise<GraphData> => {
     const nodes: GraphData['nodes'] = []
     const edges: GraphData['edges'] = []
 
@@ -342,6 +348,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     if (asyncDependencyGraph.packages) {
       const packages = asyncDependencyGraph.packages
       console.log(`Processing ${packages.length} packages`)
+      onProgress?.(0.1, 'Processing packages...')
+      await new Promise(resolve => setTimeout(resolve, 300))
       
       for (let i = 0; i < packages.length; i += CHUNK_SIZE) {
         const chunk = packages.slice(i, i + CHUNK_SIZE)
@@ -371,6 +379,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     if (asyncDependencyGraph.modules) {
       const modules = asyncDependencyGraph.modules
       console.log(`Processing ${modules.length} modules`)
+      onProgress?.(0.4, 'Processing modules...')
+      await new Promise(resolve => setTimeout(resolve, 300))
       
       for (let i = 0; i < modules.length; i += CHUNK_SIZE) {
         const chunk = modules.slice(i, i + CHUNK_SIZE)
@@ -462,6 +472,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     if (asyncDependencyGraph.fields) {
       const fields = asyncDependencyGraph.fields
       console.log(`Processing ${fields.length} fields`)
+      onProgress?.(0.7, 'Processing fields...')
+      await new Promise(resolve => setTimeout(resolve, 300))
       
       for (let i = 0; i < fields.length; i += CHUNK_SIZE) {
         const chunk = fields.slice(i, i + CHUNK_SIZE)
@@ -490,6 +502,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
 
     // Extract relationships from module imports and class relationships
     console.log('Extracting relationships from dependency graph...')
+    onProgress?.(0.8, 'Building relationships...')
+    await new Promise(resolve => setTimeout(resolve, 300))
     
     const nodeIds = new Set(nodes.map(n => n.id))
     let validEdges = 0
@@ -630,6 +644,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     console.log(`Sample edges:`, edges.slice(0, 5))
 
     console.log(`Final async graph data: ${nodes.length} nodes, ${edges.length} edges`)
+    onProgress?.(1.0, 'Finalizing graph...')
+    await new Promise(resolve => setTimeout(resolve, 200))
     return { nodes, edges }
   }
 
