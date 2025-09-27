@@ -396,7 +396,12 @@ class AnalyzerEngine:
 
         # 3단계: 상세한 순환 참조 탐지 (클래스/메소드 레벨까지)                                # pydeps 모듈 레벨 순환 참조에 더해 상세 레벨 순환 참조 탐지
         additional_cycles = self._detect_detailed_cycles(all_classes, all_methods, relationships)
-        all_cycles = pydeps_result['cycles'] + additional_cycles                               # 모든 레벨의 순환 참조 통합
+        # pydeps 실패시 AST 분석으로부터 import 순환 참조 추가 탐
+        ast_import_cycles = self._detect_import_cycles_from_ast(ast_analyses)
+        
+        # 집계된 ModuleInfo.imports로 구축한 모듈 레벨 import 순환으로 보강 
+        module_import_cycles = self._detect_import_cycles_from_modules(modules)
+        all_cycles = pydeps_result['cycles'] + additional_cycles + ast_import_cycles + module_import_cycles                              # 모든 레벨의 순환 참조 통합
 
         # 4단계: 향상된 메트릭 계산 (모든 엔티티에 대한 품질 지표)                             # 통합된 데이터로 포괄적인 품질 메트릭 계산
         enhanced_metrics = self._calculate_enhanced_metrics(
