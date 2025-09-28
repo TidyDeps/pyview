@@ -12,7 +12,6 @@ interface QualityMetricsPageProps {
 
 const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) => {
   const [metrics, setMetrics] = useState<QualityMetrics[]>([]);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (analysisId) {
@@ -22,15 +21,12 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
 
   const fetchMetrics = async () => {
     if (!analysisId) return;
-    
-    setLoading(true);
+
     try {
       const response = await ApiService.getQualityMetrics(analysisId);
       setMetrics(response);
     } catch (error) {
       console.error('Failed to fetch quality metrics:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -246,7 +242,6 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
           columns={columns}
           dataSource={metrics}
           rowKey="entity_id"
-          loading={loading}
           pagination={{ pageSize: 10, showSizeChanger: true }}
           size="small"
         />
