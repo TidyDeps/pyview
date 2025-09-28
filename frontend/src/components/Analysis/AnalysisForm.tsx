@@ -8,7 +8,6 @@ import {
   Space,
   InputNumber,
   Switch,
-  Select,
   Tag,
   Divider,
   Typography
@@ -16,9 +15,7 @@ import {
 import { FolderOpenOutlined, PlayCircleOutlined } from '@ant-design/icons'
 import type { AnalysisRequest, AnalysisOptions } from '@/types/api'
 
-const { TextArea } = Input
 const { Title, Text } = Typography
-const { Option } = Select
 
 interface AnalysisFormProps {
   onSubmit: (request: AnalysisRequest) => void
@@ -30,13 +27,6 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
   const [excludePatterns, setExcludePatterns] = useState<string[]>([])
   const [patternInput, setPatternInput] = useState('')
 
-  const analysisLevels = [
-    { value: 'package', label: 'Package Level' },
-    { value: 'module', label: 'Module Level' },
-    { value: 'class', label: 'Class Level' },
-    { value: 'method', label: 'Method Level' },
-    { value: 'field', label: 'Field Level' },
-  ]
 
   const handleAddPattern = () => {
     if (patternInput.trim() && !excludePatterns.includes(patternInput.trim())) {
@@ -54,9 +44,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
       max_depth: values.max_depth || 10,
       exclude_patterns: excludePatterns,
       include_stdlib: values.include_stdlib || false,
-      analysis_levels: values.analysis_levels || ['package', 'module', 'class'],
       enable_type_inference: values.enable_type_inference || true,
-      max_workers: values.max_workers || 4
     }
 
     const request: AnalysisRequest = {
@@ -76,9 +64,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
         initialValues={{
           max_depth: 10,
           include_stdlib: false,
-          analysis_levels: ['package', 'module', 'class'],
           enable_type_inference: true,
-          max_workers: 4
         }}
       >
         <Title level={4}>Project Settings</Title>
@@ -98,23 +84,6 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
         
         <Title level={4}>Analysis Options</Title>
 
-        <Form.Item
-          name="analysis_levels"
-          label="Analysis Levels"
-          tooltip="Select which levels of the codebase to analyze"
-        >
-          <Select
-            mode="multiple"
-            placeholder="Select analysis levels"
-            style={{ width: '100%' }}
-          >
-            {analysisLevels.map(level => (
-              <Option key={level.value} value={level.value}>
-                {level.label}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
 
         <Space style={{ width: '100%' }} size="large">
           <Form.Item
@@ -125,13 +94,6 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
             <InputNumber min={1} max={50} />
           </Form.Item>
 
-          <Form.Item
-            name="max_workers"
-            label="Workers"
-            tooltip="Number of parallel workers"
-          >
-            <InputNumber min={1} max={16} />
-          </Form.Item>
         </Space>
 
         <Form.Item label="Exclude Patterns">
