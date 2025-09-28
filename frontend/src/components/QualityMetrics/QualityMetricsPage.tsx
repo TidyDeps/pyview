@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Table, Progress, Tag, Typography, Statistic, Empty } from 'antd';
-import { BugOutlined, CheckCircleOutlined, WarningOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Table, Progress, Tag, Typography, Statistic, Empty, Select, Space } from 'antd';
+import { BugOutlined, CheckCircleOutlined, WarningOutlined, FilterOutlined } from '@ant-design/icons';
 import { QualityMetrics } from '../../types/api';
 import ApiService from '../../services/api';
 
@@ -12,6 +12,11 @@ interface QualityMetricsPageProps {
 
 const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) => {
   const [metrics, setMetrics] = useState<QualityMetrics[]>([]);
+  const [filteredMetrics, setFilteredMetrics] = useState<QualityMetrics[]>([]);
+  const [gradeFilter, setGradeFilter] = useState<string | undefined>(undefined);
+  const [entityTypeFilter, setEntityTypeFilter] = useState<string | undefined>(undefined);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     if (analysisId) {
@@ -25,10 +30,27 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
     try {
       const response = await ApiService.getQualityMetrics(analysisId);
       setMetrics(response);
+      setFilteredMetrics(response);
     } catch (error) {
       console.error('Failed to fetch quality metrics:', error);
     }
   };
+
+  // Filter metrics when filters change
+  useEffect(() => {
+    let filtered = metrics;
+    
+    if (gradeFilter) {
+      filtered = filtered.filter(metric => metric.quality_grade === gradeFilter);
+    }
+    
+    if (entityTypeFilter) {
+      filtered = filtered.filter(metric => metric.entity_type === entityTypeFilter);
+    }
+    
+    setFilteredMetrics(filtered);
+    setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
+  }, [metrics, gradeFilter, entityTypeFilter]);
 
   const getGradeColor = (grade: string) => {
     switch (grade) {
@@ -237,13 +259,65 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
       </Card>
 
       {/* Metrics Table */}
-      <Card title="Detailed Quality Metrics" size="small">
+      <Card 
+        title="Detailed Quality Metrics" 
+        size="small"
+        extra={
+          <Space>
+            <FilterOutlined />
+            <Select
+              placeholder="Filter by Grade"
+              allowClear
+              style={{ width: 120 }}
+              value={gradeFilter}
+              onChange={setGradeFilter}
+            >
+              <Select.Option value="A">Grade A</Select.Option>
+              <Select.Option value="B">Grade B</Select.Option>
+              <Select.Option value="C">Grade C</Select.Option>
+              <Select.Option value="D">Grade D</Select.Option>
+              <Select.Option value="F">Grade F</Select.Option>
+            </Select>
+            <Select
+              placeholder="Filter by Type"
+              allowClear
+              style={{ width: 120 }}
+              value={entityTypeFilter}
+              onChange={setEntityTypeFilter}
+            >
+              <Select.Option value="module">Module</Select.Option>
+              <Select.Option value="class">Class</Select.Option>
+              <Select.Option value="method">Method</Select.Option>
+            </Select>
+          </Space>
+        }
+      >
         <Table
           columns={columns}
-          dataSource={metrics}
+          dataSource={filteredMetrics}
           rowKey="entity_id"
-          pagination={{ pageSize: 10, showSizeChanger: true }}
+          pagination={{
+            current: currentPage,
+            pageSize: pageSize,
+            total: filteredMetrics.length,
+            showSizeChanger: true,
+            showTotal: (total, range) => 
+              `${range[0]}-${range[1]} of ${total} items`,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            onChange: (page, size) => {
+              setCurrentPage(page);
+              if (size !== pageSize) {
+                setPageSize(size);
+              }
+            },
+            onShowSizeChange: (current, size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            },
+            hideOnSinglePage: false
+          }}
           size="small"
+          scroll={{ x: 'max-content' }}
         />
       </Card>
     </div>
