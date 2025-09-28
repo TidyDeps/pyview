@@ -94,7 +94,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   // 고정 모드 설정
   const highlightMode = true; // 하이라이트 모드 고정
   const enableClustering = true; // 클러스터링 고정 설정
-  const [containerPadding, setContainerPadding] = useState(30);
   
   // 계층적 노드 구조
   const [hierarchicalData, setHierarchicalData] = useState<{
@@ -441,7 +440,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         cyInstanceRef.current = null;
       }
     };
-  }, [hierarchicalData, viewLevel, expandedNodes, containerPadding]);
+  }, [hierarchicalData, viewLevel, expandedNodes]);
 
   // Handle external node selection (from file tree)
   useEffect(() => {
@@ -1072,7 +1071,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'border-opacity': 0.8,
         'content': '',  // 클러스터 라벨 숨김
         'text-opacity': 0,  // 텍스트 완전 숨김
-        'padding': `${containerPadding * 1.3}px`,
+        'padding': '39px',
         'width': 300,
         'height': 200,
         'z-index': 1,
@@ -1094,7 +1093,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'border-opacity': 0.7,
         'content': '',  // 클러스터 라벨 숨김
         'text-opacity': 0,  // 텍스트 완전 숨김
-        'padding': `${Math.round(containerPadding * 1.0)}px`,
+        'padding': '30px',
         'width': 220,
         'height': 140,
         'z-index': 2,
@@ -1115,7 +1114,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'border-opacity': 0.6,
         'content': '',  // 클러스터 라벨 숨김
         'text-opacity': 0,  // 텍스트 완전 숨김
-        'padding': `${Math.round(containerPadding * 0.7)}px`,
+        'padding': '21px',
         'width': 150,
         'height': 100,
         'z-index': 3,
@@ -1578,14 +1577,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           {/* 가운데: 기타 컨트롤들 */}
           <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}>
             <Space wrap>
-              <span style={{ fontSize: 12 }}>여백:</span>
-              <Slider 
-                min={10} 
-                max={50} 
-                value={containerPadding} 
-                onChange={setContainerPadding}
-                style={{ width: 80 }}
-              />
               
               <Button size="small" onClick={expandAll} icon={<ExpandOutlined />}>
                 Expand All
