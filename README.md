@@ -139,6 +139,43 @@ http://localhost:3000
 
 프로젝트 경로를 입력하고 분석 옵션을 설정한 후, **Start Analysis** 버튼을 클릭하세요!
 
+## 🪟 Windows 사용자 주의사항
+
+### 필수 설치 및 설정
+```powershell
+# Node.js 설치 확인
+node --version
+npm --version
+
+# 인코딩 설정 (한글/이모지 오류 방지)
+$env:PYTHONIOENCODING="utf-8"
+
+# FastAPI 의존성 설치
+pip install fastapi uvicorn
+```
+
+### 자주 발생하는 문제 해결
+1. **"npm이 설치되지 않았습니다" 오류**
+   - Node.js 재설치 시 "Add to PATH" 옵션 체크 필수
+   - 설치 후 PowerShell 재시작 필요
+
+2. **인코딩 오류 (cp949 codec 오류)**
+   - PowerShell에서 `$env:PYTHONIOENCODING="utf-8"` 실행 후 재시도
+
+3. **포트 충돌 오류**
+   ```powershell
+   # 사용 중인 포트 확인
+   netstat -ano | findstr :3000
+   netstat -ano | findstr :8000
+   ```
+
+4. **uvicorn 모듈 없음 오류**
+   ```powershell
+   pip install -r requirements.txt
+   # 또는 개별 설치
+   pip install fastapi uvicorn[standard]
+   ```
+
 <br/>
 <br/>
 <br/>
