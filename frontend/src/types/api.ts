@@ -59,15 +59,6 @@ export interface SearchResponse {
   results: SearchResult[]
 }
 
-export interface ProgressUpdate {
-  analysis_id: string
-  stage: string
-  progress: number
-  message: string
-  current_file?: string
-  files_processed?: number
-  total_files?: number
-}
 
 export interface ErrorResponse {
   error: string

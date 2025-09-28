@@ -19,7 +19,6 @@ const App: React.FC = () => {
     currentAnalysis,
     isLoading,
     error,
-    progress,
     startAnalysis,
     clearError
   } = useAnalysis()
@@ -49,11 +48,10 @@ const App: React.FC = () => {
                 loading={isLoading}
               />
             </div>
-            {(currentAnalysis || progress || error) && (
+            {(currentAnalysis || error) && (
               <div style={{ flex: 1, minWidth: '400px' }}>
                 <ProgressDisplay
                   analysis={currentAnalysis}
-                  progress={progress}
                   error={error}
                 />
               </div>

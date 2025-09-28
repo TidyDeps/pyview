@@ -1,12 +1,10 @@
 // React Hook for Analysis Management
 import { useState, useCallback } from 'react'
 import { ApiService } from '@/services/api'
-import { WebSocketService } from '@/services/websocket'
 import type {
   AnalysisRequest,
   AnalysisResponse,
   AnalysisStatusResponse,
-  ProgressUpdate
 } from '@/types/api'
 
 interface UseAnalysisResult {
@@ -14,7 +12,6 @@ interface UseAnalysisResult {
   currentAnalysis: AnalysisStatusResponse | null
   isLoading: boolean
   error: string | null
-  progress: ProgressUpdate | null
   startAnalysis: (request: AnalysisRequest) => Promise<void>
   getAnalysisStatus: (analysisId: string) => Promise<void>
   loadAllAnalyses: () => Promise<void>
@@ -27,8 +24,6 @@ export const useAnalysis = (): UseAnalysisResult => {
   const [currentAnalysis, setCurrentAnalysis] = useState<AnalysisStatusResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [progress, setProgress] = useState<ProgressUpdate | null>(null)
-  const [wsService, setWsService] = useState<WebSocketService | null>(null)
 
   const clearError = useCallback(() => {
     setError(null)
@@ -38,25 +33,10 @@ export const useAnalysis = (): UseAnalysisResult => {
     try {
       setIsLoading(true)
       setError(null)
-      setProgress(null)
 
       const response: AnalysisResponse = await ApiService.startAnalysis(request)
       
       if (response.analysis_id) {
-        // Set up WebSocket for real-time updates
-        const ws = new WebSocketService(response.analysis_id)
-        await ws.connect()
-        
-        ws.onProgress((update: ProgressUpdate) => {
-          setProgress(update)
-        })
-        
-        ws.onError((errorMsg: string) => {
-          setError(errorMsg)
-        })
-        
-        setWsService(ws)
-
         // Poll for status updates
         const statusInterval = setInterval(async () => {
           try {
@@ -65,10 +45,7 @@ export const useAnalysis = (): UseAnalysisResult => {
             
             if (status.status === 'completed' || status.status === 'failed') {
               clearInterval(statusInterval)
-              ws.disconnect()
-              setWsService(null)
-              setIsLoading(false) // Make sure to stop loading
-              setProgress(null)   // Clear progress updates
+              setIsLoading(false)
               if (status.status === 'failed') {
                 setError(status.error || 'Analysis failed')
               }
@@ -116,22 +93,19 @@ export const useAnalysis = (): UseAnalysisResult => {
       setAnalyses(prev => prev.filter(a => a.analysis_id !== analysisId))
       if (currentAnalysis?.analysis_id === analysisId) {
         setCurrentAnalysis(null)
-        wsService?.disconnect()
-        setWsService(null)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete analysis')
     } finally {
       setIsLoading(false)
     }
-  }, [currentAnalysis, wsService])
+  }, [currentAnalysis])
 
   return {
     analyses,
     currentAnalysis,
     isLoading,
     error,
-    progress,
     startAnalysis,
     getAnalysisStatus,
     loadAllAnalyses,
