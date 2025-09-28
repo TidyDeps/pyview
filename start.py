@@ -23,9 +23,17 @@ def check_requirements():
         return False
 
     # npm 확인
-    try:
-        subprocess.run(['npm', '--version'], check=True, capture_output=True)
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    npm_commands = ['npm', 'npm.cmd']  # Windows에서는 npm.cmd
+    npm_found = False
+    for npm_cmd in npm_commands:
+        try:
+            subprocess.run([npm_cmd, '--version'], check=True, capture_output=True)
+            npm_found = True
+            break
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            continue
+
+    if not npm_found:
         print("❌ npm이 설치되지 않았습니다.")
         return False
 
@@ -36,7 +44,9 @@ def check_requirements():
     if not node_modules.exists():
         print("📦 프론트엔드 의존성을 설치하는 중...")
         try:
-            subprocess.run(['npm', 'install'], cwd=frontend_dir, check=True)
+            # Windows에서 npm.cmd 사용
+            npm_cmd = 'npm.cmd' if os.name == 'nt' else 'npm'
+            subprocess.run([npm_cmd, 'install'], cwd=frontend_dir, check=True)
             print("✅ 프론트엔드 의존성 설치 완료")
         except subprocess.CalledProcessError:
             print("❌ 프론트엔드 의존성 설치 실패")
@@ -73,8 +83,10 @@ def start_servers():
 
         # 프론트엔드 서버 시작
         print("⚛️  프론트엔드 서버 시작 중...")
+        # Windows에서 npm.cmd 사용
+        npm_cmd = 'npm.cmd' if os.name == 'nt' else 'npm'
         frontend_process = subprocess.Popen(
-            ['npm', 'run', 'dev'],
+            [npm_cmd, 'run', 'dev'],
             cwd=frontend_dir,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
