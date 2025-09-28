@@ -5,9 +5,9 @@ import AppLayout from '@/components/Layout/AppLayout'
 import AnalysisForm from '@/components/Analysis/AnalysisForm'
 import ProgressDisplay from '@/components/Analysis/ProgressDisplay'
 import VisualizationPage from '@/components/Visualization/VisualizationPage'
-import SearchPage from '@/components/Search/SearchPage'
+// import SearchPage from '@/components/Search/SearchPage'
 import QualityMetricsPage from '@/components/QualityMetrics/QualityMetricsPage'
-import MultiViewPage from '@/components/MultiView/MultiViewPage'
+// import MultiViewPage from '@/components/MultiView/MultiViewPage'
 import { useAnalysis } from '@/hooks/useAnalysis'
 import type { AnalysisRequest } from '@/types/api'
 
@@ -66,12 +66,12 @@ const App: React.FC = () => {
           />
         )
       
-      case 'search':
-        return (
-          <SearchPage 
-            analysisId={currentAnalysis?.analysis_id || null}
-          />
-        )
+      // case 'search':
+      //   return (
+      //     <SearchPage 
+      //       analysisId={currentAnalysis?.analysis_id || null}
+      //     />
+      //   )
       
       case 'quality-metrics':
         return (
@@ -80,12 +80,12 @@ const App: React.FC = () => {
           />
         )
       
-      case 'multi-view':
-        return (
-          <MultiViewPage 
-            analysisId={currentAnalysis?.analysis_id || null}
-          />
-        )
+      // case 'multi-view':
+      //   return (
+      //     <MultiViewPage 
+      //       analysisId={currentAnalysis?.analysis_id || null}
+      //     />
+      //   )
       
       default:
         return null

@@ -1,7 +1,8 @@
 // Main Application Layout Component
 import React, { useState } from 'react'
 import { Layout, Menu, Typography, theme } from 'antd'
-import { BarChartOutlined, ProjectOutlined, SearchOutlined, BugOutlined, ApartmentOutlined } from '@ant-design/icons'
+import { BarChartOutlined, ProjectOutlined, BugOutlined } from '@ant-design/icons'
+// import { SearchOutlined, ApartmentOutlined } from '@ant-design/icons' // 주석처리된 탭용
 
 const { Header, Content, Sider } = Layout
 const { Title } = Typography
@@ -38,21 +39,21 @@ const AppLayout: React.FC<AppLayoutProps> = ({
       icon: <BarChartOutlined />,
       label: 'Dependency Graph',
     },
-    {
-      key: 'search',
-      icon: <SearchOutlined />,
-      label: 'Search',
-    },
+    // {
+    //   key: 'search',
+    //   icon: <SearchOutlined />,
+    //   label: 'Search',
+    // },
     {
       key: 'quality-metrics',
       icon: <BugOutlined />,
       label: 'Quality Metrics',
     },
-    {
-      key: 'multi-view',
-      icon: <ApartmentOutlined />,
-      label: 'Multi View',
-    },
+    // {
+    //   key: 'multi-view',
+    //   icon: <ApartmentOutlined />,
+    //   label: 'Multi View',
+    // },
   ]
 
   const handleMenuClick = ({ key }: { key: string }) => {
