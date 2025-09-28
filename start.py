@@ -60,14 +60,14 @@ def start_servers():
     server_dir = current_dir / 'server'
     frontend_dir = current_dir / 'frontend'
 
-    print("🚀 PyView 서버를 시작합니다...")
+    print("PyView 서버를 시작합니다...")
     print("=" * 50)
 
     processes = []
 
     try:
         # 백엔드 서버 시작
-        print("🔧 백엔드 서버 시작 중...")
+        print("백엔드 서버 시작 중...")
         backend_process = subprocess.Popen(
             [sys.executable, 'app.py'],
             cwd=server_dir,
@@ -82,7 +82,7 @@ def start_servers():
         time.sleep(3)
 
         # 프론트엔드 서버 시작
-        print("⚛️  프론트엔드 서버 시작 중...")
+        print("프론트엔드 서버 시작 중...")
         # Windows에서 npm.cmd 사용
         npm_cmd = 'npm.cmd' if os.name == 'nt' else 'npm'
         frontend_process = subprocess.Popen(
@@ -95,13 +95,13 @@ def start_servers():
         )
         processes.append(('Frontend', frontend_process))
 
-        print("✅ 서버 시작 완료!")
+        print("서버 시작 완료!")
         print("=" * 50)
-        print("🌐 프론트엔드: http://localhost:3000")
-        print("🔧 백엔드 API: http://localhost:8000")
-        print("📖 API 문서: http://localhost:8000/docs")
+        print("프론트엔드: http://localhost:3000")
+        print("백엔드 API: http://localhost:8000")
+        print("API 문서: http://localhost:8000/docs")
         print("=" * 50)
-        print("🛑 종료하려면 Ctrl+C를 누르세요")
+        print("종료하려면 Ctrl+C를 누르세요")
         print("=" * 50)
 
         # 프로세스 모니터링
