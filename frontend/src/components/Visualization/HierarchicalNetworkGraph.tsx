@@ -1578,14 +1578,14 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}>
             <Space wrap>
               
-              <Button size="small" onClick={expandAll} icon={<ExpandOutlined />}>
-                Expand All
+              <Button size="small" onClick={expandAll} icon={<ReloadOutlined />}>
+                Reset
               </Button>
 
               <Button 
                 size="small" 
                 onClick={() => cyInstanceRef.current?.fit()}
-                icon={<ReloadOutlined />}
+                icon={<ExpandOutlined />}
               >
                 Fit
               </Button>
