@@ -188,55 +188,57 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
         <BugOutlined /> Code Quality Metrics
       </Title>
 
-      {/* Overview Cards */}
-      <Row gutter={16} style={{ marginBottom: '24px' }}>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Average Complexity"
-              value={avgComplexity}
-              precision={1}
-              valueStyle={{
-                color: avgComplexity <= 10 ? '#3f8600' : avgComplexity <= 20 ? '#faad14' : '#cf1322'
-              }}
-              prefix={avgComplexity <= 10 ? <CheckCircleOutlined /> : <WarningOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Avg Maintainability"
-              value={avgMaintainability}
-              precision={1}
-              valueStyle={{
-                color: avgMaintainability >= 80 ? '#3f8600' : avgMaintainability >= 60 ? '#faad14' : '#cf1322'
-              }}
-              suffix="/ 100"
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="Total Entities"
-              value={metrics.length}
-              prefix={<BugOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card title="Quality Distribution" size="small">
-            <div>
-              {Object.entries(gradeDistribution).map(([grade, count]) => (
-                <Tag key={grade} color={getGradeColor(grade)} style={{ margin: 2 }}>
-                  {grade}: {count}
-                </Tag>
-              ))}
-            </div>
-          </Card>
-        </Col>
-      </Row>
+      {/* Overall Quality Assessment */}
+      <Card title="Overall Quality Assessment" size="small" style={{ marginBottom: '24px' }}>
+        <Row gutter={16}>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="Average Complexity"
+                value={avgComplexity}
+                precision={1}
+                valueStyle={{
+                  color: avgComplexity <= 10 ? '#3f8600' : avgComplexity <= 20 ? '#faad14' : '#cf1322'
+                }}
+                prefix={avgComplexity <= 10 ? <CheckCircleOutlined /> : <WarningOutlined />}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="Avg Maintainability"
+                value={avgMaintainability}
+                precision={1}
+                valueStyle={{
+                  color: avgMaintainability >= 80 ? '#3f8600' : avgMaintainability >= 60 ? '#faad14' : '#cf1322'
+                }}
+                suffix="/ 100"
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card>
+              <Statistic
+                title="Total Entities"
+                value={metrics.length}
+                prefix={<BugOutlined />}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card title="Quality Distribution" size="small">
+              <div>
+                {Object.entries(gradeDistribution).map(([grade, count]) => (
+                  <Tag key={grade} color={getGradeColor(grade)} style={{ margin: 2 }}>
+                    {grade}: {count}
+                  </Tag>
+                ))}
+              </div>
+            </Card>
+          </Col>
+        </Row>
+      </Card>
 
       {/* Metrics Table */}
       <Card title="Detailed Quality Metrics" size="small">
