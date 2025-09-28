@@ -248,7 +248,7 @@ async def run_analysis_task(analysis_id: str, request: AnalysisRequest):
                 exclude_patterns=request.options.exclude_patterns + ["tests", "__pycache__", ".git", "node_modules", ".venv"],  # Add more exclusions
                 include_stdlib=False,  # Disable stdlib to reduce complexity
                 analysis_levels=["package", "module", "class", "method"],  # Include more levels for better cycle detection
-                enable_type_inference=False,  # Disable type inference for speed
+                enable_type_inference=request.options.enable_type_inference,  # Use user setting
                 enable_quality_metrics=False,  # Disable quality metrics to prevent hanging
                 enable_caching=False,  # Disable caching for now
                 max_workers=1  # Use single worker to prevent issues

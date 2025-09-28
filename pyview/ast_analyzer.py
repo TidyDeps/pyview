@@ -39,10 +39,11 @@ class FileAnalysis:
 class SymbolTableBuilder(ast.NodeVisitor):
     """Builds symbol table by collecting class, method, field definitions"""
     
-    def __init__(self, file_path: str, module_name: str):
+    def __init__(self, file_path: str, module_name: str, enable_type_inference: bool = True):
         self.file_path = file_path
         self.module_name = module_name
         self.module_id = create_module_id(module_name)
+        self.enable_type_inference = enable_type_inference
         
         # Collections
         self.classes: List[ClassInfo] = []
@@ -157,13 +158,22 @@ class SymbolTableBuilder(ast.NodeVisitor):
         
         # Extract arguments
         args = []
+        inferred_param_types = self._infer_parameter_types(node) if self.enable_type_inference else {}
+        
         for arg in node.args.args:
-            args.append(arg.arg)
+            arg_info = {'name': arg.arg}
+            if arg.annotation:
+                arg_info['annotation'] = self._extract_annotation(arg.annotation)
+            elif self.enable_type_inference and arg.arg in inferred_param_types:
+                arg_info['annotation'] = inferred_param_types[arg.arg]
+            args.append(arg_info)
         
         # Extract return annotation
         return_annotation = None
         if node.returns:
             return_annotation = self._extract_annotation(node.returns)
+        elif self.enable_type_inference:
+            return_annotation = self._infer_return_type(node)
         
         # Extract decorators
         decorators = []
@@ -247,6 +257,9 @@ class SymbolTableBuilder(ast.NodeVisitor):
         type_annotation = None
         if annotation:
             type_annotation = self._extract_annotation(annotation)
+        elif self.enable_type_inference and value:
+            # Try to infer type from value if no annotation
+            type_annotation = self._infer_type_from_value(value)
         
         # Extract default value
         default_value = None
@@ -332,6 +345,104 @@ class SymbolTableBuilder(ast.NodeVisitor):
                 complexity += 1
         
         return complexity
+    
+    def _infer_type_from_value(self, node: ast.AST) -> Optional[str]:
+        """Infer type from value node"""
+        if not self.enable_type_inference:
+            return None
+            
+        if isinstance(node, ast.Constant):
+            value = node.value
+            if isinstance(value, str):
+                return "str"
+            elif isinstance(value, int):
+                return "int"
+            elif isinstance(value, float):
+                return "float"
+            elif isinstance(value, bool):
+                return "bool"
+            elif value is None:
+                return "None"
+        elif isinstance(node, ast.List):
+            # Infer list element type if possible
+            if node.elts:
+                element_type = self._infer_type_from_value(node.elts[0])
+                return f"List[{element_type}]" if element_type else "List"
+            return "List"
+        elif isinstance(node, ast.Dict):
+            return "Dict"
+        elif isinstance(node, ast.Set):
+            return "Set"
+        elif isinstance(node, ast.Tuple):
+            return "Tuple"
+        elif isinstance(node, ast.Call):
+            # Try to infer from function calls
+            if isinstance(node.func, ast.Name):
+                func_name = node.func.id
+                if func_name in ('list', 'List'):
+                    return "List"
+                elif func_name in ('dict', 'Dict'):
+                    return "Dict"
+                elif func_name in ('set', 'Set'):
+                    return "Set"
+                elif func_name in ('tuple', 'Tuple'):
+                    return "Tuple"
+                elif func_name == 'str':
+                    return "str"
+                elif func_name == 'int':
+                    return "int"
+                elif func_name == 'float':
+                    return "float"
+                elif func_name == 'bool':
+                    return "bool"
+        
+        return None
+    
+    def _infer_parameter_types(self, node: ast.FunctionDef) -> Dict[str, str]:
+        """Infer parameter types from function body"""
+        if not self.enable_type_inference:
+            return {}
+            
+        param_types = {}
+        
+        # Look for method calls on parameters to infer types
+        for child in ast.walk(node):
+            if isinstance(child, ast.Call) and isinstance(child.func, ast.Attribute):
+                if isinstance(child.func.value, ast.Name):
+                    param_name = child.func.value.id
+                    method_name = child.func.attr
+                    
+                    # String methods
+                    if method_name in ('upper', 'lower', 'strip', 'replace', 'split', 'join'):
+                        param_types[param_name] = "str"
+                    # List methods  
+                    elif method_name in ('append', 'extend', 'remove', 'pop', 'index', 'count'):
+                        param_types[param_name] = "List"
+                    # Dict methods
+                    elif method_name in ('get', 'keys', 'values', 'items', 'update'):
+                        param_types[param_name] = "Dict"
+        
+        return param_types
+    
+    def _infer_return_type(self, node: ast.FunctionDef) -> Optional[str]:
+        """Infer return type from return statements"""
+        if not self.enable_type_inference:
+            return None
+            
+        return_types = set()
+        
+        for child in ast.walk(node):
+            if isinstance(child, ast.Return) and child.value:
+                inferred_type = self._infer_type_from_value(child.value)
+                if inferred_type:
+                    return_types.add(inferred_type)
+        
+        if len(return_types) == 1:
+            return list(return_types)[0]
+        elif len(return_types) > 1:
+            return f"Union[{', '.join(sorted(return_types))}]"
+        
+        return None
 
 
 class ReferenceExtractor(ast.NodeVisitor):
@@ -466,8 +577,9 @@ class ReferenceExtractor(ast.NodeVisitor):
 class ASTAnalyzer:
     """Main AST analyzer class"""
     
-    def __init__(self):
+    def __init__(self, enable_type_inference: bool = True):
         self.logger = logging.getLogger(__name__)
+        self.enable_type_inference = enable_type_inference
     
     def analyze_file(self, file_path: str) -> Optional[FileAnalysis]:
         """Analyze a single Python file"""
@@ -482,7 +594,7 @@ class ASTAnalyzer:
             module_name = self._get_module_name(file_path)
             
             # Build symbol table
-            symbol_builder = SymbolTableBuilder(file_path, module_name)
+            symbol_builder = SymbolTableBuilder(file_path, module_name, self.enable_type_inference)
             symbol_builder.visit(tree)
             
             # Extract references
@@ -562,6 +674,7 @@ class ASTAnalyzer:
         parts = path.parts[:-1]  # Exclude filename
         
         # Find the root (where setup.py, pyproject.toml, or __init__.py exists)
+        i = 0  # Initialize i to handle case where loop doesn't execute
         for i, part in enumerate(reversed(parts)):
             parent_path = Path(*parts[:len(parts)-i])
             if (parent_path / 'setup.py').exists() or \

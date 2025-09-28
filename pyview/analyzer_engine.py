@@ -89,7 +89,7 @@ class AnalyzerEngine:
         self.logger = logging.getLogger(__name__)                                            # 로거 초기화
 
         # 핵심 분석 컴포넌트들 초기화
-        self.ast_analyzer = ASTAnalyzer()                                                    # AST 기반 상세 분석기
+        self.ast_analyzer = ASTAnalyzer(enable_type_inference=self.options.enable_type_inference)  # AST 기반 상세 분석기
         self.legacy_bridge = LegacyBridge()                                                  # pydeps 연동 브리지
         self.metrics_engine = None  # 임시로 비활성화 (hanging 방지)                              # 코드 품질 메트릭 엔진
         self.cache_manager = CacheManager() if options and options.enable_caching else None  # 분석 결과 캐시 관리자
