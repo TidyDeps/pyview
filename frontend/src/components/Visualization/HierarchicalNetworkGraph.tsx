@@ -1272,16 +1272,16 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     {
       selector: 'node.connected',
       style: {
-        'background-color': '#52c41a',
-        'border-color': '#52c41a',
+        'background-color': '#ff4d4f',
+        'border-color': '#ff4d4f',
         'border-width': 4
       }
     },
     {
       selector: 'node.hierarchical',
       style: {
-        'background-color': '#1890ff',
-        'border-color': '#1890ff',
+        'background-color': '#ff4d4f',
+        'border-color': '#ff4d4f',
         'border-width': 3
       }
     },

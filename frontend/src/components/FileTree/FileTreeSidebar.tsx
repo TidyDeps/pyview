@@ -589,6 +589,10 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
               selectedKeys={selectedKeys}
               treeData={filteredTreeData as any}
               blockNode
+              style={{
+                '--ant-tree-node-selected-bg': 'transparent',
+                '--ant-tree-node-hover-bg': '#f5f5f5'
+              } as React.CSSProperties}
             />
           ) : (
             <Empty 
