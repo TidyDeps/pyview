@@ -446,17 +446,14 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   useEffect(() => {
     if (!cyInstanceRef.current || !selectedNodeId) return;
     const cy = cyInstanceRef.current;
-    
-    // Clear previous highlights
-    cy.elements().removeClass('highlighted connected dimmed hierarchical');
-    
+
     // Find and highlight the selected node
     const targetNode = cy.getElementById(selectedNodeId);
-    
+
     if (targetNode.length > 0) {
-      // Highlight the node
-      targetNode.addClass('highlighted');
-      
+      // Use the same highlighting logic as clicking on the graph
+      handleHierarchicalHighlight(cy, selectedNodeId);
+
       // Center the view on the node
       cy.animate({
         center: { eles: targetNode },
@@ -464,22 +461,23 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       }, {
         duration: 500
       });
-      
+
       console.log('HierarchicalNetworkGraph - Centered on node:', selectedNodeId);
     } else {
       // Try to find node by partial match
       const allNodes = cy.nodes();
       const matchingNode = allNodes.filter(node => {
         const nodeData = node.data();
-        return nodeData.id?.includes(selectedNodeId) || 
+        return nodeData.id?.includes(selectedNodeId) ||
                nodeData.name?.includes(selectedNodeId) ||
                selectedNodeId?.includes(nodeData.id);
       });
-      
+
       if (matchingNode.length > 0) {
         const firstMatch = matchingNode.first();
-        firstMatch.addClass('highlighted');
-        
+        // Use the same highlighting logic as clicking on the graph
+        handleHierarchicalHighlight(cy, firstMatch.id());
+
         cy.animate({
           center: { eles: firstMatch },
           zoom: 1.5
