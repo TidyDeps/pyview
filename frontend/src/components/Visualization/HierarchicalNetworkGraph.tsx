@@ -921,9 +921,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       }
       
       onNodeClick?.(nodeId);
-      
-      const action = expandedNodes.has(nodeId) ? 'Collapsed' : 'Expanded';
-      message.info(`${action}: ${nodeData.name || nodeId}`);
     });
 
     // 배경 클릭

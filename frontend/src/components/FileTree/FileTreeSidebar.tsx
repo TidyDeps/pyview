@@ -47,6 +47,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
   const [searchValue, setSearchValue] = useState<string>('')
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([])
   const [autoExpandParent, setAutoExpandParent] = useState<boolean>(true)
+  const treeContainerRef = React.useRef<HTMLDivElement>(null)
 
   // 순환 참조 정보 처리
   const cycleInfo = useMemo(() => {
@@ -526,6 +527,80 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
     }
   }, [searchValue, filteredTreeData, treeData])
 
+  // Auto expand and scroll to selected node when selectedNodeId changes
+  useEffect(() => {
+    if (selectedNodeId && treeData.length > 0) {
+      const findNodeAndParents = (nodes: FileTreeNode[], targetNodeId: string, parentKeys: React.Key[] = []): React.Key[] | null => {
+        for (const node of nodes) {
+          if (node.nodeId === targetNodeId) {
+            return [...parentKeys, node.key]
+          }
+          if (node.children) {
+            const result = findNodeAndParents(node.children, targetNodeId, [...parentKeys, node.key])
+            if (result) return result
+          }
+        }
+        return null
+      }
+
+      const pathToNode = findNodeAndParents(treeData, selectedNodeId)
+      if (pathToNode) {
+        // Expand all parent nodes
+        setExpandedKeys(prev => {
+          const newKeys = new Set([...prev, ...pathToNode.slice(0, -1)]) // All except the target node itself
+          return Array.from(newKeys)
+        })
+        setAutoExpandParent(false)
+
+        // Scroll to the selected node after a short delay to allow for expansion
+        setTimeout(() => {
+          if (treeContainerRef.current) {
+            // Find the selected tree node element
+            const selectedTreeNode = treeContainerRef.current.querySelector('.ant-tree-node-selected')
+            if (selectedTreeNode) {
+              // Scroll the tree container to show the selected node
+              const containerRect = treeContainerRef.current.getBoundingClientRect()
+              const nodeRect = selectedTreeNode.getBoundingClientRect()
+              const containerScrollTop = treeContainerRef.current.scrollTop
+
+              // Calculate the position to center the node in the container
+              const targetScrollTop = containerScrollTop + (nodeRect.top - containerRect.top) - (containerRect.height / 2) + (nodeRect.height / 2)
+
+              treeContainerRef.current.scrollTo({
+                top: Math.max(0, targetScrollTop),
+                behavior: 'smooth'
+              })
+
+              console.log('FileTree: Scrolled to selected node:', selectedNodeId)
+            } else {
+              // Fallback: try to find by content
+              const allTreeNodes = treeContainerRef.current.querySelectorAll('.ant-tree-node-content-wrapper')
+              for (const nodeElement of allTreeNodes) {
+                if (nodeElement.textContent?.includes(selectedNodeId.split(':').pop() || selectedNodeId)) {
+                  const containerRect = treeContainerRef.current.getBoundingClientRect()
+                  const nodeRect = nodeElement.getBoundingClientRect()
+                  const containerScrollTop = treeContainerRef.current.scrollTop
+
+                  const targetScrollTop = containerScrollTop + (nodeRect.top - containerRect.top) - (containerRect.height / 2) + (nodeRect.height / 2)
+
+                  treeContainerRef.current.scrollTo({
+                    top: Math.max(0, targetScrollTop),
+                    behavior: 'smooth'
+                  })
+
+                  console.log('FileTree: Scrolled to selected node (fallback):', selectedNodeId)
+                  break
+                }
+              }
+            }
+          }
+        }, 500) // Wait for tree expansion animation and selection update
+
+        console.log('FileTree: Auto-expanded path to selected node:', selectedNodeId, pathToNode)
+      }
+    }
+  }, [selectedNodeId, treeData])
+
   const onExpand: TreeProps['onExpand'] = (expandedKeysValue) => {
     setExpandedKeys(expandedKeysValue as React.Key[])
     setAutoExpandParent(false)
@@ -574,11 +649,14 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           />
         </div>
         
-        <div style={{ 
-          height: 'calc(100% - 60px)', 
-          overflow: 'auto',
-          padding: '0 8px'
-        }}>
+        <div
+          ref={treeContainerRef}
+          style={{
+            height: 'calc(100% - 60px)',
+            overflow: 'auto',
+            padding: '0 8px'
+          }}
+        >
           {filteredTreeData.length > 0 ? (
             <Tree
               showIcon={false}
