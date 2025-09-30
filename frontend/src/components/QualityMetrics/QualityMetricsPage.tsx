@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Table, Progress, Tag, Typography, Statistic, Empty } from 'antd';
-import { BugOutlined, CheckCircleOutlined, WarningOutlined } from '@ant-design/icons';
+import { BugOutlined, CheckCircleOutlined, WarningOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { QualityMetrics } from '../../types/api';
 import ApiService from '../../services/api';
 
@@ -240,7 +240,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
               <Statistic
                 title="Total Entities"
                 value={metrics.length}
-                prefix={<BugOutlined />}
+                prefix={<AppstoreOutlined />}
               />
             </Card>
           </Col>
