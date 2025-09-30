@@ -258,9 +258,16 @@ async def run_analysis_task(analysis_id: str, request: AnalysisRequest):
         from pyview.analyzer_engine import AnalysisOptions, ProgressCallback
         
         try:
-            # Create options object with safe defaults
+            # Create options object with user settings
+            # Validate max_depth range (should match frontend validation)
+            user_max_depth = request.options.max_depth
+            if user_max_depth < 1:
+                user_max_depth = 1
+            elif user_max_depth > 50:
+                user_max_depth = 50
+
             options = AnalysisOptions(
-                max_depth=min(request.options.max_depth, 3),  # Further limit depth
+                max_depth=user_max_depth,  # Use validated user setting
                 exclude_patterns=request.options.exclude_patterns + ["tests", "__pycache__", ".git", "node_modules", ".venv"],  # Add more exclusions
                 include_stdlib=False,  # Disable stdlib to reduce complexity
                 analysis_levels=["package", "module", "class", "method"],  # Include more levels for better cycle detection

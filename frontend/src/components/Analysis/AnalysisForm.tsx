@@ -91,7 +91,13 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
             label="Max Depth"
             tooltip="Maximum dependency depth to analyze"
           >
-            <InputNumber min={1} max={50} />
+            <InputNumber
+              min={1}
+              max={50}
+              precision={0}
+              parser={(value) => value ? parseInt(value.replace(/[^\d]/g, '')) : 0}
+              formatter={(value) => value ? `${value}` : ''}
+            />
           </Form.Item>
 
         </Space>
