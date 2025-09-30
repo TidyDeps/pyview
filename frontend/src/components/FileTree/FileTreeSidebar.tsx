@@ -15,7 +15,6 @@ import type { TreeProps } from 'antd/es/tree'
 const { Search } = Input
 
 type EntityType = 'package' | 'module' | 'class' | 'method' | 'field'
-type CycleSeverity = 'low' | 'medium' | 'high'
 
 interface FileTreeNode {
   key: string
@@ -26,7 +25,6 @@ interface FileTreeNode {
   nodeId: string
   isLeaf?: boolean
   isInCycle?: boolean
-  cycleSeverity?: CycleSeverity
 }
 
 interface FileTreeSidebarProps {
@@ -52,31 +50,26 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
   // 순환 참조 정보 처리
   const cycleInfo = useMemo(() => {
     const cycleNodes = new Set<string>();
-    const nodeSeverity = new Map<string, CycleSeverity>();
 
     if (cycleData && Array.isArray(cycleData.cycles)) {
       cycleData.cycles.forEach((cycle: any) => {
-        const severity: CycleSeverity = cycle.severity || 'medium';
         if (Array.isArray(cycle.entities)) {
           cycle.entities.forEach((entity: string) => {
             cycleNodes.add(entity);
-            nodeSeverity.set(entity, severity);
             console.log(`🔄 FileTree: Added cycle node: ${entity}`);
-            
+
             // mod: 접두사 제거한 버전도 추가
             if (entity.startsWith('mod:')) {
               const withoutPrefix = entity.substring(4);
               cycleNodes.add(withoutPrefix);
-              nodeSeverity.set(withoutPrefix, severity);
               console.log(`🔄 FileTree: Also added without mod prefix: ${withoutPrefix}`);
             }
-            
+
             // 다른 가능한 ID 패턴들도 추가
             if (entity.includes('.')) {
               const parts = entity.split('.');
               const lastPart = parts[parts.length - 1];
               cycleNodes.add(lastPart);
-              nodeSeverity.set(lastPart, severity);
               console.log(`🔄 FileTree: Also added last part: ${lastPart}`);
             }
           });
@@ -84,23 +77,21 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
       });
     }
 
-    return { cycleNodes, nodeSeverity };
+    return { cycleNodes };
   }, [cycleData]);
 
   // 순환 참조 아이콘 렌더링
   const renderCycleIcon = (nodeId: string) => {
     if (!cycleInfo.cycleNodes.has(nodeId)) return null;
-    const severity = cycleInfo.nodeSeverity.get(nodeId);
     const iconStyle = {
       marginLeft: 8,
       fontSize: '12px',
-      color: severity === 'high' ? '#ff4d4f' : 
-             severity === 'medium' ? '#fa8c16' : '#faad14'
+      color: '#ff4d4f'
     };
     return (
-      <ExclamationCircleOutlined 
+      <ExclamationCircleOutlined
         style={iconStyle}
-        title={`Circular dependency (${severity} severity)`}
+        title="Circular dependency"
       />
     );
   };
@@ -141,7 +132,6 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           nodeId: pkgId,
           children: [],
           isInCycle,
-          cycleSeverity: cycleInfo.nodeSeverity.get(pkgId)
         }
         packageMap.set(pkgId, packageNode)
       })
@@ -151,7 +141,6 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
       dependencyGraph.modules.forEach((mod: any) => {
         const modId: string = mod.id || mod.module_id || mod.name
         const isInCycle = cycleInfo.cycleNodes.has(modId);
-        const cycleSeverity = cycleInfo.nodeSeverity.get(modId);
         const moduleNode: FileTreeNode = {
           key: `module_${modId}`,
           title: (
@@ -167,8 +156,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           searchText: mod.name || modId,
           nodeId: modId,
           children: [],
-          isInCycle,
-          cycleSeverity
+          isInCycle
         }
         moduleMap.set(modId, moduleNode)
       })
@@ -194,7 +182,6 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           nodeId: clsId,
           children: [],
           isInCycle,
-          cycleSeverity: cycleInfo.nodeSeverity.get(clsId)
         }
         classMap.set(clsId, classNode)
       })
@@ -221,7 +208,6 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           children: [],
           isLeaf: true,
           isInCycle,
-          cycleSeverity: cycleInfo.nodeSeverity.get(methodId)
         }
         methodMap.set(methodId, methodNode)
       })
@@ -248,7 +234,6 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           children: [],
           isLeaf: true,
           isInCycle,
-          cycleSeverity: cycleInfo.nodeSeverity.get(fieldId)
         }
         fieldMap.set(fieldId, fieldNode)
       })

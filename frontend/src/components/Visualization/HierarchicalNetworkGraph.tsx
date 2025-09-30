@@ -106,13 +106,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   const [cycleInfo, setCycleInfo] = useState<{
     cycleNodes: Set<string>;
     cycleEdges: Set<string>;
-    nodeSeverity: Map<string, string>;
-    edgeSeverity: Map<string, string>;
-  }>({ 
-    cycleNodes: new Set(), 
-    cycleEdges: new Set(), 
-    nodeSeverity: new Map(), 
-    edgeSeverity: new Map() 
+  }>({
+    cycleNodes: new Set(),
+    cycleEdges: new Set()
   });
 
   // 데이터를 계층적 구조로 변환
@@ -293,40 +289,33 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     if (cycleData && cycleData.cycles) {
       const cycleNodes = new Set<string>();
       const cycleEdges = new Set<string>();
-      const nodeSeverity = new Map<string, string>();
-      const edgeSeverity = new Map<string, string>();
 
       console.log('🔄 Processing cycles:', cycleData.cycles);
 
       cycleData.cycles.forEach((cycle: any, index: number) => {
-        const severity = cycle.severity || 'medium';
         console.log(`🔄 Processing cycle ${index + 1}:`, {
           id: cycle.id,
           entities: cycle.entities,
-          severity: severity,
           cycle_type: cycle.cycle_type
         });
-        
+
         // 순환에 포함된 모든 엔티티 추가
         cycle.entities.forEach((entity: string) => {
           cycleNodes.add(entity);
-          nodeSeverity.set(entity, severity);
-          console.log(`🔄 Added cycle node: ${entity} (severity: ${severity})`);
-          
+          console.log(`🔄 Added cycle node: ${entity}`);
+
           // mod: 접두사 제거한 버전도 추가
           if (entity.startsWith('mod:')) {
             const withoutPrefix = entity.substring(4);
             cycleNodes.add(withoutPrefix);
-            nodeSeverity.set(withoutPrefix, severity);
             console.log(`🔄 Also added without mod prefix: ${withoutPrefix}`);
           }
-          
+
           // 다른 가능한 ID 패턴들도 추가
           if (entity.includes('.')) {
             const parts = entity.split('.');
             const lastPart = parts[parts.length - 1];
             cycleNodes.add(lastPart);
-            nodeSeverity.set(lastPart, severity);
             console.log(`🔄 Also added last part: ${lastPart}`);
           }
         });
@@ -339,20 +328,18 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
               // {from: string, to: string} 형태
               const edgeId = `${path.from}-${path.to}`;
               cycleEdges.add(edgeId);
-              edgeSeverity.set(edgeId, severity);
             } else if (path.nodes && Array.isArray(path.nodes)) {
               // {nodes: string[]} 형태
               for (let i = 0; i < path.nodes.length - 1; i++) {
                 const edgeId = `${path.nodes[i]}-${path.nodes[i + 1]}`;
                 cycleEdges.add(edgeId);
-                edgeSeverity.set(edgeId, severity);
               }
             }
           });
         }
       });
 
-      setCycleInfo({ cycleNodes, cycleEdges, nodeSeverity, edgeSeverity });
+      setCycleInfo({ cycleNodes, cycleEdges });
       console.log('🔄 Cycle info processed:', { 
         cycleNodes: Array.from(cycleNodes),
         totalNodes: cycleNodes.size, 
@@ -374,11 +361,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       }
     } else {
       console.log('🔄 No cycle data received or cycles is empty');
-      setCycleInfo({ 
-        cycleNodes: new Set(), 
-        cycleEdges: new Set(), 
-        nodeSeverity: new Map(), 
-        edgeSeverity: new Map() 
+      setCycleInfo({
+        cycleNodes: new Set(),
+        cycleEdges: new Set()
       });
     }
   }, [cycleData]);
@@ -512,10 +497,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       // 순환 참조 클래스 추가
       if (cycleInfo.cycleNodes.has(node.id)) {
         classes.push('in-cycle');
-        const severity = cycleInfo.nodeSeverity.get(node.id);
-        if (severity) {
-          classes.push(`cycle-${severity}`);
-        }
       }
       
       elements.push({
@@ -542,28 +523,16 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         // 순환 참조 엣지 클래스 추가
         if (cycleInfo.cycleEdges.has(edgeId)) {
           classes.push('cycle-edge');
-          const severity = cycleInfo.edgeSeverity.get(edgeId);
-          if (severity) {
-            classes.push(`cycle-${severity}`);
-          }
         }
-        
+
         // 양방향 또는 참조하는 노드 중 하나라도 순환참조에 포함된 경우도 체크
         const reverseEdgeId = `${edge.target}-${edge.source}`;
         const isSourceInCycle = cycleInfo.cycleNodes.has(edge.source);
         const isTargetInCycle = cycleInfo.cycleNodes.has(edge.target);
-        
+
         if (cycleInfo.cycleEdges.has(reverseEdgeId) || (isSourceInCycle && isTargetInCycle)) {
           if (!classes.includes('cycle-edge')) {
             classes.push('cycle-edge');
-          }
-          if (!classes.some(c => c.startsWith('cycle-'))) {
-            // 소스나 타겟의 심각도 중 높은 것 사용
-            const sourceSeverity = cycleInfo.nodeSeverity.get(edge.source);
-            const targetSeverity = cycleInfo.nodeSeverity.get(edge.target);
-            const severity = sourceSeverity === 'high' || targetSeverity === 'high' ? 'high' :
-                           sourceSeverity === 'medium' || targetSeverity === 'medium' ? 'medium' : 'low';
-            classes.push(`cycle-${severity}`);
           }
         }
         
@@ -615,10 +584,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       // 순환 참조 엣지 클래스 추가
       if (cycleInfo.cycleEdges.has(edgeId)) {
         classes.push('cycle-edge');
-        const severity = cycleInfo.edgeSeverity.get(edgeId);
-        if (severity) {
-          classes.push(`cycle-${severity}`);
-        }
       }
       
       // 양방향 또는 참조하는 노드 중 하나라도 순환참조에 포함된 경우도 체크
@@ -629,14 +594,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       if (cycleInfo.cycleEdges.has(reverseEdgeId) || (isSourceInCycle && isTargetInCycle)) {
         if (!classes.includes('cycle-edge')) {
           classes.push('cycle-edge');
-        }
-        if (!classes.some(c => c.startsWith('cycle-'))) {
-          // 소스나 타겟의 심각도 중 높은 것 사용
-          const sourceSeverity = cycleInfo.nodeSeverity.get(edge.source);
-          const targetSeverity = cycleInfo.nodeSeverity.get(edge.target);
-          const severity = sourceSeverity === 'high' || targetSeverity === 'high' ? 'high' :
-                         sourceSeverity === 'medium' || targetSeverity === 'medium' ? 'medium' : 'low';
-          classes.push(`cycle-${severity}`);
         }
       }
       
@@ -870,10 +827,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       // 순환 참조 클래스 추가
       if (cycleInfo.cycleNodes.has(node.id)) {
         classes.push('in-cycle');
-        const severity = cycleInfo.nodeSeverity.get(node.id);
-        if (severity) {
-          classes.push(`cycle-${severity}`);
-        }
       }
       
       nodeElements.push({
@@ -1307,51 +1260,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'z-index': 50  // 다른 노드보다 위에 표시
       }
     },
-    // 고위험 순환 참조 노드
-    {
-      selector: 'node.cycle-high',
-      style: {
-        'border-color': '#ff4d4f',
-        'border-width': 7,
-        'border-style': 'solid',
-        'border-opacity': 1,
-        'text-outline-color': '#ff4d4f',
-        'text-outline-width': 2,
-        'overlay-opacity': 0.25,
-        'overlay-color': '#ff4d4f',
-        'z-index': 60
-      }
-    },
-    // 중위험 순환 참조 노드
-    {
-      selector: 'node.cycle-medium',
-      style: {
-        'border-color': '#ff4d4f',
-        'border-width': 5,
-        'border-style': 'solid',
-        'border-opacity': 1,
-        'text-outline-color': '#fa8c16',
-        'text-outline-width': 1,
-        'overlay-opacity': 0.2,
-        'overlay-color': '#fa8c16',
-        'z-index': 55
-      }
-    },
-    // 저위험 순환 참조 노드
-    {
-      selector: 'node.cycle-low',
-      style: {
-        'border-color': '#ff4d4f',
-        'border-width': 4,
-        'border-style': 'solid',
-        'border-opacity': 1,
-        'text-outline-color': '#faad14',
-        'text-outline-width': 1,
-        'overlay-opacity': 0.15,
-        'overlay-color': '#faad14',
-        'z-index': 52
-      }
-    },
     // 순환 참조 엣지 스타일 - 기본
     {
       selector: 'edge.cycle-edge',
@@ -1364,48 +1272,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'opacity': 1,
         'curve-style': 'bezier',
         'z-index': 50,
-        'arrow-scale': 1.5
-      }
-    },
-    // 고위험 순환 참조 엣지
-    {
-      selector: 'edge.cycle-high',
-      style: {
-        'line-color': '#ff4d4f',
-        'target-arrow-color': '#ff4d4f',
-        'source-arrow-color': '#ff4d4f',
-        'width': 6,
-        'line-style': 'solid',
-        'opacity': 1,
-        'z-index': 60,
-        'arrow-scale': 2
-      }
-    },
-    // 중위험 순환 참조 엣지
-    {
-      selector: 'edge.cycle-medium',
-      style: {
-        'line-color': '#ff4d4f',
-        'target-arrow-color': '#ff4d4f',
-        'source-arrow-color': '#ff4d4f',
-        'width': 5,
-        'line-style': 'solid',
-        'opacity': 1,
-        'z-index': 55,
-        'arrow-scale': 1.7
-      }
-    },
-    // 저위험 순환 참조 엣지
-    {
-      selector: 'edge.cycle-low',
-      style: {
-        'line-color': '#ff4d4f',
-        'target-arrow-color': '#ff4d4f',
-        'source-arrow-color': '#ff4d4f',
-        'width': 4,
-        'line-style': 'solid',
-        'opacity': 1,
-        'z-index': 52,
         'arrow-scale': 1.5
       }
     },
