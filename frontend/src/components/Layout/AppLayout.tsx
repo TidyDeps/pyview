@@ -1,7 +1,7 @@
 // Main Application Layout Component
-import React, { useState } from 'react'
+import React from 'react'
 import { Layout, Menu, Typography, theme } from 'antd'
-import { BarChartOutlined, ProjectOutlined, BugOutlined } from '@ant-design/icons'
+import { BarChartOutlined, ProjectOutlined, DashboardOutlined } from '@ant-design/icons'
 // import { SearchOutlined, ApartmentOutlined } from '@ant-design/icons' // 주석처리된 탭용
 
 const { Header, Content, Sider } = Layout
@@ -46,7 +46,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
     // },
     {
       key: 'quality-metrics',
-      icon: <BugOutlined />,
+      icon: <DashboardOutlined />,
       label: 'Quality Metrics',
     },
     // {

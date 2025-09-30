@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Table, Progress, Tag, Typography, Statistic, Empty } from 'antd';
-import { BugOutlined, CheckCircleOutlined, WarningOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, WarningOutlined, AppstoreOutlined, DashboardOutlined } from '@ant-design/icons';
 import { QualityMetrics } from '../../types/api';
 import ApiService from '../../services/api';
 
@@ -203,7 +203,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
   return (
     <div style={{ padding: '20px' }}>
       <Title level={3} style={{ marginBottom: '20px' }}>
-        <BugOutlined /> Code Quality Metrics
+        <DashboardOutlined /> Code Quality Metrics
       </Title>
 
       {/* Overall Quality Assessment */}
