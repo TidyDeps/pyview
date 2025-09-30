@@ -231,10 +231,26 @@ async def run_analysis_task(analysis_id: str, request: AnalysisRequest):
         update_analysis_status(analysis_id, "running", 0.0, "Starting analysis...")
         await send_progress_update(analysis_id, "initialization", 0.1, "Initializing analyzer")
         
+        # Check project path validation
+        project_path_str = request.project_path.strip()
+
+        # Check if path is absolute
+        if not os.path.isabs(project_path_str):
+            raise ValueError(f"Project path must be an absolute path: {project_path_str}")
+
         # Check if project path exists
-        project_path = Path(request.project_path)
+        project_path = Path(project_path_str)
         if not project_path.exists():
-            raise ValueError(f"Project path does not exist: {request.project_path}")
+            raise ValueError(f"Project path does not exist: {project_path_str}")
+
+        # Check if it's a directory
+        if not project_path.is_dir():
+            raise ValueError(f"Project path must be a directory: {project_path_str}")
+
+        # Check if it's a Python project (has .py files)
+        py_files = list(project_path.rglob("*.py"))
+        if not py_files:
+            raise ValueError(f"No Python files found in project path: {project_path_str}")
         
         await send_progress_update(analysis_id, "analyzing", 0.4, "Analyzing dependencies")
         
