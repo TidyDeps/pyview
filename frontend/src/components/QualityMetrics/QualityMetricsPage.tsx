@@ -76,7 +76,13 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
   };
 
   const calculateOverallStats = () => {
-    if (metrics.length === 0) return { avgComplexity: 0, avgMaintainability: 0, gradeDistribution: {} };
+    if (metrics.length === 0) {
+      return { 
+        avgComplexity: 0, 
+        avgMaintainability: 0, 
+        gradeDistribution: {} as Record<string, number>
+      };
+    }
     
     const avgComplexity = metrics.reduce((sum, m) => sum + m.cyclomatic_complexity, 0) / metrics.length;
     const avgMaintainability = metrics.reduce((sum, m) => sum + m.maintainability_index, 0) / metrics.length;
@@ -247,11 +253,15 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
           <Col span={6}>
             <Card title="Quality Distribution" size="small">
               <div>
-                {Object.entries(gradeDistribution).map(([grade, count]) => (
-                  <Tag key={grade} color={getGradeColor(grade)} style={{ margin: 2 }}>
-                    {grade}: {count}
-                  </Tag>
-                ))}
+                {Object.keys(gradeDistribution).length > 0 ? (
+                  Object.entries(gradeDistribution).map(([grade, count]) => (
+                    <Tag key={grade} color={getGradeColor(grade)} style={{ margin: 2 }}>
+                      {grade}: {count}
+                    </Tag>
+                  ))
+                ) : (
+                  <Text type="secondary">No data</Text>
+                )}
               </div>
             </Card>
           </Col>
@@ -315,6 +325,9 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
               setCurrentPage(1);
             },
             hideOnSinglePage: false
+          }}
+          locale={{
+            emptyText: 'No data'
           }}
           size="small"
           scroll={{ x: 'max-content' }}

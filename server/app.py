@@ -621,28 +621,6 @@ async def get_quality_metrics(analysis_id: str):
                 technical_debt_ratio=0.15,
                 quality_grade="B"
             ))
-        
-        # Add additional dummy metrics for pagination testing if we have less than 30 items
-        if len(quality_metrics) < 30:
-            import random
-            for i in range(30 - len(quality_metrics)):
-                dummy_id = f"dummy_entity_{i+1}"
-                entity_types = ["module", "class", "method"]
-                grades = ["A", "B", "C", "D", "F"]
-                
-                quality_metrics.append(QualityMetricsResponse(
-                    entity_id=dummy_id,
-                    entity_type=random.choice(entity_types),
-                    cyclomatic_complexity=random.randint(1, 30),
-                    cognitive_complexity=random.randint(1, 40),
-                    lines_of_code=random.randint(10, 500),
-                    afferent_coupling=random.randint(0, 10),
-                    efferent_coupling=random.randint(0, 15),
-                    instability=round(random.uniform(0.0, 1.0), 2),
-                    maintainability_index=round(random.uniform(20.0, 100.0), 1),
-                    technical_debt_ratio=round(random.uniform(0.0, 0.5), 2),
-                    quality_grade=random.choice(grades)
-                ))
     
     return quality_metrics
 
