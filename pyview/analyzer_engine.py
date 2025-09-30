@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from .models import (
-    AnalysisResult, ProjectInfo, DependencyGraph, 
+    AnalysisResult, ProjectInfo, DependencyGraph,
     PackageInfo, ModuleInfo, ClassInfo, MethodInfo, FieldInfo,
     Relationship, CyclicDependency, DependencyType, QualityMetrics, EntityType,
     create_module_id
@@ -26,6 +26,7 @@ from .legacy_bridge import LegacyBridge
 from .code_metrics import CodeMetricsEngine
 from .cache_manager import CacheManager, IncrementalAnalyzer, AnalysisCache, FileMetadata
 from .performance_optimizer import LargeProjectAnalyzer, PerformanceConfig, ResultPaginator
+from .gitignore_patterns import create_gitignore_matcher
 
 logger = logging.getLogger(__name__)
 
@@ -193,19 +194,46 @@ class AnalyzerEngine:
             raise                                                                           # 예외 다시 발생시켜 상위로 전달
 
     def _discover_project_files(self, project_path: str) -> List[str]:
-        """프로젝트 내 모든 Python 파일 탐색"""
+        """프로젝트 내 모든 Python 파일 탐색 (.gitignore 스타일 패턴 지원)"""
         python_files = []                                                                   # Python 파일 경로 리스트
 
+        # .gitignore 스타일 패턴 매처 생성
+        pattern_matcher = create_gitignore_matcher(self.options.exclude_patterns)
+
+        project_path_obj = Path(project_path)                                              # 프로젝트 경로를 Path 객체로 변환
+
         for root, dirs, files in os.walk(project_path):                                     # 디렉토리 트리 순회
-            # 제외할 디렉토리 필터링 (__pycache__, .git, tests 등 제외)                        # 불필요한 디렉토리는 탐색하지 않음
-            dirs[:] = [d for d in dirs if not any(pattern in d for pattern in self.options.exclude_patterns)]
+            root_path = Path(root)
+
+            # 제외할 디렉토리 필터링 (.gitignore 스타일 패턴 매칭)
+            dirs_to_keep = []
+            for d in dirs:
+                dir_path = root_path / d
+                # 프로젝트 루트 기준 상대 경로로 변환
+                try:
+                    relative_dir_path = dir_path.relative_to(project_path_obj)
+                    if not pattern_matcher.should_exclude(relative_dir_path):
+                        dirs_to_keep.append(d)
+                except ValueError:
+                    # relative_to 실패시 절대 경로로 확인
+                    if not pattern_matcher.should_exclude(dir_path):
+                        dirs_to_keep.append(d)
+            dirs[:] = dirs_to_keep
 
             for file in files:                                                              # 현재 디렉토리의 모든 파일 확인
                 if file.endswith('.py'):                                                    # Python 파일만 선택
                     file_path = os.path.join(root, file)                                   # 전체 파일 경로 생성
-                    # 제외 패턴이 경로에 포함되면 건너뛰기 (이중 체크로 확실히 제외)               # 파일 경로에도 제외 패턴 적용
-                    if not any(pattern in file_path for pattern in self.options.exclude_patterns):
-                        python_files.append(file_path)                                     # 유효한 Python 파일 추가
+                    file_path_obj = Path(file_path)
+
+                    # .gitignore 스타일 패턴 매칭으로 제외 여부 확인
+                    try:
+                        relative_file_path = file_path_obj.relative_to(project_path_obj)
+                        if not pattern_matcher.should_exclude(relative_file_path):
+                            python_files.append(file_path)                                 # 유효한 Python 파일 추가
+                    except ValueError:
+                        # relative_to 실패시 절대 경로로 확인
+                        if not pattern_matcher.should_exclude(file_path_obj):
+                            python_files.append(file_path)
 
         self.logger.info(f"Discovered {len(python_files)} Python files")                  # 발견된 파일 수 로그 출력
         return python_files                                                                # 발견된 파일 리스트 반환
