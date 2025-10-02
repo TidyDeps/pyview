@@ -12,7 +12,6 @@ export interface AnalysisOptions {
   max_depth: number
   exclude_patterns: string[]
   include_stdlib: boolean
-  enable_type_inference: boolean
 }
 
 export interface AnalysisRequest {

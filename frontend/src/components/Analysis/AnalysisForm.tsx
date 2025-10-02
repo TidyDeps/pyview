@@ -207,7 +207,6 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
       max_depth: values.max_depth || 10,
       exclude_patterns: excludePatterns,
       include_stdlib: values.include_stdlib === true,
-      enable_type_inference: values.enable_type_inference !== false,
     }
 
     const request: AnalysisRequest = {
@@ -228,7 +227,6 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
         initialValues={{
           max_depth: 10,
           include_stdlib: false,
-          enable_type_inference: true,
         }}
       >
         <Title level={4}>Project Settings</Title>
@@ -297,35 +295,24 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
 
         <Divider />
 
-        <Space style={{ width: '100%' }} direction="vertical">
-          <Form.Item
-            name="include_stdlib"
-            valuePropName="checked"
-            tooltip="Include Python standard library in analysis"
-          >
-            <div>
-              <Switch
-                checkedChildren="Include"
-                unCheckedChildren="Exclude"
-                onChange={(checked) => {
-                  form.setFieldValue('include_stdlib', checked)
-                }}
-              />
-              <Text style={{ marginLeft: 8 }}>Standard Library</Text>
-            </div>
-          </Form.Item>
+        <Form.Item
+          name="include_stdlib"
+          valuePropName="checked"
+          tooltip="Include Python standard library in analysis"
+        >
+          <div>
+            <Switch
+              checkedChildren="Include"
+              unCheckedChildren="Exclude"
+              onChange={(checked) => {
+                form.setFieldValue('include_stdlib', checked)
+              }}
+            />
+            <Text style={{ marginLeft: 8 }}>Standard Library</Text>
+          </div>
+        </Form.Item>
 
-          <Form.Item
-            name="enable_type_inference"
-            valuePropName="checked"
-            tooltip="Enable advanced type inference analysis"
-          >
-            <Switch checkedChildren="Enabled" unCheckedChildren="Disabled" />
-            <Text style={{ marginLeft: 8 }}>Type Inference</Text>
-          </Form.Item>
-        </Space>
-
-        <Form.Item style={{ marginTop: 24 }}>
+        <Form.Item style={{ marginTop: 120 }}>
           <Button
             type="primary"
             htmlType="submit"
