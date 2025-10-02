@@ -233,7 +233,10 @@ async def run_analysis_task(analysis_id: str, request: AnalysisRequest):
     try:
         update_analysis_status(analysis_id, "running", 0.0, "Starting analysis...")
         await send_progress_update(analysis_id, "initialization", 0.1, "Initializing analyzer")
-        
+        await asyncio.sleep(0.2)
+
+        await send_progress_update(analysis_id, "validation", 0.15, "Validating project path")
+
         # Check project path validation
         project_path_str = request.project_path.strip()
 
@@ -250,12 +253,70 @@ async def run_analysis_task(analysis_id: str, request: AnalysisRequest):
         if not project_path.is_dir():
             raise ValueError(f"Project path must be a directory: {project_path_str}")
 
-        # Check if it's a Python project (has .py files)
-        py_files = list(project_path.rglob("*.py"))
+        await send_progress_update(analysis_id, "scanning", 0.25, "Scanning Python files")
+        await asyncio.sleep(0.15)
+
+        # Check if it's a Python project (has .py files) with exclusion patterns
+        print(f"🔍 Starting .py file scan in: {project_path_str}", flush=True)
+
+        # For root path '/', limit the search to avoid system directories
+        if project_path_str == '/':
+            print("⚠️ Root path detected, limiting search to common user directories", flush=True)
+            search_paths = [
+                Path('/Users'),
+                Path('/home'),
+                Path('/opt'),
+                Path('/usr/local/src'),
+                Path('/tmp')
+            ]
+            all_py_files = []
+            for search_path in search_paths:
+                if search_path.exists():
+                    try:
+                        py_files_in_path = list(search_path.rglob("*.py"))
+                        all_py_files.extend(py_files_in_path)
+                        print(f"📁 Found {len(py_files_in_path)} .py files in {search_path}", flush=True)
+                    except (PermissionError, OSError) as e:
+                        print(f"⚠️ Skipped {search_path}: {e}", flush=True)
+                        continue
+        else:
+            all_py_files = list(project_path.rglob("*.py"))
+
+        print(f"📊 Total .py files found: {len(all_py_files)}", flush=True)
+
+        # Apply basic exclusion patterns early to avoid timeout issues
+        basic_exclude_patterns = request.options.exclude_patterns + [
+            "*GoogleDrive*", "*Library*", "__pycache__", ".git", "node_modules", ".venv"
+        ]
+        print(f"🔍 Exclude patterns: {basic_exclude_patterns}", flush=True)
+
+        py_files = []
+        excluded_count = 0
+        for py_file in all_py_files:
+            file_path_str = str(py_file)
+
+            # Check if any pattern matches
+            excluded = False
+            for pattern in basic_exclude_patterns:
+                if pattern in file_path_str:
+                    excluded = True
+                    excluded_count += 1
+                    if "GoogleDrive" in file_path_str:
+                        print(f"🚫 Excluded GoogleDrive file: {file_path_str}", flush=True)
+                    break
+
+            if not excluded:
+                py_files.append(py_file)
+
+        print(f"📊 Total .py files found: {len(all_py_files)}, Excluded: {excluded_count}, Remaining: {len(py_files)}", flush=True)
+
         if not py_files:
             raise ValueError(f"No Python files found in project path: {project_path_str}")
-        
-        await send_progress_update(analysis_id, "analyzing", 0.4, "Analyzing dependencies")
+
+        await send_progress_update(analysis_id, "analyzing", 0.35, f"Found {len(py_files)} Python files")
+        await asyncio.sleep(0.15)
+
+        await send_progress_update(analysis_id, "dependencies", 0.45, "Analyzing dependencies")
         
         # Create analysis options
         from pyview.analyzer_engine import AnalysisOptions, ProgressCallback
@@ -271,7 +332,7 @@ async def run_analysis_task(analysis_id: str, request: AnalysisRequest):
 
             options = AnalysisOptions(
                 max_depth=user_max_depth,  # Use validated user setting
-                exclude_patterns=request.options.exclude_patterns + ["tests", "__pycache__", ".git", "node_modules", ".venv"],  # Add more exclusions
+                exclude_patterns=basic_exclude_patterns,  # Use same patterns as initial scan
                 include_stdlib=request.options.include_stdlib,  # Use user setting
                 analysis_levels=["package", "module", "class", "method"],  # Include more levels for better cycle detection
                 enable_type_inference=request.options.enable_type_inference,  # Use user setting
@@ -298,18 +359,37 @@ async def run_analysis_task(analysis_id: str, request: AnalysisRequest):
             
             progress_callback = ProgressCallback(sync_progress_callback)
             
-            # For now, create demo results to test the frontend
-            await send_progress_update(analysis_id, "processing", 0.6, "Processing AST")
-            await asyncio.sleep(1)  # Simulate processing time
-            
-            await send_progress_update(analysis_id, "finalizing", 0.9, "Finalizing results")
-            await asyncio.sleep(0.5)
-            
             # Check if this is a request for complex demo data
             project_path_str = str(project_path).lower()
             if "demo" in project_path_str or "complex" in project_path_str:
+                # Mock 진행률 단계 for demo
+                await send_progress_update(analysis_id, "setup", 0.55, "Setting up analysis engine")
+                await asyncio.sleep(0.3)
+
+                await send_progress_update(analysis_id, "processing", 0.65, "Processing AST")
+                await asyncio.sleep(0.1)
+
+                await send_progress_update(analysis_id, "relationships", 0.75, "Building dependency relationships")
+                await asyncio.sleep(0.2)
+
+                await send_progress_update(analysis_id, "cycles", 0.85, "Detecting circular dependencies")
+                await asyncio.sleep(0.2)
+
+                await send_progress_update(analysis_id, "finalizing", 0.95, "Finalizing results")
+                await asyncio.sleep(0.1)
+
                 results = create_complex_web_app_demo()
             elif "microservice" in project_path_str:
+                # Mock 진행률 단계 for microservice demo
+                await send_progress_update(analysis_id, "setup", 0.55, "Setting up analysis engine")
+                await asyncio.sleep(0.5)
+
+                await send_progress_update(analysis_id, "processing", 0.65, "Processing microservices")
+                await asyncio.sleep(0.1)
+
+                await send_progress_update(analysis_id, "finalizing", 0.95, "Finalizing results")
+                await asyncio.sleep(0.3)
+
                 results = create_microservices_demo()
             else:
                 # Use actual analysis engine with timeout
@@ -318,10 +398,18 @@ async def run_analysis_task(analysis_id: str, request: AnalysisRequest):
                     if DEBUG_MODE:
                         with open('/tmp/pyview_debug.log', 'a') as f:
                             f.write(f"🔍 SERVER DEBUG: Starting analysis of: {project_path}, include_stdlib: {request.options.include_stdlib}\n")
-                    await send_progress_update(analysis_id, "analyzing", 0.5, f"Analyzing Python project: {project_path.name}")
-                    
+
+                    await send_progress_update(analysis_id, "engine_start", 0.55, f"Starting analysis engine for: {project_path.name}")
+                    await asyncio.sleep(0.2)
+
+                    await send_progress_update(analysis_id, "processing", 0.65, "Processing AST and dependencies")
+                    await asyncio.sleep(0.2)
+
                     # Run the actual analysis using the analyzer engine
                     result = engine.analyze_project(str(project_path), progress_callback)
+
+                    await send_progress_update(analysis_id, "finalizing", 0.95, "Finalizing analysis results")
+                    await asyncio.sleep(0.1)
                     print(f"Analysis completed successfully")
                     
                     # Convert AnalysisResult to dictionary format
