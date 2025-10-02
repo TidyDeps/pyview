@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Dict, Optional, List
 import json
 
+# Debug 설정
+DEBUG_MODE = os.getenv('PYVIEW_DEBUG', 'false').lower() == 'true'
+
 import uvicorn
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -269,7 +272,7 @@ async def run_analysis_task(analysis_id: str, request: AnalysisRequest):
             options = AnalysisOptions(
                 max_depth=user_max_depth,  # Use validated user setting
                 exclude_patterns=request.options.exclude_patterns + ["tests", "__pycache__", ".git", "node_modules", ".venv"],  # Add more exclusions
-                include_stdlib=False,  # Disable stdlib to reduce complexity
+                include_stdlib=request.options.include_stdlib,  # Use user setting
                 analysis_levels=["package", "module", "class", "method"],  # Include more levels for better cycle detection
                 enable_type_inference=request.options.enable_type_inference,  # Use user setting
                 enable_quality_metrics=False,  # Disable quality metrics to prevent hanging
@@ -312,6 +315,9 @@ async def run_analysis_task(analysis_id: str, request: AnalysisRequest):
                 # Use actual analysis engine with timeout
                 try:
                     print(f"Starting analysis of: {project_path}")
+                    if DEBUG_MODE:
+                        with open('/tmp/pyview_debug.log', 'a') as f:
+                            f.write(f"🔍 SERVER DEBUG: Starting analysis of: {project_path}, include_stdlib: {request.options.include_stdlib}\n")
                     await send_progress_update(analysis_id, "analyzing", 0.5, f"Analyzing Python project: {project_path.name}")
                     
                     # Run the actual analysis using the analyzer engine

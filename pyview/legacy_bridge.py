@@ -11,6 +11,8 @@ import logging
 from typing import List, Dict, Set, Optional, Tuple
 from pathlib import Path
 
+DEBUG_MODE = os.getenv('PYVIEW_DEBUG', 'false').lower() == 'true'
+
 # 기존 pydeps 모듈들 import
 from pydeps.depgraph import DepGraph, Source
 from pydeps import py2depgraph
@@ -58,25 +60,77 @@ class LegacyBridge:
             config = {
                 'max_bacon': kwargs.get('max_bacon', 2),
                 'exclude': kwargs.get('exclude', []),
-                'pylib': kwargs.get('pylib', False),
+                'exclude_exact': kwargs.get('exclude_exact', []),  # Add missing parameter
+                'pylib': kwargs.get('pylib', kwargs.get('include_stdlib', False)),  # Fix: accept both pylib and include_stdlib
                 'verbose': kwargs.get('verbose', 0),
                 'show_externals': False,
                 'show_raw_deps': False,
                 'no_config': True,  # Don't use config files
-                'reverse': False
+                'reverse': False,
+                'noise_level': kwargs.get('noise_level', 200),  # Add missing noise_level parameter
+                'show_deps': kwargs.get('show_deps', True),  # Add missing show_deps parameter
+                'show_cycles': kwargs.get('show_cycles', True),  # Add show_cycles parameter
+                'max_cluster_size': kwargs.get('max_cluster_size', 0),  # Add max_cluster_size parameter
+                'min_cluster_size': kwargs.get('min_cluster_size', 0),  # Add min_cluster_size parameter
+                'keep_target_cluster': kwargs.get('keep_target_cluster', False)  # Add keep_target_cluster parameter
             }
-            
-            # Run pydeps analysis with proper configuration
-            dep_graph = py2depgraph.py2dep(target, **config)
-            
+
+            # 디버그 로그 추가
+            if DEBUG_MODE:
+                print(f"🔍 LEGACY_BRIDGE DEBUG: pylib = {config['pylib']}")
+                print(f"🔍 LEGACY_BRIDGE DEBUG: full config = {config}")
+                with open('/tmp/pyview_debug.log', 'a') as f:
+                    f.write(f"🔍 LEGACY_BRIDGE DEBUG: pylib = {config['pylib']}, target = {target.fname}\n")
+                    f.write(f"🔍 LEGACY_BRIDGE DEBUG: calling py2dep with config = {config}\n")
+                    f.write(f"🔍 LEGACY_BRIDGE DEBUG: Current working directory = {os.getcwd()}\n")
+                    f.write(f"🔍 LEGACY_BRIDGE DEBUG: Target file exists = {os.path.exists(target.fname)}\n")
+                    f.write(f"🔍 LEGACY_BRIDGE DEBUG: Target full path = {target.path}\n")
+                    f.write(f"🔍 LEGACY_BRIDGE DEBUG: Target dirname = {target.dirname}\n")
+
+            # Change working directory to target directory for pydeps
+            original_cwd = os.getcwd()
+            try:
+                os.chdir(target.dirname)
+                if DEBUG_MODE:
+                    with open('/tmp/pyview_debug.log', 'a') as f:
+                        f.write(f"🔍 LEGACY_BRIDGE DEBUG: Changed working directory to = {os.getcwd()}\n")
+
+                # Run pydeps analysis with proper configuration
+                dep_graph = py2depgraph.py2dep(target, **config)
+
+            finally:
+                # Always restore original working directory
+                os.chdir(original_cwd)
+                if DEBUG_MODE:
+                    with open('/tmp/pyview_debug.log', 'a') as f:
+                        f.write(f"🔍 LEGACY_BRIDGE DEBUG: Restored working directory to = {os.getcwd()}\n")
+
+            # Debug logging after pydeps call
+            if DEBUG_MODE:
+                with open('/tmp/pyview_debug.log', 'a') as f:
+                    f.write(f"🔍 LEGACY_BRIDGE DEBUG: pydeps analysis completed\n")
+                    if dep_graph:
+                        f.write(f"🔍 LEGACY_BRIDGE DEBUG: DepGraph has {len(dep_graph.sources)} sources\n")
+                        # Check for stdlib modules
+                        stdlib_modules = ['os', 'sys', 'json', 'logging', 'datetime', 'collections', 're']
+                        found_stdlib = [m for m in stdlib_modules if m in dep_graph.sources]
+                        f.write(f"🔍 LEGACY_BRIDGE DEBUG: Found stdlib modules: {found_stdlib}\n")
+                    else:
+                        f.write(f"🔍 LEGACY_BRIDGE DEBUG: DepGraph is None!\n")
+
             # Ensure cycles are detected
             if hasattr(dep_graph, 'find_import_cycles'):
                 dep_graph.find_import_cycles()
-            
+
             return dep_graph
             
         except Exception as e:
             self.logger.error(f"pydeps analysis failed: {e}")
+            if DEBUG_MODE:
+                with open('/tmp/pyview_debug.log', 'a') as f:
+                    f.write(f"🔍 LEGACY_BRIDGE ERROR: pydeps analysis failed: {e}\n")
+                    import traceback
+                    f.write(f"🔍 LEGACY_BRIDGE ERROR: traceback: {traceback.format_exc()}\n")
             # Return empty DepGraph instead of raising to allow AST analysis to continue
             return self._create_empty_depgraph(project_path)
     
@@ -105,24 +159,35 @@ class LegacyBridge:
         packages = []
         modules = []
         relationships = []
-        
+
         # Handle None or empty DepGraph gracefully
         if not dep_graph or not hasattr(dep_graph, 'sources') or not dep_graph.sources:
             return packages, modules, relationships
-        
+
+        # Debug logging
+        if DEBUG_MODE:
+            with open('/tmp/pyview_debug.log', 'a') as f:
+                f.write(f"🔍 CONVERT DEBUG: Starting conversion with {len(dep_graph.sources)} sources\n")
+                # Count stdlib modules
+                stdlib_modules = ['os', 'sys', 'json', 'logging', 'datetime', 'collections', 're']
+                found_stdlib = [m for m in stdlib_modules if m in dep_graph.sources]
+                f.write(f"🔍 CONVERT DEBUG: Found stdlib modules in sources: {found_stdlib}\n")
+
         # Track packages we've seen
         seen_packages: Set[str] = set()
         package_modules: Dict[str, List[str]] = {}
-        
+
         # Convert sources to modules
+        filtered_count = 0
         for source in dep_graph.sources.values():
             if source.excluded or source.is_noise():
+                filtered_count += 1
                 continue
-            
+
             # Create module info
             module_info = self._convert_source_to_module(source)
             modules.append(module_info)
-            
+
             # Extract package info
             package_name = self._extract_package_name(source)
             if package_name and package_name not in seen_packages:
@@ -130,11 +195,22 @@ class LegacyBridge:
                 packages.append(package_info)
                 seen_packages.add(package_name)
                 package_modules[package_name] = []
-            
+
             # Associate module with package
             if package_name:
                 package_modules[package_name].append(module_info.id)
                 module_info.package_id = create_package_id(package_name)
+
+        # Debug logging after conversion
+        if DEBUG_MODE:
+            with open('/tmp/pyview_debug.log', 'a') as f:
+                f.write(f"🔍 CONVERT DEBUG: Filtered out {filtered_count} sources, converted {len(modules)} modules\n")
+                # Check which stdlib modules made it through
+                converted_stdlib = [m.name for m in modules if m.name in stdlib_modules]
+                f.write(f"🔍 CONVERT DEBUG: Converted stdlib modules: {converted_stdlib}\n")
+                # List all converted module names
+                all_module_names = [m.name for m in modules]
+                f.write(f"🔍 CONVERT DEBUG: All converted modules: {all_module_names}\n")
         
         # Update package module lists
         for package in packages:

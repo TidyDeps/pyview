@@ -15,6 +15,8 @@ from typing import List, Dict, Set, Optional, Callable, Any
 from datetime import datetime, timedelta
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
+DEBUG_MODE = os.getenv('PYVIEW_DEBUG', 'false').lower() == 'true'
+
 from .models import (
     AnalysisResult, ProjectInfo, DependencyGraph,
     PackageInfo, ModuleInfo, ClassInfo, MethodInfo, FieldInfo,
@@ -291,8 +293,22 @@ class AnalyzerEngine:
                 'max_bacon': self.options.max_depth if self.options.max_depth > 0 else 2,      # 의존성 탐색 깊이 (기본 2단계)
                 'exclude': self.options.exclude_patterns,                                      # 제외할 패턴들
                 'pylib': self.options.include_stdlib,                                          # 표준 라이브러리 포함 여부
-                'verbose': 0                                                                    # 상세 출력 비활성화
+                'verbose': 0,                                                                   # 상세 출력 비활성화
+                'exclude_exact': [],                                                            # 정확히 일치하는 제외 패턴
+                'noise_level': 200,                                                             # 노이즈 필터링 레벨
+                'show_deps': True,                                                              # 의존성 표시 여부
+                'show_cycles': True,                                                            # 순환 의존성 표시 여부
+                'max_cluster_size': 0,                                                          # 최대 클러스터 크기
+                'min_cluster_size': 0,                                                          # 최소 클러스터 크기
+                'keep_target_cluster': False                                                    # 타겟 클러스터 유지 여부
             }
+
+            # 디버그 로그 추가
+            if DEBUG_MODE:
+                print(f"🔍 DEBUG: include_stdlib = {self.options.include_stdlib}")
+                print(f"🔍 DEBUG: pydeps_kwargs = {pydeps_kwargs}")
+                with open('/tmp/pyview_debug.log', 'a') as f:
+                    f.write(f"🔍 ANALYZER DEBUG: include_stdlib = {self.options.include_stdlib}, pydeps_kwargs = {pydeps_kwargs}\n")
 
             # pydeps 분석 실행 (1단계: 모듈 간 import 관계 추출)                               # 기존 pydeps로 모듈 레벨 의존성 분석
             dep_graph = self.legacy_bridge.analyze_with_pydeps(project_path, **pydeps_kwargs)

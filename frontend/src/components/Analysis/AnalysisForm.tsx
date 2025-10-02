@@ -36,7 +36,44 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
   ])
   const [patternInput, setPatternInput] = useState('')
   const [isComposing, setIsComposing] = useState(false)
+  const [isFormValid, setIsFormValid] = useState(false)
+  const [pathValidationMessage, setPathValidationMessage] = useState('')
+  const [hasUserInput, setHasUserInput] = useState(false)
 
+  // 실시간 폼 유효성 검사
+  const validateForm = () => {
+    const projectPath = form.getFieldValue('project_path')
+
+    // 사용자가 한 번이라도 입력했는지 체크
+    if (projectPath !== undefined) {
+      setHasUserInput(true)
+    }
+
+    if (!hasUserInput && !projectPath) {
+      setPathValidationMessage('')
+      setIsFormValid(false)
+      return
+    }
+
+    // 빈 값 처리
+    if (!projectPath || projectPath.trim().length === 0) {
+      setPathValidationMessage('Project path is required')
+      setIsFormValid(false)
+      return
+    }
+
+    // 절대경로 검사
+    const isAbsolutePath = projectPath.startsWith('/') || /^[A-Za-z]:\\/.test(projectPath)
+    if (!isAbsolutePath) {
+      setPathValidationMessage('Please enter an absolute path (e.g., /path/to/project or C:\\path\\to\\project)')
+      setIsFormValid(false)
+      return
+    }
+
+    // 유효한 경우
+    setPathValidationMessage('')
+    setIsFormValid(true)
+  }
 
   const validateGitIgnorePattern = (pattern: string): boolean => {
     // .gitignore 패턴 엄격한 검증
@@ -169,8 +206,8 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
     const options: AnalysisOptions = {
       max_depth: values.max_depth || 10,
       exclude_patterns: excludePatterns,
-      include_stdlib: values.include_stdlib || false,
-      enable_type_inference: values.enable_type_inference || true,
+      include_stdlib: values.include_stdlib === true,
+      enable_type_inference: values.enable_type_inference !== false,
     }
 
     const request: AnalysisRequest = {
@@ -187,6 +224,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
         form={form}
         layout="vertical"
         onFinish={handleSubmit}
+        onValuesChange={validateForm}
         initialValues={{
           max_depth: 10,
           include_stdlib: false,
@@ -198,6 +236,8 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
         <Form.Item
           name="project_path"
           label="Project Path"
+          validateStatus={hasUserInput && pathValidationMessage ? 'error' : ''}
+          help={hasUserInput && pathValidationMessage ? pathValidationMessage : 'Enter the absolute path to your Python project'}
           rules={[{ required: true, message: 'Please enter project path' }]}
         >
           <Input
@@ -255,14 +295,24 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
           </div>
         </Form.Item>
 
+        <Divider />
+
         <Space style={{ width: '100%' }} direction="vertical">
           <Form.Item
             name="include_stdlib"
             valuePropName="checked"
             tooltip="Include Python standard library in analysis"
           >
-            <Switch checkedChildren="Include" unCheckedChildren="Exclude" />
-            <Text style={{ marginLeft: 8 }}>Standard Library</Text>
+            <div>
+              <Switch
+                checkedChildren="Include"
+                unCheckedChildren="Exclude"
+                onChange={(checked) => {
+                  form.setFieldValue('include_stdlib', checked)
+                }}
+              />
+              <Text style={{ marginLeft: 8 }}>Standard Library</Text>
+            </div>
           </Form.Item>
 
           <Form.Item
@@ -280,6 +330,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
             type="primary"
             htmlType="submit"
             loading={loading}
+            disabled={!isFormValid || loading}
             icon={<PlayCircleOutlined />}
             size="large"
             block
