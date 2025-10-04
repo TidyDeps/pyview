@@ -53,14 +53,21 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
   useEffect(() => {
     if (!analysisId) return
 
+    let isMounted = true;
+    const abortController = new AbortController();
+
     const loadAnalysisData = async () => {
       try {
-        setLoading(true)
-        setError(null)
-        setLoadingStage('Fetching analysis results...')
-        setLoadingProgress(5)
+        if (isMounted) {
+          setLoading(true)
+          setError(null)
+          setLoadingStage('Fetching analysis results...')
+          setLoadingProgress(5)
+        }
 
         const results = await ApiService.getAnalysisResults(analysisId)
+
+        if (!isMounted || abortController.signal.aborted) return;
 
         // Log cycle data for debugging
         console.log('🔍 Analysis results received:', results)
@@ -77,27 +84,42 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
         // Use setTimeout to allow UI to update before heavy computation
         await new Promise(resolve => setTimeout(resolve, 100))
 
+        if (!isMounted || abortController.signal.aborted) return;
+
         const transformedData = await transformAnalysisToGraphAsync(results, (progress: number, stage: string) => {
-          setLoadingProgress(15 + progress * 80) // 15% ~ 95%
-          setLoadingStage(stage)
+          if (isMounted) {
+            setLoadingProgress(15 + progress * 80) // 15% ~ 95%
+            setLoadingStage(stage)
+          }
         })
-        setGraphData(transformedData)
         
+        if (!isMounted || abortController.signal.aborted) return;
+
+        setGraphData(transformedData)
         setLoadingProgress(100)
         setLoadingStage('Complete')
         
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load analysis data'
-        setError(errorMessage)
-        message.error(errorMessage)
+        if (isMounted && !abortController.signal.aborted) {
+          const errorMessage = err instanceof Error ? err.message : 'Failed to load analysis data'
+          setError(errorMessage)
+          message.error(errorMessage)
+        }
       } finally {
-        setLoading(false)
-        setLoadingStage('')
-        setLoadingProgress(0)
+        if (isMounted) {
+          setLoading(false)
+          setLoadingStage('')
+          setLoadingProgress(0)
+        }
       }
     }
 
     loadAnalysisData()
+
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
   }, [analysisId])
 
   // Transform backend analysis results to graph data format

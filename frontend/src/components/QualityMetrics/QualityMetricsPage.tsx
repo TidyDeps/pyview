@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Table, Progress, Tag, Typography, Statistic, Empty } from 'antd';
+import { Card, Row, Col, Table, Progress, Tag, Typography, Statistic, Empty, message } from 'antd';
 import { CheckCircleOutlined, WarningOutlined, AppstoreOutlined, DashboardOutlined } from '@ant-design/icons';
 import { QualityMetrics } from '../../types/api';
 import ApiService from '../../services/api';
@@ -19,22 +19,33 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
-    if (analysisId) {
-      fetchMetrics();
-    }
-  }, [analysisId]);
-
-  const fetchMetrics = async () => {
     if (!analysisId) return;
 
-    try {
-      const response = await ApiService.getQualityMetrics(analysisId);
-      setMetrics(response);
-      // setFilteredMetrics(response);
-    } catch (error) {
-      console.error('Failed to fetch quality metrics:', error);
-    }
-  };
+    let isMounted = true;
+    const abortController = new AbortController();
+
+    const fetchMetrics = async () => {
+      try {
+        const response = await ApiService.getQualityMetrics(analysisId);
+        if (isMounted) {
+          setMetrics(response);
+          // setFilteredMetrics(response);
+        }
+      } catch (error) {
+        if (isMounted && !abortController.signal.aborted) {
+          console.error('Failed to fetch quality metrics:', error);
+          message.error('Server connection lost. Please try again.');
+        }
+      }
+    };
+
+    fetchMetrics();
+
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
+  }, [analysisId]);
 
   // Filter metrics when filters change
   // useEffect(() => {
