@@ -1211,8 +1211,8 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     {
       selector: 'node.highlighted',
       style: {
-        'background-color': '#ff4d4f',
-        'border-color': '#ff4d4f',
+        'background-color': '#1E90FF',
+        'border-color': '#1E90FF',
         'border-width': 5,
         'z-index': 999
       }
@@ -1221,27 +1221,27 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     {
       selector: 'node[type="class"].highlighted',
       style: {
-        'background-color': '#ff7875',
-        'border-color': '#ff4d4f', 
+        //'background-color': '#ff7875',
+        'border-color': '#1E90FF', 
         'border-width': 6,
         'z-index': 999,
         'overlay-opacity': 0.1,
-        'overlay-color': '#ff4d4f'
+        'overlay-color': '#1E90FF'
       }
     },
     {
       selector: 'node.connected',
       style: {
-        'background-color': '#ff4d4f',
-        'border-color': '#ff4d4f',
+        'background-color': '#1E90FF',
+        'border-color': '#1E90FF',
         'border-width': 4
       }
     },
     {
       selector: 'node.hierarchical',
       style: {
-        'background-color': '#ff4d4f',
-        'border-color': '#ff4d4f',
+        'background-color': '#1E90FF',
+        'border-color': '#1E90FF',
         'border-width': 3
       }
     },
@@ -1254,8 +1254,8 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     {
       selector: 'edge.highlighted',
       style: {
-        'line-color': '#ff4d4f',
-        'target-arrow-color': '#ff4d4f',
+        'line-color': '#1E90FF',
+        'target-arrow-color': '#1E90FF',
         'width': 4
       }
     },
