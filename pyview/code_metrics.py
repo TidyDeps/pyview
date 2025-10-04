@@ -3,8 +3,6 @@ PyView Code Quality Metrics
 
 Implements code quality metrics including:
 - Cyclomatic Complexity
-- Cognitive Complexity
-- Nesting Depth
 - Maintainability Index
 """
 
@@ -21,8 +19,6 @@ from .models import MethodInfo, ClassInfo, ModuleInfo
 class ComplexityMetrics:
     """Code complexity metrics for a method/function"""
     cyclomatic_complexity: int = 1  # Base complexity
-    cognitive_complexity: int = 0   # Human-perceived complexity
-    nesting_depth: int = 0         # Maximum nesting level
     lines_of_code: int = 0         # Physical lines
     logical_lines: int = 0         # Logical lines of code
 
@@ -39,34 +35,26 @@ class ComplexityAnalyzer(ast.NodeVisitor):
     
     def __init__(self):
         self.complexity = 1  # Base complexity
-        self.cognitive_complexity = 0
-        self.nesting_depth = 0
-        self.current_depth = 0
-        self.max_depth = 0
         
     def visit_If(self, node):
         self.complexity += 1
-        self.cognitive_complexity += (1 + self.current_depth)
-        self._visit_with_depth(node)
+        self.generic_visit(node)
         
     def visit_For(self, node):
         self.complexity += 1
-        self.cognitive_complexity += (1 + self.current_depth)
-        self._visit_with_depth(node)
+        self.generic_visit(node)
         
     def visit_While(self, node):
         self.complexity += 1
-        self.cognitive_complexity += (1 + self.current_depth)
-        self._visit_with_depth(node)
+        self.generic_visit(node)
         
     def visit_Try(self, node):
         self.complexity += len(node.handlers)
-        self.cognitive_complexity += len(node.handlers)
-        self._visit_with_depth(node)
+        self.generic_visit(node)
         
     def visit_With(self, node):
         self.complexity += 1
-        self._visit_with_depth(node)
+        self.generic_visit(node)
         
     def visit_BoolOp(self, node):
         if isinstance(node.op, (ast.And, ast.Or)):
@@ -79,11 +67,6 @@ class ComplexityAnalyzer(ast.NodeVisitor):
             self.complexity += 1
         self.generic_visit(node)
         
-    def _visit_with_depth(self, node):
-        self.current_depth += 1
-        self.max_depth = max(self.max_depth, self.current_depth)
-        self.generic_visit(node)
-        self.current_depth -= 1
 
 
 class CodeMetricsEngine:
@@ -112,8 +95,6 @@ class CodeMetricsEngine:
                     
                     return ComplexityMetrics(
                         cyclomatic_complexity=analyzer.complexity,
-                        cognitive_complexity=analyzer.cognitive_complexity,
-                        nesting_depth=analyzer.max_depth,
                         lines_of_code=physical_lines,
                         logical_lines=logical_lines
                     )
@@ -128,8 +109,6 @@ class CodeMetricsEngine:
         """Analyze quality metrics for a class"""
         # Calculate average complexity for class methods
         total_complexity = 0
-        total_cognitive_complexity = 0
-        max_nesting = 0
         total_loc = 0
         method_count = 0
         
@@ -137,15 +116,12 @@ class CodeMetricsEngine:
             try:
                 method_metrics = self.analyze_method_complexity(method, module_source)
                 total_complexity += method_metrics.cyclomatic_complexity
-                total_cognitive_complexity += method_metrics.cognitive_complexity
-                max_nesting = max(max_nesting, method_metrics.nesting_depth)
                 total_loc += method_metrics.lines_of_code
                 method_count += 1
             except:
                 continue
                 
         avg_complexity = total_complexity / method_count if method_count > 0 else 1
-        avg_cognitive_complexity = total_cognitive_complexity / method_count if method_count > 0 else 0
         
         # Calculate Maintainability Index (simplified version)
         # MI = 171 - 5.2 * ln(Halstead Volume) - 0.23 * (Cyclomatic Complexity) - 16.2 * ln(Lines of Code)
@@ -156,8 +132,6 @@ class CodeMetricsEngine:
         return QualityMetrics(
             complexity=ComplexityMetrics(
                 cyclomatic_complexity=int(avg_complexity),
-                cognitive_complexity=int(avg_cognitive_complexity),
-                nesting_depth=max_nesting,
                 lines_of_code=total_loc
             ),
             maintainability_index=maintainability_index
@@ -166,8 +140,6 @@ class CodeMetricsEngine:
     def analyze_module_quality(self, module_info: ModuleInfo, source_code: str) -> QualityMetrics:
         """Analyze quality metrics for a module"""
         total_complexity = 0
-        total_cognitive_complexity = 0
-        max_nesting = 0
         total_loc = 0
         class_count = 0
         
@@ -175,17 +147,13 @@ class CodeMetricsEngine:
         for class_info in module_info.classes:
             class_metrics = self.analyze_class_quality(class_info, source_code)
             total_complexity += class_metrics.complexity.cyclomatic_complexity
-            total_cognitive_complexity += class_metrics.complexity.cognitive_complexity
-            max_nesting = max(max_nesting, class_metrics.complexity.nesting_depth)
             total_loc += class_metrics.complexity.lines_of_code
             class_count += 1
             
         if class_count > 0:
             avg_complexity = total_complexity / class_count
-            avg_cognitive_complexity = total_cognitive_complexity / class_count
         else:
             avg_complexity = 1
-            avg_cognitive_complexity = 0
             
         # Module-level maintainability
         lines_of_code = len(source_code.split('\n'))
@@ -194,8 +162,6 @@ class CodeMetricsEngine:
         return QualityMetrics(
             complexity=ComplexityMetrics(
                 cyclomatic_complexity=int(avg_complexity),
-                cognitive_complexity=int(avg_cognitive_complexity),
-                nesting_depth=max_nesting,
                 lines_of_code=total_loc if class_count > 0 else lines_of_code
             ),
             maintainability_index=maintainability_index

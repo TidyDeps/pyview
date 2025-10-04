@@ -105,7 +105,6 @@ class QualityMetricsResponse(BaseModel):
     entity_id: str
     entity_type: str
     cyclomatic_complexity: int
-    cognitive_complexity: int
     lines_of_code: int
     afferent_coupling: int
     efferent_coupling: int
@@ -670,7 +669,6 @@ async def get_quality_metrics(analysis_id: str):
                 entity_id=metric.get("entity_id", "unknown"),
                 entity_type=metric.get("entity_type", "module"),
                 cyclomatic_complexity=metric.get("cyclomatic_complexity", 0),
-                cognitive_complexity=metric.get("cognitive_complexity", 0),
                 lines_of_code=metric.get("lines_of_code", 0),
                 afferent_coupling=metric.get("afferent_coupling", 0),
                 efferent_coupling=metric.get("efferent_coupling", 0),
@@ -689,7 +687,6 @@ async def get_quality_metrics(analysis_id: str):
                 entity_id=module.get("id", module.get("name", "unknown")),
                 entity_type="module",
                 cyclomatic_complexity=module.get("complexity", 5),
-                cognitive_complexity=module.get("complexity", 7),
                 lines_of_code=module.get("loc", 100),
                 afferent_coupling=len(module.get("dependencies", [])),
                 efferent_coupling=len([dep for dep in analysis_results.get("relationships", []) 
@@ -706,7 +703,6 @@ async def get_quality_metrics(analysis_id: str):
                 entity_id=cls.get("id", cls.get("name", "unknown")),
                 entity_type="class",
                 cyclomatic_complexity=len(cls.get("methods", [])) * 2,
-                cognitive_complexity=len(cls.get("methods", [])) * 3,
                 lines_of_code=len(cls.get("methods", [])) * 15,
                 afferent_coupling=1,
                 efferent_coupling=len(cls.get("methods", [])),

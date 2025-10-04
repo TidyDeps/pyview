@@ -69,8 +69,6 @@ export interface QualityMetrics {
   entity_id: string
   entity_type: string
   cyclomatic_complexity: number
-  cognitive_complexity: number
-  nesting_depth: number
   lines_of_code: number
   maintainability_index: number
   quality_grade: string

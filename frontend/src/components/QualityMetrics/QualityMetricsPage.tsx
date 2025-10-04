@@ -175,27 +175,6 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
         );
       }
     },
-    {
-      title: 'Nesting Depth',
-      dataIndex: 'nesting_depth',
-      key: 'nesting_depth',
-      render: (depth: number) => {
-        const status = depth <= 3 ? 'success' : depth <= 5 ? 'active' : 'exception';
-        return (
-          <div>
-            <Progress
-              percent={(depth / 10) * 100}
-              status={status}
-              strokeWidth={8}
-              format={() => depth}
-            />
-            <Text type="secondary" style={{ fontSize: 11 }}>
-              {depth <= 3 ? 'Good' : depth <= 5 ? 'Moderate' : 'High'}
-            </Text>
-          </div>
-        );
-      }
-    }
   ];
 
   if (!analysisId) {
