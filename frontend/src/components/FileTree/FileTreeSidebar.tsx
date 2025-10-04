@@ -1,20 +1,22 @@
 // File Tree Sidebar Component for IDE-like file navigation  
 import React, { useState, useEffect, useMemo } from 'react'
 import { Tree, Input, Card, Empty } from 'antd'
-import { 
-  FolderOutlined, 
-  FileOutlined,
-  FunctionOutlined,
-  BlockOutlined,
+import {
   SearchOutlined,
-  FieldBinaryOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  AppstoreOutlined,
+  CodeOutlined,
+  BuildOutlined,
+  SettingOutlined,
+  TagOutlined,
+  FileOutlined
 } from '@ant-design/icons'
 import type { TreeProps } from 'antd/es/tree'
 
 const { Search } = Input
 
 type EntityType = 'package' | 'module' | 'class' | 'method' | 'field'
+
 
 interface FileTreeNode {
   key: string
@@ -120,7 +122,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           key: `package_${pkgId}`,
           title: (
             <span>
-              <FolderOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+              <AppstoreOutlined style={{ marginRight: 8, color: '#1890ff' }} />
               <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
                 {pkg.name || pkgId}
               </span>
@@ -145,7 +147,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           key: `module_${modId}`,
           title: (
             <span>
-              <FileOutlined style={{ marginRight: 8, color: '#52c41a' }} />
+              <CodeOutlined style={{ marginRight: 8, color: '#52c41a' }} />
               <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
                 {mod.name || modId}
               </span>
@@ -170,7 +172,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           key: `class_${clsId}`,
           title: (
             <span>
-              <BlockOutlined style={{ marginRight: 8, color: '#fa8c16' }} />
+              <BuildOutlined style={{ marginRight: 8, color: '#fa8c16' }} />
               <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
                 {cls.name || clsId}
               </span>
@@ -195,7 +197,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           key: `method_${methodId}`,
           title: (
             <span>
-              <FunctionOutlined style={{ marginRight: 8, color: '#eb2f96' }} />
+              <SettingOutlined style={{ marginRight: 8, color: '#722ed1' }} />
               <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
                 {method.name || methodId}
               </span>
@@ -221,7 +223,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           key: `field_${fieldId}`,
           title: (
             <span>
-              <FieldBinaryOutlined style={{ marginRight: 8, color: '#722ed1' }} />
+              <TagOutlined style={{ marginRight: 8, color: '#eb2f96' }} />
               <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
                 {field.name || fieldId}
               </span>
@@ -644,7 +646,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
         >
           {filteredTreeData.length > 0 ? (
             <Tree
-              showIcon={false}
+              showIcon={true}
               onExpand={onExpand}
               expandedKeys={expandedKeys}
               autoExpandParent={autoExpandParent}
