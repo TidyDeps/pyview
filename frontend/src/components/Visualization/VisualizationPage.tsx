@@ -671,20 +671,75 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     return { nodes, edges }
   }
 
+  // Get node information from graph data
+  const getNodeInfo = (nodeId: string): { type: string; name: string } => {
+    console.log('🔍 getNodeInfo called with nodeId:', nodeId)
 
+    // Try to find the node in graph data first
+    if (graphData) {
+      const node = graphData.nodes.find(n => n.id === nodeId)
+      console.log('📊 Found node in graphData:', node)
+
+      if (node) {
+        const type = node.type.charAt(0).toUpperCase() + node.type.slice(1)
+        const result = { type, name: node.name }
+        console.log('✅ Returning from graphData:', result)
+        return result
+      }
+    }
+
+    // Fallback: parse from nodeId if not found in graph data
+    console.log('⚠️ Node not found in graphData, using fallback parsing')
+
+    // Remove common prefixes and parse
+    let cleanNodeId = nodeId
+    if (nodeId.startsWith('mod:')) {
+      cleanNodeId = nodeId.replace('mod:', '')
+      return { type: 'Module', name: cleanNodeId }
+    } else if (nodeId.startsWith('cls:')) {
+      cleanNodeId = nodeId.replace('cls:', '')
+      return { type: 'Class', name: cleanNodeId }
+    } else if (nodeId.startsWith('method:')) {
+      cleanNodeId = nodeId.replace('method:', '')
+      return { type: 'Method', name: cleanNodeId }
+    } else if (nodeId.startsWith('field:')) {
+      cleanNodeId = nodeId.replace('field:', '')
+      return { type: 'Field', name: cleanNodeId }
+    } else if (nodeId.includes('/')) {
+      const name = nodeId.split('/').pop() || nodeId
+      return { type: 'File', name }
+    } else {
+      return { type: 'Node', name: nodeId }
+    }
+  }
 
   // File tree node selection handler
   const handleFileTreeNodeSelect = (nodeId: string, nodeType: string) => {
-    console.log('File tree selected:', nodeId, nodeType)
+    console.log('🌳 File tree selected:', nodeId, nodeType)
     setSelectedNodeId(nodeId)
-    message.info(`📂 Selected from file tree: ${nodeId}`)
+
+    // Try to get info from graph data first, then fallback to nodeType
+    const { type, name } = getNodeInfo(nodeId)
+
+    // If getNodeInfo couldn't find it and we have nodeType, use that
+    if (type === 'Node' && nodeType) {
+      const parsedName = nodeId.includes('/') ? nodeId.split('/').pop() || nodeId : nodeId
+      const parsedType = nodeType.charAt(0).toUpperCase() + nodeType.slice(1)
+      console.log('🔄 Using nodeType fallback:', { type: parsedType, name: parsedName })
+      message.info(`Selected ${parsedType}: ${parsedName}`)
+    } else {
+      console.log('✅ Using getNodeInfo result:', { type, name })
+      message.info(`Selected ${type}: ${name}`)
+    }
   }
 
   // Graph node click handler
   const handleGraphNodeClick = (nodeId: string) => {
     console.log('Graph node clicked:', nodeId)
     setSelectedNodeId(nodeId)
-    message.info(`🎯 Selected from graph: ${nodeId}`)
+
+    const { type, name } = getNodeInfo(nodeId)
+    message.info(`Selected ${type}: ${name}`)
   }
 
   if (loading) {
