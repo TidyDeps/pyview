@@ -429,8 +429,16 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
   // Handle external node selection (from file tree)
   useEffect(() => {
-    if (!cyInstanceRef.current || !selectedNodeId) return;
+    if (!selectedNodeId) {
+      setSelectedNode(null);
+      return;
+    }
+
+    if (!cyInstanceRef.current) return;
     const cy = cyInstanceRef.current;
+
+    // Update selected node state to show the panel
+    setSelectedNode(selectedNodeId);
 
     // Find and highlight the selected node
     const targetNode = cy.getElementById(selectedNodeId);
@@ -460,6 +468,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
       if (matchingNode.length > 0) {
         const firstMatch = matchingNode.first();
+        // Update selectedNode to the actual found node id
+        setSelectedNode(firstMatch.id());
+
         // Use the same highlighting logic as clicking on the graph
         handleHierarchicalHighlight(cy, firstMatch.id());
 
@@ -472,6 +483,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         console.log('HierarchicalNetworkGraph - Centered on matching node:', firstMatch.id());
       } else {
         console.warn('HierarchicalNetworkGraph - Node not found:', selectedNodeId);
+        // Keep the selectedNode as is to still show the panel even if not found in graph
       }
     }
   }, [selectedNodeId]);
