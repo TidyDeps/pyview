@@ -241,7 +241,6 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
           <Input
             placeholder="/path/to/your/python/project"
             prefix={<FolderOpenOutlined />}
-            autoComplete="off"
           />
         </Form.Item>
 
