@@ -197,7 +197,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           key: `method_${methodId}`,
           title: (
             <span>
-              <SettingOutlined style={{ marginRight: 8, color: '#722ed1' }} />
+              <SettingOutlined style={{ marginRight: 8, color: '#eb2f96' }} />
               <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
                 {method.name || methodId}
               </span>
@@ -223,7 +223,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           key: `field_${fieldId}`,
           title: (
             <span>
-              <TagOutlined style={{ marginRight: 8, color: '#eb2f96' }} />
+              <TagOutlined style={{ marginRight: 8, color: '#722ed1' }} />
               <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
                 {field.name || fieldId}
               </span>

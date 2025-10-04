@@ -32,6 +32,12 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
   const [error, setError] = useState<string | null>(null)
   const [loadingStage, setLoadingStage] = useState<string>('')
   const [loadingProgress, setLoadingProgress] = useState<number>(0)
+  const [loadingDetails, setLoadingDetails] = useState<string>('')
+  const [processingStats, setProcessingStats] = useState<{
+    totalItems: number
+    processedItems: number
+    currentType: string
+  }>({ totalItems: 0, processedItems: 0, currentType: '' })
   
   // Graph control states - only hierarchical mode
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
@@ -86,18 +92,41 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
 
         if (!isMounted || abortController.signal.aborted) return;
 
-        const transformedData = await transformAnalysisToGraphAsync(results, (progress: number, stage: string) => {
+        const transformedData = await transformAnalysisToGraphAsync(results, (progress: number, stage: string, details?: string, stats?: { totalItems: number, processedItems: number, currentType: string }) => {
           if (isMounted) {
             setLoadingProgress(15 + progress * 80) // 15% ~ 95%
             setLoadingStage(stage)
+            if (details) setLoadingDetails(details)
+            if (stats) setProcessingStats(stats)
           }
         })
         
         if (!isMounted || abortController.signal.aborted) return;
 
+        // Start final rendering phase
+        setLoadingProgress(95)
+        setLoadingStage('Rendering graph visualization...')
+        setLoadingDetails('Preparing visual elements and layout...')
+        setProcessingStats({ totalItems: 0, processedItems: 0, currentType: '' })
+
         setGraphData(transformedData)
+
+        // Simulate graph rendering time for better UX
+        await new Promise(resolve => setTimeout(resolve, 500))
+
+        if (!isMounted || abortController.signal.aborted) return;
+
         setLoadingProgress(100)
-        setLoadingStage('Complete')
+        setLoadingStage('Visualization ready!')
+        setLoadingDetails('Graph successfully rendered')
+
+        // Clear loading states after a brief display
+        setTimeout(() => {
+          if (isMounted) {
+            setLoadingDetails('')
+            setProcessingStats({ totalItems: 0, processedItems: 0, currentType: '' })
+          }
+        }, 1000)
         
       } catch (err) {
         if (isMounted && !abortController.signal.aborted) {
@@ -353,29 +382,40 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
   // Async version with progress updates and data limiting
   const transformAnalysisToGraphAsync = async (
     analysisResults: any,
-    onProgress?: (progress: number, stage: string) => void
+    onProgress?: (progress: number, stage: string, details?: string, stats?: { totalItems: number, processedItems: number, currentType: string }) => void
   ): Promise<GraphData> => {
     const nodes: GraphData['nodes'] = []
     const edges: GraphData['edges'] = []
 
     console.log('Transforming analysis results (async):', analysisResults)
-    
+
     // Get dependency graph data
     const asyncDependencyGraph = analysisResults.dependency_graph || {}
-    
-    // Process all data but with chunking for performance
-    const CHUNK_SIZE = 100; // Process in chunks to avoid blocking UI
+
+    // Calculate total items for accurate progress tracking
+    const totalCounts = {
+      packages: asyncDependencyGraph.packages?.length || 0,
+      modules: asyncDependencyGraph.modules?.length || 0,
+      classes: asyncDependencyGraph.classes?.length || 0,
+      methods: asyncDependencyGraph.methods?.length || 0,
+      fields: asyncDependencyGraph.fields?.length || 0
+    }
+    const totalItems = Object.values(totalCounts).reduce((sum, count) => sum + count, 0)
+
+    console.log('📊 Total items to process:', totalCounts, '(Total:', totalItems, ')')
+
+    // 🚀 성능 최적화: 더 큰 청크 크기로 배치 처리 효율성 증대
+    const CHUNK_SIZE = 500; // Process in larger chunks for better performance
+    let processedItems = 0
 
     // Process packages (all data)
     if (asyncDependencyGraph.packages) {
       const packages = asyncDependencyGraph.packages
       console.log(`Processing ${packages.length} packages`)
-      onProgress?.(0.1, 'Processing packages...')
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
+
       for (let i = 0; i < packages.length; i += CHUNK_SIZE) {
         const chunk = packages.slice(i, i + CHUNK_SIZE)
-        
+
         chunk.forEach((pkg: any, chunkIndex: number) => {
           const index = i + chunkIndex
           const nodeId = pkg.id || pkg.name || `pkg_${index}`
@@ -388,11 +428,25 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
             z: Math.sin(index * 0.8) * 60,
             connections: pkg.modules || []
           })
+          processedItems++
         })
-        
-        // Yield control after each chunk
-        if (i % (CHUNK_SIZE * 2) === 0) {
-          await new Promise(resolve => setTimeout(resolve, 5))
+
+        // Update progress with detailed info
+        const progress = Math.min(processedItems / totalItems, 0.3) // Packages take up to 30% of total progress
+        onProgress?.(
+          progress,
+          'Processing packages...',
+          `Building package hierarchy (${Math.min(i + CHUNK_SIZE, packages.length)}/${packages.length})`,
+          {
+            totalItems: packages.length,
+            processedItems: Math.min(i + CHUNK_SIZE, packages.length),
+            currentType: 'Packages'
+          }
+        )
+
+        // 🚀 최적화된 yield 빈도 (더 적은 빈도로 더 나은 성능)
+        if (i % CHUNK_SIZE === 0 && i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1))
         }
       }
     }
@@ -401,12 +455,10 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     if (asyncDependencyGraph.modules) {
       const modules = asyncDependencyGraph.modules
       console.log(`Processing ${modules.length} modules`)
-      onProgress?.(0.4, 'Processing modules...')
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
+
       for (let i = 0; i < modules.length; i += CHUNK_SIZE) {
         const chunk = modules.slice(i, i + CHUNK_SIZE)
-        
+
         chunk.forEach((mod: any, chunkIndex: number) => {
           const index = i + chunkIndex
           const angle = index * (Math.PI * 2) / modules.length
@@ -421,8 +473,22 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
             z: Math.sin(angle) * radius,
             connections: []
           })
+          processedItems++
         })
-        
+
+        // Update progress with detailed info
+        const progress = Math.min(processedItems / totalItems, 0.5) // Modules take up to 50% of total progress
+        onProgress?.(
+          progress,
+          'Processing modules...',
+          `Building module structure (${Math.min(i + CHUNK_SIZE, modules.length)}/${modules.length})`,
+          {
+            totalItems: modules.length,
+            processedItems: Math.min(i + CHUNK_SIZE, modules.length),
+            currentType: 'Modules'
+          }
+        )
+
         if (i % (CHUNK_SIZE * 2) === 0) {
           await new Promise(resolve => setTimeout(resolve, 5))
         }
@@ -433,10 +499,10 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     if (asyncDependencyGraph.classes) {
       const classes = asyncDependencyGraph.classes
       console.log(`Processing ${classes.length} classes`)
-      
+
       for (let i = 0; i < classes.length; i += CHUNK_SIZE) {
         const chunk = classes.slice(i, i + CHUNK_SIZE)
-        
+
         chunk.forEach((cls: any, chunkIndex: number) => {
           const index = i + chunkIndex
           const angle = index * (Math.PI * 2) / classes.length
@@ -451,11 +517,25 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
             z: Math.sin(angle) * radius,
             connections: [...(cls.method_ids || []), ...(cls.field_ids || [])]
           })
+          processedItems++
         })
-        
-        // More frequent yields for classes (heavy processing)
-        if (i % CHUNK_SIZE === 0) {
-          await new Promise(resolve => setTimeout(resolve, 10))
+
+        // Update progress with detailed info
+        const progress = Math.min(processedItems / totalItems, 0.7) // Classes take up to 70% of total progress
+        onProgress?.(
+          progress,
+          'Processing classes...',
+          `Building class hierarchy (${Math.min(i + CHUNK_SIZE, classes.length)}/${classes.length})`,
+          {
+            totalItems: classes.length,
+            processedItems: Math.min(i + CHUNK_SIZE, classes.length),
+            currentType: 'Classes'
+          }
+        )
+
+        // 🚀 클래스는 더 무거우므로 약간 더 자주 yield
+        if (i % CHUNK_SIZE === 0 && i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 2))
         }
       }
     }
@@ -464,10 +544,10 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     if (asyncDependencyGraph.methods) {
       const methods = asyncDependencyGraph.methods
       console.log(`Processing ${methods.length} methods`)
-      
+
       for (let i = 0; i < methods.length; i += CHUNK_SIZE) {
         const chunk = methods.slice(i, i + CHUNK_SIZE)
-        
+
         chunk.forEach((method: any, chunkIndex: number) => {
           const index = i + chunkIndex
           const angle = index * (Math.PI * 2) / methods.length
@@ -482,8 +562,22 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
             z: Math.sin(angle) * radius,
             connections: []
           })
+          processedItems++
         })
-        
+
+        // Update progress with detailed info
+        const progress = Math.min(processedItems / totalItems, 0.85) // Methods take up to 85% of total progress
+        onProgress?.(
+          progress,
+          'Processing methods...',
+          `Building method structure (${Math.min(i + CHUNK_SIZE, methods.length)}/${methods.length})`,
+          {
+            totalItems: methods.length,
+            processedItems: Math.min(i + CHUNK_SIZE, methods.length),
+            currentType: 'Methods'
+          }
+        )
+
         if (i % (CHUNK_SIZE * 2) === 0) {
           await new Promise(resolve => setTimeout(resolve, 5))
         }
@@ -494,12 +588,10 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     if (asyncDependencyGraph.fields) {
       const fields = asyncDependencyGraph.fields
       console.log(`Processing ${fields.length} fields`)
-      onProgress?.(0.7, 'Processing fields...')
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
+
       for (let i = 0; i < fields.length; i += CHUNK_SIZE) {
         const chunk = fields.slice(i, i + CHUNK_SIZE)
-        
+
         chunk.forEach((field: any, chunkIndex: number) => {
           const index = i + chunkIndex
           const angle = index * (Math.PI * 2) / fields.length
@@ -514,8 +606,22 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
             z: Math.sin(angle) * radius,
             connections: []
           })
+          processedItems++
         })
-        
+
+        // Update progress with detailed info
+        const progress = Math.min(processedItems / totalItems, 0.9) // Fields take up to 90% of total progress
+        onProgress?.(
+          progress,
+          'Processing fields...',
+          `Building field structure (${Math.min(i + CHUNK_SIZE, fields.length)}/${fields.length})`,
+          {
+            totalItems: fields.length,
+            processedItems: Math.min(i + CHUNK_SIZE, fields.length),
+            currentType: 'Fields'
+          }
+        )
+
         if (i % (CHUNK_SIZE * 2) === 0) {
           await new Promise(resolve => setTimeout(resolve, 5))
         }
@@ -524,87 +630,113 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
 
     // Extract relationships from module imports and class relationships
     console.log('Extracting relationships from dependency graph...')
-    onProgress?.(0.8, 'Building relationships...')
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
+    onProgress?.(
+      0.9,
+      'Building relationships...',
+      'Creating dependency connections between nodes',
+      { totalItems: 0, processedItems: 0, currentType: 'Relationships' }
+    )
+
     const nodeIds = new Set(nodes.map(n => n.id))
     let validEdges = 0
     let invalidEdges = 0
+
+    // 🚀 성능 최적화: Set을 사용한 O(1) 엣지 중복 검사
+    const edgeSet = new Set<string>()
+    const addEdgeIfNotExists = (source: string, target: string, type: string) => {
+      const edgeKey = `${source}->${target}`
+      if (!edgeSet.has(edgeKey)) {
+        edgeSet.add(edgeKey)
+        edges.push({ source, target, type })
+        validEdges++
+        return true
+      }
+      return false
+    }
+
+    // 🚀 성능 최적화: Map을 사용한 O(1) 노드 검색
+    const nodeMap = new Map(nodes.map(n => [n.id, n]))
+    const nodeNameMap = new Map(nodes.map(n => [n.name, n]))
+
+    // Calculate total relationships to process
+    const moduleCount = asyncDependencyGraph.modules?.length || 0
+    const classCount = asyncDependencyGraph.classes?.length || 0
+    const totalRelationships = moduleCount + classCount
+    let processedRelationships = 0
     
     // Extract edges from module imports
     if (asyncDependencyGraph.modules) {
       const modules = asyncDependencyGraph.modules
       console.log(`Extracting edges from ${modules.length} modules`)
-      
+
       for (let i = 0; i < modules.length; i += CHUNK_SIZE) {
         const chunk = modules.slice(i, i + CHUNK_SIZE)
-        
+
         chunk.forEach((mod: any) => {
           const sourceId = mod.id
-          
+
           // Create edges from imports
           if (mod.imports && Array.isArray(mod.imports)) {
             mod.imports.forEach((imp: any) => {
-              // Create target ID based on import
+              // 🚀 최적화된 타겟 노드 검색
               const targetModule = imp.module
               let targetId = null
-              
-              // Try to find matching target node
+
               if (targetModule) {
-                // Look for exact module match
-                targetId = nodes.find(n => 
-                  n.id.includes(targetModule) || 
-                  n.name === targetModule ||
-                  (n.type === 'module' && n.id.endsWith(`:${targetModule}`))
-                )?.id
-                
-                // If exact match not found, try with mod: prefix
-                if (!targetId) {
-                  targetId = `mod:${targetModule}`
-                  if (!nodeIds.has(targetId)) {
-                    targetId = null
+                // 1. 직접 ID로 검색 (가장 빠름)
+                if (nodeMap.has(targetModule)) {
+                  targetId = targetModule
+                }
+                // 2. 이름으로 검색
+                else if (nodeNameMap.has(targetModule)) {
+                  targetId = nodeNameMap.get(targetModule)!.id
+                }
+                // 3. mod: 프리픽스 시도
+                else {
+                  const modPrefixed = `mod:${targetModule}`
+                  if (nodeIds.has(modPrefixed)) {
+                    targetId = modPrefixed
                   }
                 }
               }
-              
-              // Create edge if valid target found
+
+              // 🚀 최적화된 엣지 생성 (중복 검사 O(1))
               if (targetId && sourceId !== targetId && nodeIds.has(sourceId)) {
-                const edgeExists = edges.some(e => e.source === sourceId && e.target === targetId)
-                if (!edgeExists) {
-                  edges.push({
-                    source: sourceId,
-                    target: targetId,
-                    type: imp.import_type || 'import'
-                  })
-                  validEdges++
-                }
+                addEdgeIfNotExists(sourceId, targetId, imp.import_type || 'import')
               } else {
                 invalidEdges++
               }
             })
           }
-          
+
           // Create edges from module to its classes
           if (mod.classes && Array.isArray(mod.classes)) {
             mod.classes.forEach((classId: string) => {
               if (nodeIds.has(classId) && sourceId !== classId) {
-                const edgeExists = edges.some(e => e.source === sourceId && e.target === classId)
-                if (!edgeExists) {
-                  edges.push({
-                    source: sourceId,
-                    target: classId,
-                    type: 'contains'
-                  })
-                  validEdges++
-                }
+                addEdgeIfNotExists(sourceId, classId, 'contains')
               }
             })
           }
+          processedRelationships++
         })
-        
-        // Yield control after each chunk
-        if (i % (CHUNK_SIZE * 2) === 0) {
-          await new Promise(resolve => setTimeout(resolve, 5))
+
+        // Update progress during edge creation
+        const relationshipProgress = processedRelationships / totalRelationships
+        const progress = 0.9 + relationshipProgress * 0.08 // 90% - 98%
+        onProgress?.(
+          progress,
+          'Building relationships...',
+          `Creating module dependencies (${Math.min(i + CHUNK_SIZE, modules.length)}/${modules.length})`,
+          {
+            totalItems: modules.length,
+            processedItems: Math.min(i + CHUNK_SIZE, modules.length),
+            currentType: 'Module edges'
+          }
+        )
+
+        // 🚀 최적화된 yield 빈도 (더 적은 빈도로 더 나은 성능)
+        if (i % CHUNK_SIZE === 0 && i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1))
         }
       }
     }
@@ -613,51 +745,50 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     if (asyncDependencyGraph.classes) {
       const classes = asyncDependencyGraph.classes
       console.log(`Extracting edges from ${classes.length} classes`)
-      
+
       for (let i = 0; i < classes.length; i += CHUNK_SIZE) {
         const chunk = classes.slice(i, i + CHUNK_SIZE)
-        
+
         chunk.forEach((cls: any) => {
           const sourceId = cls.id
-          
-          // Create edges from class to its methods
+
+          // 🚀 최적화된 클래스-메서드 관계 생성
           if (cls.methods && Array.isArray(cls.methods)) {
             cls.methods.forEach((methodId: string) => {
               if (nodeIds.has(methodId) && sourceId !== methodId) {
-                const edgeExists = edges.some(e => e.source === sourceId && e.target === methodId)
-                if (!edgeExists) {
-                  edges.push({
-                    source: sourceId,
-                    target: methodId,
-                    type: 'contains'
-                  })
-                  validEdges++
-                }
+                addEdgeIfNotExists(sourceId, methodId, 'contains')
               }
             })
           }
-          
-          // Create edges from class to its fields
+
+          // 🚀 최적화된 클래스-필드 관계 생성
           if (cls.fields && Array.isArray(cls.fields)) {
             cls.fields.forEach((fieldId: string) => {
               if (nodeIds.has(fieldId) && sourceId !== fieldId) {
-                const edgeExists = edges.some(e => e.source === sourceId && e.target === fieldId)
-                if (!edgeExists) {
-                  edges.push({
-                    source: sourceId,
-                    target: fieldId,
-                    type: 'contains'
-                  })
-                  validEdges++
-                }
+                addEdgeIfNotExists(sourceId, fieldId, 'contains')
               }
             })
           }
+          processedRelationships++
         })
-        
-        // Yield control after each chunk
-        if (i % (CHUNK_SIZE * 2) === 0) {
-          await new Promise(resolve => setTimeout(resolve, 5))
+
+        // Update progress during class edge creation
+        const relationshipProgress = processedRelationships / totalRelationships
+        const progress = 0.9 + relationshipProgress * 0.08 // 90% - 98%
+        onProgress?.(
+          progress,
+          'Building relationships...',
+          `Creating class hierarchies (${Math.min(i + CHUNK_SIZE, classes.length)}/${classes.length})`,
+          {
+            totalItems: classes.length,
+            processedItems: Math.min(i + CHUNK_SIZE, classes.length),
+            currentType: 'Class edges'
+          }
+        )
+
+        // 🚀 최적화된 yield 빈도 (더 적은 빈도로 더 나은 성능)
+        if (i % CHUNK_SIZE === 0 && i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1))
         }
       }
     }
@@ -665,9 +796,20 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     console.log(`All relationships extracted: ${validEdges} valid, ${invalidEdges} invalid`)
     console.log(`Sample edges:`, edges.slice(0, 5))
 
+    // Final processing step
+    onProgress?.(
+      0.98,
+      'Finalizing graph...',
+      `Completed processing ${nodes.length} nodes and ${edges.length} edges`,
+      {
+        totalItems: nodes.length + edges.length,
+        processedItems: nodes.length + edges.length,
+        currentType: 'Finalization'
+      }
+    )
+
     console.log(`Final async graph data: ${nodes.length} nodes, ${edges.length} edges`)
-    onProgress?.(1.0, 'Finalizing graph...')
-    await new Promise(resolve => setTimeout(resolve, 200))
+    await new Promise(resolve => setTimeout(resolve, 100))
     return { nodes, edges }
   }
 
@@ -746,23 +888,85 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     return (
       <div style={{ textAlign: 'center', padding: '50px 0' }}>
         <Spin size="large" />
-        <div style={{ marginTop: 16, fontSize: 16, fontWeight: 500 }}>
+
+        {/* Main Loading Stage */}
+        <div style={{ marginTop: 16, fontSize: 18, fontWeight: 600, color: '#1890ff' }}>
           {loadingStage || 'Loading visualization data...'}
         </div>
+
+        {/* Progress Bar */}
         {loadingProgress > 0 && (
-          <div style={{ maxWidth: 400, margin: '20px auto 0' }}>
-            <Progress 
-              percent={loadingProgress} 
+          <div style={{ maxWidth: 500, margin: '20px auto 0' }}>
+            <Progress
+              percent={Math.round(loadingProgress)}
               status="active"
               strokeColor={{
                 '0%': '#108ee9',
                 '100%': '#87d068',
               }}
+              format={(percent) => `${percent}%`}
             />
           </div>
         )}
-        <div style={{ marginTop: 16, color: '#666', fontSize: 12 }}>
-          💡 Processing large datasets may take a moment. The graph will render with optimized data for better performance.
+
+        {/* Detailed Progress Info */}
+        {loadingDetails && (
+          <div style={{
+            marginTop: 12,
+            fontSize: 14,
+            color: '#595959',
+            fontWeight: 500
+          }}>
+            {loadingDetails}
+          </div>
+        )}
+
+        {/* Processing Stats */}
+        {processingStats.totalItems > 0 && (
+          <div style={{
+            marginTop: 8,
+            fontSize: 12,
+            color: '#8c8c8c',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 16
+          }}>
+            <span>
+              📊 {processingStats.currentType}: {processingStats.processedItems.toLocaleString()} / {processingStats.totalItems.toLocaleString()}
+            </span>
+            {processingStats.currentType && (
+              <span>
+                ⚡ {Math.round((processingStats.processedItems / processingStats.totalItems) * 100)}% complete
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Processing Steps Indicator */}
+        <div style={{
+          marginTop: 24,
+          maxWidth: 400,
+          margin: '24px auto 0',
+          textAlign: 'left'
+        }}>
+          <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 8 }}>
+            📋 Processing Steps:
+          </div>
+          <div style={{ fontSize: 11, color: '#bfbfbf', lineHeight: 1.6 }}>
+            {loadingProgress < 10 && '🔄 Fetching analysis data...'}
+            {loadingProgress >= 10 && loadingProgress < 20 && '✅ Analysis data loaded'}
+            {loadingProgress >= 20 && loadingProgress < 40 && '🔄 Processing packages & modules...'}
+            {loadingProgress >= 40 && loadingProgress < 60 && '🔄 Building class hierarchy...'}
+            {loadingProgress >= 60 && loadingProgress < 80 && '🔄 Processing methods & fields...'}
+            {loadingProgress >= 80 && loadingProgress < 95 && '🔄 Building relationships...'}
+            {loadingProgress >= 95 && loadingProgress < 100 && '🔄 Rendering graph visualization...'}
+            {loadingProgress >= 100 && '✅ Visualization ready!'}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 20, color: '#666', fontSize: 12 }}>
+          💡 Large codebases may take longer to process. Please wait while we optimize the visualization for better performance.
         </div>
       </div>
     )
