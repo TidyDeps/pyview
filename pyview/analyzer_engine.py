@@ -94,7 +94,7 @@ class AnalyzerEngine:
         # 핵심 분석 컴포넌트들 초기화
         self.ast_analyzer = ASTAnalyzer(enable_type_inference=self.options.enable_type_inference)  # AST 기반 상세 분석기
         self.legacy_bridge = LegacyBridge()                                                  # pydeps 연동 브리지
-        self.metrics_engine = None  # 임시로 비활성화 (hanging 방지)                              # 코드 품질 메트릭 엔진
+        self.metrics_engine = CodeMetricsEngine() if self.options.enable_quality_metrics else None  # 코드 품질 메트릭 엔진
         self.cache_manager = CacheManager() if options and options.enable_caching else None  # 분석 결과 캐시 관리자
         self.incremental_analyzer = IncrementalAnalyzer(self.cache_manager) if self.cache_manager else None  # 증분 분석기
 
@@ -260,13 +260,13 @@ class AnalyzerEngine:
         progress_callback.update("Integrating analysis results", 70)                       # 진행률 70% - 분석 결과 통합 시작
         integrated_data = self._integrate_analyses(pydeps_result, ast_analyses, progress_callback)  # pydeps와 AST 결과 통합
 
-        # Stage 5: Quality metrics analysis (품질 메트릭 분석 - hanging 방지를 위해 임시로 비활성화)
+        # Stage 5: Quality metrics analysis
         quality_metrics = []                                                               # 품질 메트릭 리스트 초기화
-        progress_callback.update("Skipping quality metrics (fast mode)", 85)               # 진행률 85% - 빠른 모드로 품질 메트릭 건너뜀
-        # 임시로 품질 메트릭을 비활성화하여 hanging 방지
-        # if self.metrics_engine and self.options.enable_quality_metrics:
-        #     progress_callback.update("Calculating quality metrics", 85)
-        #     quality_metrics = self._calculate_quality_metrics(integrated_data, project_files, progress_callback)
+        if self.metrics_engine and self.options.enable_quality_metrics:
+            progress_callback.update("Calculating quality metrics", 85)
+            quality_metrics = self._calculate_quality_metrics(integrated_data, project_files, progress_callback)
+        else:
+            progress_callback.update("Skipping quality metrics", 85)
 
         # Stage 6: Final result assembly
         progress_callback.update("Assembling final results", 95)                           # 진행률 95% - 최종 결과 조립 시작
@@ -923,12 +923,8 @@ class AnalyzerEngine:
                     cyclomatic_complexity=module_metrics.complexity.cyclomatic_complexity,    # 순환 복잡도
                     cognitive_complexity=module_metrics.complexity.cognitive_complexity,      # 인지 복잡도
                     nesting_depth=module_metrics.complexity.nesting_depth,                    # 중첩 깊이
-                    lines_of_code=len(source_code.split('\n')),                               # 코드 라인 수
-                    afferent_coupling=module_metrics.coupling.afferent_coupling,              # 들어오는 결합도
-                    efferent_coupling=module_metrics.coupling.efferent_coupling,              # 나가는 결합도
-                    instability=module_metrics.coupling.instability,                          # 불안정성 지수
+                    lines_of_code=module_metrics.complexity.lines_of_code,                    # 코드 라인 수
                     maintainability_index=module_metrics.maintainability_index,               # 유지보수성 지수
-                    technical_debt_ratio=module_metrics.technical_debt_ratio,                 # 기술 부채 비율
                     quality_grade=self.metrics_engine.get_quality_rating(module_metrics)      # 품질 등급
                 )
                 quality_metrics.append(quality_metric)                                        # 품질 메트릭 리스트에 추가
@@ -949,12 +945,8 @@ class AnalyzerEngine:
                     cyclomatic_complexity=class_metrics.complexity.cyclomatic_complexity,     # 순환 복잡도
                     cognitive_complexity=class_metrics.complexity.cognitive_complexity,       # 인지 복잡도
                     nesting_depth=class_metrics.complexity.nesting_depth,                     # 중첩 깊이
-                    lines_of_code=sum(len(m.body_text.split('\n')) for m in class_info.methods),  # 클래스 내 모든 메소드의 라인 수 합계
-                    afferent_coupling=class_metrics.coupling.afferent_coupling,               # 들어오는 결합도
-                    efferent_coupling=class_metrics.coupling.efferent_coupling,               # 나가는 결합도
-                    instability=class_metrics.coupling.instability,                           # 불안정성 지수
+                    lines_of_code=class_metrics.complexity.lines_of_code,                     # 코드 라인 수
                     maintainability_index=class_metrics.maintainability_index,                # 유지보수성 지수
-                    technical_debt_ratio=class_metrics.technical_debt_ratio,                  # 기술 부채 비율
                     quality_grade=self.metrics_engine.get_quality_rating(class_metrics)       # 품질 등급
                 )
                 quality_metrics.append(quality_metric)                                        # 품질 메트릭 리스트에 추가

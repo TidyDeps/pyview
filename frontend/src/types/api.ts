@@ -70,12 +70,9 @@ export interface QualityMetrics {
   entity_type: string
   cyclomatic_complexity: number
   cognitive_complexity: number
+  nesting_depth: number
   lines_of_code: number
-  afferent_coupling: number
-  efferent_coupling: number
-  instability: number
   maintainability_index: number
-  technical_debt_ratio: number
   quality_grade: string
 }
 

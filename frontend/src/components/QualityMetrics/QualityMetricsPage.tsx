@@ -176,34 +176,23 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
       }
     },
     {
-      title: 'Coupling',
-      key: 'coupling',
-      render: (record: QualityMetrics) => (
-        <div>
-          <Text style={{ fontSize: 12 }}>
-            In: {record.afferent_coupling} | Out: {record.efferent_coupling}
-          </Text>
-          <br />
-          <Text type="secondary" style={{ fontSize: 11 }}>
-            Instability: {record.instability.toFixed(2)}
-          </Text>
-        </div>
-      )
-    },
-    {
-      title: 'Tech Debt',
-      dataIndex: 'technical_debt_ratio',
-      key: 'tech_debt',
-      render: (ratio: number) => {
-        const percentage = ratio * 100;
-        const status = percentage <= 10 ? 'success' : percentage <= 25 ? 'active' : 'exception';
+      title: 'Nesting Depth',
+      dataIndex: 'nesting_depth',
+      key: 'nesting_depth',
+      render: (depth: number) => {
+        const status = depth <= 3 ? 'success' : depth <= 5 ? 'active' : 'exception';
         return (
-          <Progress
-            percent={percentage}
-            status={status}
-            strokeWidth={8}
-            format={() => `${percentage.toFixed(1)}%`}
-          />
+          <div>
+            <Progress
+              percent={(depth / 10) * 100}
+              status={status}
+              strokeWidth={8}
+              format={() => depth}
+            />
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              {depth <= 3 ? 'Good' : depth <= 5 ? 'Moderate' : 'High'}
+            </Text>
+          </div>
         );
       }
     }

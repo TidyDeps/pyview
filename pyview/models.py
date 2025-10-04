@@ -144,11 +144,7 @@ class QualityMetrics:
     cognitive_complexity: int = 0
     nesting_depth: int = 0
     lines_of_code: int = 0
-    afferent_coupling: int = 0  # Incoming dependencies
-    efferent_coupling: int = 0  # Outgoing dependencies
-    instability: float = 0.0    # I = Ce / (Ca + Ce)
     maintainability_index: float = 100.0
-    technical_debt_ratio: float = 0.0
     quality_grade: str = "A"    # A, B, C, D, F
 
 
