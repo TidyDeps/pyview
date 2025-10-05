@@ -4,19 +4,296 @@ import { Tree, Input, Card, Empty } from 'antd'
 import {
   SearchOutlined,
   ExclamationCircleOutlined,
-  AppstoreOutlined,
   CodeOutlined,
   BuildOutlined,
   SettingOutlined,
   TagOutlined,
-  FileOutlined
+  FileOutlined,
+  FolderOutlined
 } from '@ant-design/icons'
 import type { TreeProps } from 'antd/es/tree'
 
 const { Search } = Input
 
-type EntityType = 'package' | 'module' | 'class' | 'method' | 'field'
+type EntityType = 'package' | 'module' | 'class' | 'method' | 'field' | 'folder' | 'file'
 
+// 🗂️ 그래프 노드와 똑같은 모듈명 파싱
+const getSimpleModuleName = (moduleData: any): string => {
+  const nodeId = moduleData.id || 'unknown'
+
+  // 콜론(:)이 있으면 뒤쪽 부분만 사용 (예: "mfimp_mod:mfimp" → "mfimp")
+  if (nodeId.includes(':')) {
+    return nodeId.split(':').pop() || nodeId
+  }
+
+  return nodeId
+}
+
+// 🗂️ 파일 경로를 파싱해서 폴더 구조 생성
+const parseFilePath = (filepath: string): string[] => {
+  // 다양한 경로 형태 처리
+  let cleanPath = filepath
+
+  // "mod:" 같은 프리픽스 제거
+  if (cleanPath.includes(':')) {
+    cleanPath = cleanPath.split(':').pop() || cleanPath
+  }
+
+  // 백슬래시를 슬래시로 변환
+  cleanPath = cleanPath.replace(/\\/g, '/')
+
+  // 🗂️ 프로젝트 루트 경로 제거 (pyview 프로젝트 기준)
+  const projectRootPattern = /.*\/pyview\//
+  if (projectRootPattern.test(cleanPath)) {
+    cleanPath = cleanPath.replace(projectRootPattern, '')
+  } else {
+    // 절대 경로에서 파일명만 추출하는 fallback
+    const pathParts = cleanPath.split('/')
+    if (pathParts.length > 1) {
+      cleanPath = pathParts[pathParts.length - 1]
+    }
+  }
+
+  // 앞뒤 슬래시 제거
+  cleanPath = cleanPath.replace(/^\/+|\/+$/g, '')
+
+  // 빈 부분 제거하고 경로 분할
+  return cleanPath.split('/').filter(part => part.length > 0)
+}
+
+// 🗂️ 노드 타입에 따른 아이콘과 색상
+const getFileIcon = (filename: string, entityType?: EntityType) => {
+  if (entityType) {
+    switch (entityType) {
+      case 'folder': return <FolderOutlined style={{ marginRight: 6, color: '#1890ff' }} />
+      case 'module': return <CodeOutlined style={{ marginRight: 6, color: '#52c41a' }} />
+      case 'class': return <BuildOutlined style={{ marginRight: 6, color: '#fa8c16' }} />
+      case 'method': return <SettingOutlined style={{ marginRight: 6, color: '#eb2f96' }} />
+      case 'field': return <TagOutlined style={{ marginRight: 6, color: '#722ed1' }} />
+    }
+  }
+
+  // 파일 확장자 기반 아이콘 (모듈로 처리되지 않은 경우)
+  const ext = filename.split('.').pop()?.toLowerCase()
+  switch (ext) {
+    case 'py': return <CodeOutlined style={{ marginRight: 6, color: '#52c41a' }} />
+    case 'js': case 'ts': case 'jsx': case 'tsx': return <CodeOutlined style={{ marginRight: 6, color: '#52c41a' }} />
+    case 'java': return <CodeOutlined style={{ marginRight: 6, color: '#52c41a' }} />
+    default: return <FileOutlined style={{ marginRight: 6, color: '#8c8c8c' }} />
+  }
+}
+
+// 🗂️ 파일 시스템 트리 구성
+const buildFileSystemTree = (modules: any[], classes: any[], methods: any[], fields: any[], cycleInfo: any): FileSystemNode => {
+  const root: FileSystemNode = {
+    name: 'root',
+    path: '',
+    isFolder: true,
+    children: new Map()
+  }
+
+  // 모듈을 파일로 처리하고 클래스/메서드/필드를 그 안에 배치
+  modules.forEach((mod: any, index: number) => {
+    // 🔍 실제 file_path 사용
+    const filepath = mod.file_path || mod.name || mod.id || 'unknown'
+
+    // 🔍 Debug: 모듈 데이터 확인
+    if (index < 5) {
+      console.log(`🔍 Module ${index}:`, {
+        id: mod.id,
+        name: mod.name,
+        file_path: mod.file_path,
+        filepath: filepath,
+        fullModule: mod
+      })
+    }
+
+    const pathParts = parseFilePath(filepath)
+    if (index < 5) {
+      console.log(`📂 Path parts for "${filepath}":`, pathParts)
+    }
+
+    const isInCycle = cycleInfo.cycleNodes.has(mod.id)
+
+    let currentNode = root
+
+    // 📁 실제 파일 경로를 따라 폴더 구조 생성
+    for (let i = 0; i < pathParts.length - 1; i++) {
+      const folderName = pathParts[i]
+      const folderPath = pathParts.slice(0, i + 1).join('/')
+
+      if (!currentNode.children.has(folderName)) {
+        currentNode.children.set(folderName, {
+          name: folderName,
+          path: folderPath,
+          isFolder: true,
+          children: new Map()
+        })
+      }
+      currentNode = currentNode.children.get(folderName)!
+    }
+
+    // 파일 생성 - 간단한 모듈명 추출
+    const filename = getSimpleModuleName(mod)
+    const uniqueKey = `${filename}_${mod.id}` // 중복 키 방지를 위해 ID 포함
+
+    if (!currentNode.children.has(uniqueKey)) {
+      const fileNode: FileSystemNode = {
+        name: filename,
+        path: filepath,
+        isFolder: false,
+        children: new Map(),
+        nodeId: mod.id,
+        entityType: 'module',
+        isInCycle
+      }
+
+      // 이 모듈에 속한 클래스들을 파일 안에 추가
+      classes.forEach((cls: any) => {
+        if (cls.module_id === mod.id) {
+          const clsIsInCycle = cycleInfo.cycleNodes.has(cls.id)
+          const classNode: FileSystemNode = {
+            name: cls.name || cls.id,
+            path: `${filepath}:${cls.name || cls.id}`,
+            isFolder: false,
+            children: new Map(),
+            nodeId: cls.id,
+            entityType: 'class',
+            isInCycle: clsIsInCycle
+          }
+
+          // 이 클래스에 속한 메서드들 추가
+          methods.forEach((method: any) => {
+            if (method.class_id === cls.id) {
+              const methodIsInCycle = cycleInfo.cycleNodes.has(method.id)
+              classNode.children.set(method.name || method.id, {
+                name: method.name || method.id,
+                path: `${filepath}:${cls.name}:${method.name}`,
+                isFolder: false,
+                children: new Map(),
+                nodeId: method.id,
+                entityType: 'method',
+                isInCycle: methodIsInCycle
+              })
+            }
+          })
+
+          // 이 클래스에 속한 필드들 추가
+          fields.forEach((field: any) => {
+            if (field.class_id === cls.id) {
+              const fieldIsInCycle = cycleInfo.cycleNodes.has(field.id)
+              classNode.children.set(field.name || field.id, {
+                name: field.name || field.id,
+                path: `${filepath}:${cls.name}:${field.name}`,
+                isFolder: false,
+                children: new Map(),
+                nodeId: field.id,
+                entityType: 'field',
+                isInCycle: fieldIsInCycle
+              })
+            }
+          })
+
+          fileNode.children.set(cls.name || cls.id, classNode)
+        }
+      })
+
+      currentNode.children.set(uniqueKey, fileNode)
+    }
+  })
+
+  return root
+}
+
+// 🗂️ FileSystemNode를 FileTreeNode로 변환
+const convertFileSystemToTreeNodes = (fsNode: FileSystemNode, cycleInfo: any): FileTreeNode[] => {
+  const nodes: FileTreeNode[] = []
+
+  // 자식 노드들을 정렬 (폴더 먼저, 그다음 파일들을 알파벳순)
+  const sortedChildren = Array.from(fsNode.children.entries()).sort(([nameA, nodeA], [nameB, nodeB]) => {
+    if (nodeA.isFolder !== nodeB.isFolder) {
+      return nodeA.isFolder ? -1 : 1 // 폴더가 먼저
+    }
+    return nameA.localeCompare(nameB) // 알파벳순
+  })
+
+  sortedChildren.forEach(([name, childNode]) => {
+    const isInCycle = childNode.isInCycle || false
+
+    if (childNode.isFolder) {
+      // 폴더 노드
+      const folderTreeNode: FileTreeNode = {
+        key: `folder_${childNode.path}`,
+        title: (
+          <span>
+            {getFileIcon(childNode.name, 'folder')}
+            <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
+              {childNode.name}
+            </span>
+            {isInCycle && (
+              <ExclamationCircleOutlined
+                style={{ marginLeft: 8, fontSize: '12px', color: '#ff4d4f' }}
+                title="Circular dependency"
+              />
+            )}
+          </span>
+        ),
+        entityType: 'folder',
+        searchText: childNode.name,
+        nodeId: childNode.path,
+        children: convertFileSystemToTreeNodes(childNode, cycleInfo),
+        isFolder: true,
+        filePath: childNode.path,
+        isInCycle
+      }
+      nodes.push(folderTreeNode)
+    } else {
+      // 파일 노드
+      const hasChildren = childNode.children.size > 0
+      const childNodes = hasChildren ? convertFileSystemToTreeNodes(childNode, cycleInfo) : []
+
+      const fileTreeNode: FileTreeNode = {
+        key: `file_${childNode.nodeId || childNode.path}`,
+        title: (
+          <span>
+            {getFileIcon(childNode.name, childNode.entityType)}
+            <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
+              {childNode.name}
+            </span>
+            {isInCycle && (
+              <ExclamationCircleOutlined
+                style={{ marginLeft: 8, fontSize: '12px', color: '#ff4d4f' }}
+                title="Circular dependency"
+              />
+            )}
+          </span>
+        ),
+        entityType: childNode.entityType || 'file',
+        searchText: childNode.name,
+        nodeId: childNode.nodeId || childNode.path,
+        children: childNodes,
+        isLeaf: !hasChildren,
+        isFolder: false,
+        filePath: childNode.path,
+        isInCycle
+      }
+      nodes.push(fileTreeNode)
+    }
+  })
+
+  return nodes
+}
+
+// 🗂️ Visual Studio 스타일 파일 구조를 위한 새로운 인터페이스
+interface FileSystemNode {
+  name: string
+  path: string
+  isFolder: boolean
+  children: Map<string, FileSystemNode>
+  nodeId?: string
+  entityType?: EntityType
+  isInCycle?: boolean
+}
 
 interface FileTreeNode {
   key: string
@@ -27,6 +304,8 @@ interface FileTreeNode {
   nodeId: string
   isLeaf?: boolean
   isInCycle?: boolean
+  filePath?: string  // 실제 파일 경로
+  isFolder?: boolean // 폴더 여부
 }
 
 interface FileTreeSidebarProps {
@@ -82,23 +361,8 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
     return { cycleNodes };
   }, [cycleData]);
 
-  // 순환 참조 아이콘 렌더링
-  const renderCycleIcon = (nodeId: string) => {
-    if (!cycleInfo.cycleNodes.has(nodeId)) return null;
-    const iconStyle = {
-      marginLeft: 8,
-      fontSize: '12px',
-      color: '#ff4d4f'
-    };
-    return (
-      <ExclamationCircleOutlined
-        style={iconStyle}
-        title="Circular dependency"
-      />
-    );
-  };
 
-  // Build proper hierarchical tree structure
+  // 🗂️ Visual Studio 스타일 파일 시스템 트리 구조 생성
   const treeData: FileTreeNode[] = useMemo(() => {
     if (!analysisData) {
       return []
@@ -106,369 +370,46 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
 
     const dependencyGraph = analysisData.dependency_graph || {}
 
-    // Use correct types for maps
-    const packageMap = new Map<string, FileTreeNode>()
-    const moduleMap = new Map<string, FileTreeNode>()
-    const classMap = new Map<string, FileTreeNode>()
-    const methodMap = new Map<string, FileTreeNode>()
-    const fieldMap = new Map<string, FileTreeNode>()
+    // 🔍 Debug: 실제 데이터 구조 확인
+    console.log('📋 Dependency Graph Structure:', dependencyGraph)
+    if (dependencyGraph.modules) {
+      console.log('📄 Sample modules (first 5):', dependencyGraph.modules.slice(0, 5))
+      console.log('📄 Total modules count:', dependencyGraph.modules.length)
 
-    // First, create all entities and populate maps
-    if (Array.isArray(dependencyGraph.packages)) {
-      dependencyGraph.packages.forEach((pkg: any) => {
-        const pkgId: string = pkg.id || pkg.package_id || pkg.name
-        const isInCycle = cycleInfo.cycleNodes.has(pkgId);
-        const packageNode: FileTreeNode = {
-          key: `package_${pkgId}`,
-          title: (
-            <span>
-              <AppstoreOutlined style={{ marginRight: 8, color: '#1890ff' }} />
-              <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
-                {pkg.name || pkgId}
-              </span>
-              {renderCycleIcon(pkgId)}
-            </span>
-          ),
-          entityType: 'package',
-          searchText: pkg.name || pkgId,
-          nodeId: pkgId,
-          children: [],
-          isInCycle,
-        }
-        packageMap.set(pkgId, packageNode)
-      })
-    }
-
-    if (Array.isArray(dependencyGraph.modules)) {
-      dependencyGraph.modules.forEach((mod: any) => {
-        const modId: string = mod.id || mod.module_id || mod.name
-        const isInCycle = cycleInfo.cycleNodes.has(modId);
-        const moduleNode: FileTreeNode = {
-          key: `module_${modId}`,
-          title: (
-            <span>
-              <CodeOutlined style={{ marginRight: 8, color: '#52c41a' }} />
-              <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
-                {mod.name || modId}
-              </span>
-              {renderCycleIcon(modId)}
-            </span>
-          ),
-          entityType: 'module',
-          searchText: mod.name || modId,
-          nodeId: modId,
-          children: [],
-          isInCycle
-        }
-        moduleMap.set(modId, moduleNode)
-      })
-    }
-
-    if (Array.isArray(dependencyGraph.classes)) {
-      dependencyGraph.classes.forEach((cls: any) => {
-        const clsId: string = cls.id || cls.class_id || cls.name
-        const isInCycle = cycleInfo.cycleNodes.has(clsId);
-        const classNode: FileTreeNode = {
-          key: `class_${clsId}`,
-          title: (
-            <span>
-              <BuildOutlined style={{ marginRight: 8, color: '#fa8c16' }} />
-              <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
-                {cls.name || clsId}
-              </span>
-              {renderCycleIcon(clsId)}
-            </span>
-          ),
-          entityType: 'class',
-          searchText: cls.name || clsId,
-          nodeId: clsId,
-          children: [],
-          isInCycle,
-        }
-        classMap.set(clsId, classNode)
-      })
-    }
-
-    if (Array.isArray(dependencyGraph.methods)) {
-      dependencyGraph.methods.forEach((method: any) => {
-        const methodId: string = method.id || method.method_id || method.name
-        const isInCycle = cycleInfo.cycleNodes.has(methodId);
-        const methodNode: FileTreeNode = {
-          key: `method_${methodId}`,
-          title: (
-            <span>
-              <SettingOutlined style={{ marginRight: 8, color: '#eb2f96' }} />
-              <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
-                {method.name || methodId}
-              </span>
-              {renderCycleIcon(methodId)}
-            </span>
-          ),
-          entityType: 'method',
-          searchText: method.name || methodId,
-          nodeId: methodId,
-          children: [],
-          isLeaf: true,
-          isInCycle,
-        }
-        methodMap.set(methodId, methodNode)
-      })
-    }
-
-    if (Array.isArray(dependencyGraph.fields)) {
-      dependencyGraph.fields.forEach((field: any) => {
-        const fieldId: string = field.id || field.field_id || field.name
-        const isInCycle = cycleInfo.cycleNodes.has(fieldId);
-        const fieldNode: FileTreeNode = {
-          key: `field_${fieldId}`,
-          title: (
-            <span>
-              <TagOutlined style={{ marginRight: 8, color: '#722ed1' }} />
-              <span style={{ color: isInCycle ? '#ff4d4f' : 'inherit' }}>
-                {field.name || fieldId}
-              </span>
-              {renderCycleIcon(fieldId)}
-            </span>
-          ),
-          entityType: 'field',
-          searchText: field.name || fieldId,
-          nodeId: fieldId,
-          children: [],
-          isLeaf: true,
-          isInCycle,
-        }
-        fieldMap.set(fieldId, fieldNode)
-      })
-    }
-
-    // Build hierarchy using direct relationships from demo data structure
-    if (Array.isArray(dependencyGraph.packages)) {
-      dependencyGraph.packages.forEach((pkg: any) => {
-        const pkgId: string = pkg.id || pkg.package_id || pkg.name
-        const packageNode = packageMap.get(pkgId)
-        if (packageNode && Array.isArray(dependencyGraph.modules)) {
-          dependencyGraph.modules.forEach((mod: any) => {
-            if (mod.package_id === pkgId) {
-              const modId: string = mod.id || mod.module_id || mod.name
-              const moduleNode = moduleMap.get(modId)
-              if (moduleNode) {
-                packageNode.children.push(moduleNode)
-              }
-            }
-          })
-        }
-      })
-    }
-
-    if (Array.isArray(dependencyGraph.classes)) {
-      dependencyGraph.classes.forEach((cls: any) => {
-        const clsId: string = cls.id || cls.class_id || cls.name
-        const classNode = classMap.get(clsId)
-        if (classNode && cls.module_id) {
-          const moduleNode = moduleMap.get(cls.module_id)
-          if (moduleNode) {
-            moduleNode.children.push(classNode)
-          }
-        }
-      })
-    }
-
-    if (Array.isArray(dependencyGraph.methods)) {
-      dependencyGraph.methods.forEach((method: any) => {
-        const methodId: string = method.id || method.method_id || method.name
-        const methodNode = methodMap.get(methodId)
-        if (methodNode && method.class_id) {
-          const classNode = classMap.get(method.class_id)
-          if (classNode) {
-            classNode.children.push(methodNode)
-          }
-        }
-      })
-    }
-
-    if (Array.isArray(dependencyGraph.fields)) {
-      dependencyGraph.fields.forEach((field: any) => {
-        const fieldId: string = field.id || field.field_id || field.name
-        const fieldNode = fieldMap.get(fieldId)
-        if (fieldNode && field.class_id) {
-          const classNode = classMap.get(field.class_id)
-          if (classNode) {
-            classNode.children.push(fieldNode)
-          }
-        }
-      })
-    }
-
-    // If no relationships exist, try to infer hierarchy from naming conventions
-    if (!Array.isArray(analysisData.relationships) || analysisData.relationships.length === 0) {
-      // Try to match modules to packages based on name prefixes
-      moduleMap.forEach((moduleNode) => {
-        const moduleName = moduleNode.searchText
-        let bestMatch: FileTreeNode | null = null
-        let bestMatchLength = 0
-        packageMap.forEach((packageNode) => {
-          const packageName = packageNode.searchText
-          if (moduleName.startsWith(packageName) && packageName.length > bestMatchLength) {
-            bestMatch = packageNode
-            bestMatchLength = packageName.length
-          }
-        })
-        if (bestMatch) {
-          (bestMatch as FileTreeNode).children.push(moduleNode)
-        }
-      })
-
-      // Try to match classes to modules based on name prefixes
-      classMap.forEach((classNode) => {
-        const className = classNode.searchText
-        let bestMatch: FileTreeNode | null = null
-        let bestMatchLength = 0
-        moduleMap.forEach((moduleNode) => {
-          const moduleName = moduleNode.searchText
-          if (className.startsWith(moduleName) && moduleName.length > bestMatchLength) {
-            bestMatch = moduleNode
-            bestMatchLength = moduleName.length
-          }
-        })
-        if (bestMatch) {
-          (bestMatch as FileTreeNode).children.push(classNode)
-        }
-      })
-
-      // Try to match methods to classes based on name prefixes
-      methodMap.forEach((methodNode) => {
-        const methodName = methodNode.searchText
-        let bestMatch: FileTreeNode | null = null
-        let bestMatchLength = 0
-        classMap.forEach((classNode) => {
-          const className = classNode.searchText
-          if (methodName.startsWith(className) && className.length > bestMatchLength) {
-            bestMatch = classNode
-            bestMatchLength = className.length
-          }
-        })
-        if (bestMatch) {
-          (bestMatch as FileTreeNode).children.push(methodNode)
-        }
-      })
-
-      // Try to match fields to classes based on name prefixes
-      fieldMap.forEach((fieldNode) => {
-        const fieldName = fieldNode.searchText
-        let bestMatch: FileTreeNode | null = null
-        let bestMatchLength = 0
-        classMap.forEach((classNode) => {
-          const className = classNode.searchText
-          if (fieldName.startsWith(className) && className.length > bestMatchLength) {
-            bestMatch = classNode
-            bestMatchLength = className.length
-          }
-        })
-        if (bestMatch) {
-          (bestMatch as FileTreeNode).children.push(fieldNode)
-        }
-      })
-    }
-
-    // Build final tree starting from packages (top-level)
-    const rootNodes: FileTreeNode[] = []
-
-    // Add packages that have children or are root level
-    packageMap.forEach((packageNode) => {
-      rootNodes.push(packageNode)
-    })
-
-    // Add orphaned modules (modules not contained in any package)
-    moduleMap.forEach((moduleNode) => {
-      let isOrphaned = true
-      packageMap.forEach((packageNode) => {
-        if (packageNode.children.some(child => child.nodeId === moduleNode.nodeId)) {
-          isOrphaned = false
-        }
-      })
-      if (isOrphaned) {
-        rootNodes.push(moduleNode)
+      // 모든 필드 확인
+      const firstModule = dependencyGraph.modules[0]
+      if (firstModule) {
+        console.log('🔍 First module all fields:', Object.keys(firstModule))
+        console.log('🔍 First module full data:', firstModule)
       }
-    })
 
-    // Add orphaned classes (classes not contained in any module or package)
-    classMap.forEach((classNode) => {
-      let isOrphaned = true
-      moduleMap.forEach((moduleNode) => {
-        if (moduleNode.children.some(child => child.nodeId === classNode.nodeId)) {
-          isOrphaned = false
-        }
-      })
-      packageMap.forEach((packageNode) => {
-        if (packageNode.children.some(child => child.nodeId === classNode.nodeId)) {
-          isOrphaned = false
-        }
-      })
-      if (isOrphaned) {
-        rootNodes.push(classNode)
-      }
-    })
-
-    // Add orphaned methods and fields (not contained in any class)
-    methodMap.forEach((methodNode) => {
-      let isOrphaned = true
-      classMap.forEach((classNode) => {
-        if (classNode.children.some(child => child.nodeId === methodNode.nodeId)) {
-          isOrphaned = false
-        }
-      })
-      if (isOrphaned) {
-        rootNodes.push(methodNode)
-      }
-    })
-
-    fieldMap.forEach((fieldNode) => {
-      let isOrphaned = true
-      classMap.forEach((classNode) => {
-        if (classNode.children.some(child => child.nodeId === fieldNode.nodeId)) {
-          isOrphaned = false
-        }
-      })
-      if (isOrphaned) {
-        rootNodes.push(fieldNode)
-      }
-    })
-
-    // Sort children for better display
-    const sortChildren = (nodes: FileTreeNode[]) => {
-      nodes.forEach(node => {
-        if (node.children.length > 0) {
-          node.children.sort((a, b) => {
-            // Sort by type first (packages, modules, classes, methods, fields)
-            const typeOrder: Record<EntityType, number> = { package: 0, module: 1, class: 2, method: 3, field: 4 }
-            const typeA = typeOrder[a.entityType] ?? 5
-            const typeB = typeOrder[b.entityType] ?? 5
-            if (typeA !== typeB) return typeA - typeB
-            // Then sort by name
-            return a.searchText.localeCompare(b.searchText)
-          })
-          sortChildren(node.children)
-        }
-      })
-    }
-
-    sortChildren(rootNodes)
-
-    // If no root nodes found, create a simple flat list for debugging
-    if (rootNodes.length === 0) {
-      const simpleNodes: FileTreeNode[] = []
-      moduleMap.forEach((moduleNode) => {
-        simpleNodes.push(moduleNode)
-      })
-      if (simpleNodes.length === 0) {
-        packageMap.forEach((packageNode) => {
-          simpleNodes.push(packageNode)
+      // 실제 파일 경로가 있는지 확인
+      dependencyGraph.modules.slice(0, 5).forEach((mod: any, i: number) => {
+        console.log(`📂 Module ${i} paths:`, {
+          id: mod.id,
+          name: mod.name,
+          file_path: mod.file_path,
+          path: mod.path,
+          module_path: mod.module_path,
+          source_file: mod.source_file
         })
-      }
-      return simpleNodes
+      })
     }
 
-    return rootNodes
+    // 🗂️ 새로운 파일 시스템 기반 트리 생성
+    const modules = dependencyGraph.modules || []
+    const classes = dependencyGraph.classes || []
+    const methods = dependencyGraph.methods || []
+    const fields = dependencyGraph.fields || []
+
+    // 파일 시스템 트리 구성
+    const fileSystemRoot = buildFileSystemTree(modules, classes, methods, fields, cycleInfo)
+
+    // FileTreeNode로 변환
+    const treeNodes = convertFileSystemToTreeNodes(fileSystemRoot, cycleInfo)
+
+    console.log('🗂️ Generated file system tree:', treeNodes)
+    return treeNodes
   }, [analysisData, cycleInfo])
 
   // Filter tree data based on search
