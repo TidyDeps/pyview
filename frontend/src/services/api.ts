@@ -92,6 +92,12 @@ export class ApiService {
     })
     return response.data
   }
+
+  // Check server health/connection status
+  static async checkServerHealth(): Promise<{ status: string }> {
+    const response = await apiClient.get<{ status: string }>('/health')
+    return response.data
+  }
 }
 
 export default ApiService

@@ -13,6 +13,8 @@ interface UseAnalysisResult {
   currentAnalysis: AnalysisStatusResponse | null
   isLoading: boolean
   error: string | null
+  isServerConnected: boolean
+  checkServerConnection: () => Promise<void>
   startAnalysis: (request: AnalysisRequest) => Promise<void>
   getAnalysisStatus: (analysisId: string) => Promise<void>
   loadAllAnalyses: () => Promise<void>
@@ -25,11 +27,23 @@ export const useAnalysis = (): UseAnalysisResult => {
   const [currentAnalysis, setCurrentAnalysis] = useState<AnalysisStatusResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isServerConnected, setIsServerConnected] = useState(true)
   const wsRef = useRef<WebSocket | null>(null)
   const statusIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const clearError = useCallback(() => {
     setError(null)
+  }, [])
+
+  // Check server connection
+  const checkServerConnection = useCallback(async () => {
+    try {
+      await ApiService.checkServerHealth()
+      setIsServerConnected(true)
+    } catch (err) {
+      setIsServerConnected(false)
+      console.error('Server connection check failed:', err)
+    }
   }, [])
 
   // WebSocket 연결 정리 함수
@@ -197,6 +211,8 @@ export const useAnalysis = (): UseAnalysisResult => {
     currentAnalysis,
     isLoading,
     error,
+    isServerConnected,
+    checkServerConnection,
     startAnalysis,
     getAnalysisStatus,
     loadAllAnalyses,

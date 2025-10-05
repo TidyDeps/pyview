@@ -492,6 +492,11 @@ async def root():
     """Health check endpoint"""
     return {"message": "PyView API Server", "version": "1.0.0", "status": "running"}
 
+@app.get("/api/health")
+async def health_check():
+    """API Health check endpoint"""
+    return {"status": "running", "message": "PyView API Server", "version": "1.0.0"}
+
 @app.post("/api/analyze", response_model=AnalysisResponse)
 async def start_analysis(request: AnalysisRequest):
     """Start a new project analysis"""

@@ -1,5 +1,5 @@
 // 메인 애플리케이션 컴포넌트
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ConfigProvider, message } from 'antd'
 import AppLayout from '@/components/Layout/AppLayout'
 import AnalysisForm from '@/components/Analysis/AnalysisForm'
@@ -10,15 +10,20 @@ import QualityMetricsPage from '@/components/QualityMetrics/QualityMetricsPage'
 // import MultiViewPage from '@/components/MultiView/MultiViewPage'
 import { useAnalysis } from '@/hooks/useAnalysis'
 import type { AnalysisRequest } from '@/types/api'
+import { AnalysisStatus } from '@/types/api'
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState('analysis')
   const [messageApi, contextHolder] = message.useMessage()
+  const [hasShownAlert, setHasShownAlert] = useState(false)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
   
   const {
     currentAnalysis,
     isLoading,
     error,
+    isServerConnected,
+    checkServerConnection,
     startAnalysis,
     clearError
   } = useAnalysis()
@@ -37,13 +42,61 @@ const App: React.FC = () => {
     setCurrentView(key)
   }
 
+  // Check server connection on app load and periodically
+  useEffect(() => {
+    checkServerConnection().then(() => {
+      setIsInitialLoad(false)
+    })
+
+    // Set up periodic connection check every 5 seconds
+    const interval = setInterval(() => {
+      checkServerConnection()
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [checkServerConnection])
+
+  // Show alert when server connection changes to disconnected
+  useEffect(() => {
+    if (!isServerConnected && !hasShownAlert && !isInitialLoad) {
+      // Show both Ant Design message and browser alert
+      messageApi.error({
+        content: '서버 연결 안 됨 - 백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.',
+        duration: 0, // Don't auto-close
+        key: 'server-error' // Prevent duplicates
+      })
+      alert('서버 연결 안 됨\n백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.')
+      setHasShownAlert(true)
+    } else if (isServerConnected && hasShownAlert) {
+      // Reset alert flag and close error message when server is connected
+      messageApi.destroy('server-error')
+      messageApi.success('서버 연결이 복구되었습니다.')
+      setHasShownAlert(false)
+    }
+  }, [isServerConnected, hasShownAlert, isInitialLoad, messageApi])
+
+  // Show alert when analysis is completed
+  useEffect(() => {
+    if (currentAnalysis?.status === AnalysisStatus.COMPLETED) {
+      messageApi.success({
+        content: '프로젝트 분석이 완료되었습니다!',
+        duration: 5 // Auto-close after 5 seconds
+      })
+    } else if (currentAnalysis?.status === AnalysisStatus.FAILED) {
+      messageApi.error({
+        content: '프로젝트 분석에 실패했습니다.',
+        duration: 5
+      })
+    }
+  }, [currentAnalysis?.status, messageApi])
+
   const renderContent = () => {
     switch (currentView) {
       case 'analysis':
         return (
           <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: '400px' }}>
-              <AnalysisForm 
+              <AnalysisForm
                 onSubmit={handleAnalysisStart}
                 loading={isLoading}
               />
