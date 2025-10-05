@@ -72,6 +72,10 @@ export interface QualityMetrics {
   lines_of_code: number
   maintainability_index: number
   quality_grade: string
+  is_in_cycle: boolean
+  cycle_severity?: string
+  cycle_partners: string[]
+  cycle_type?: string
 }
 
 // 순환 참조 관련 타입들

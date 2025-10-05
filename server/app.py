@@ -112,6 +112,10 @@ class QualityMetricsResponse(BaseModel):
     maintainability_index: float
     technical_debt_ratio: float
     quality_grade: str
+    is_in_cycle: bool = False
+    cycle_severity: Optional[str] = None
+    cycle_partners: List[str] = []
+    cycle_type: Optional[str] = None
 
 # 순환 참조 관련 모델들
 class CyclePath(BaseModel):
@@ -151,17 +155,24 @@ def check_entity_in_cycles(entity_id: str, analysis_results: Dict) -> tuple[bool
     
     return False, None
 
-def build_cycle_entity_map(analysis_results: Dict) -> Dict[str, str]:
-    """순환 참조에 포함된 모든 엔티티의 맵 생성"""
+def build_cycle_entity_map(analysis_results: Dict) -> Dict[str, Dict]:
+    """순환 참조에 포함된 모든 엔티티의 상세 정보 맵 생성"""
     cycle_map = {}
     cycles = analysis_results.get("cycles", [])
     
     for cycle in cycles:
         severity = cycle.get("severity", "medium")
-        for entity_id in cycle.get("entities", []):
+        cycle_type = cycle.get("relationship_type", "import")
+        entities = cycle.get("entities", [])
+        
+        for entity_id in entities:
             # 더 높은 심각도로 업데이트
             if entity_id not in cycle_map or severity == "high":
-                cycle_map[entity_id] = severity
+                cycle_map[entity_id] = {
+                    "severity": severity,
+                    "partners": [e for e in entities if e != entity_id],
+                    "cycle_type": cycle_type
+                }
     
     return cycle_map
 
@@ -660,13 +671,20 @@ async def get_quality_metrics(analysis_id: str):
     
     quality_metrics = []
     
+    # 순환 참조 맵 생성
+    cycle_map = build_cycle_entity_map(analysis_results)
+    
     # Extract quality metrics from actual analysis results
     actual_metrics = analysis_results.get("quality_metrics", [])
     if actual_metrics:
         # Use actual quality metrics if available
         for metric in actual_metrics:
+            entity_id = metric.get("entity_id", "unknown")
+            is_in_cycle = entity_id in cycle_map
+            cycle_info = cycle_map.get(entity_id, {})
+            
             quality_metrics.append(QualityMetricsResponse(
-                entity_id=metric.get("entity_id", "unknown"),
+                entity_id=entity_id,
                 entity_type=metric.get("entity_type", "module"),
                 cyclomatic_complexity=metric.get("cyclomatic_complexity", 0),
                 lines_of_code=metric.get("lines_of_code", 0),
@@ -675,7 +693,11 @@ async def get_quality_metrics(analysis_id: str):
                 instability=metric.get("instability", 0.0),
                 maintainability_index=metric.get("maintainability_index", 0.0),
                 technical_debt_ratio=metric.get("technical_debt_ratio", 0.0),
-                quality_grade=metric.get("quality_grade", "C")
+                quality_grade=metric.get("quality_grade", "C"),
+                is_in_cycle=is_in_cycle,
+                cycle_severity=cycle_info.get("severity"),
+                cycle_partners=cycle_info.get("partners", []),
+                cycle_type=cycle_info.get("cycle_type")
             ))
     else:
         # Generate basic quality metrics from modules and classes
@@ -683,8 +705,12 @@ async def get_quality_metrics(analysis_id: str):
         
         # Add metrics for modules
         for module in dependency_graph.get("modules", []):
+            entity_id = module.get("id", module.get("name", "unknown"))
+            is_in_cycle = entity_id in cycle_map
+            cycle_info = cycle_map.get(entity_id, {})
+            
             quality_metrics.append(QualityMetricsResponse(
-                entity_id=module.get("id", module.get("name", "unknown")),
+                entity_id=entity_id,
                 entity_type="module",
                 cyclomatic_complexity=module.get("complexity", 5),
                 lines_of_code=module.get("loc", 100),
@@ -694,13 +720,21 @@ async def get_quality_metrics(analysis_id: str):
                 instability=0.5,
                 maintainability_index=75.0,
                 technical_debt_ratio=0.1,
-                quality_grade="B"
+                quality_grade="B",
+                is_in_cycle=is_in_cycle,
+                cycle_severity=cycle_info.get("severity"),
+                cycle_partners=cycle_info.get("partners", []),
+                cycle_type=cycle_info.get("cycle_type")
             ))
         
         # Add metrics for classes (limit to first 50 for pagination testing)
         for cls in dependency_graph.get("classes", [])[:50]:
+            entity_id = cls.get("id", cls.get("name", "unknown"))
+            is_in_cycle = entity_id in cycle_map
+            cycle_info = cycle_map.get(entity_id, {})
+            
             quality_metrics.append(QualityMetricsResponse(
-                entity_id=cls.get("id", cls.get("name", "unknown")),
+                entity_id=entity_id,
                 entity_type="class",
                 cyclomatic_complexity=len(cls.get("methods", [])) * 2,
                 lines_of_code=len(cls.get("methods", [])) * 15,
@@ -709,7 +743,11 @@ async def get_quality_metrics(analysis_id: str):
                 instability=0.6,
                 maintainability_index=70.0,
                 technical_debt_ratio=0.15,
-                quality_grade="B"
+                quality_grade="B",
+                is_in_cycle=is_in_cycle,
+                cycle_severity=cycle_info.get("severity"),
+                cycle_partners=cycle_info.get("partners", []),
+                cycle_type=cycle_info.get("cycle_type")
             ))
     
     return quality_metrics
