@@ -11,7 +11,7 @@ import logging
 from typing import List, Dict, Set, Optional, Tuple
 from pathlib import Path
 
-DEBUG_MODE = os.getenv('PYVIEW_DEBUG', 'false').lower() == 'true'
+DEBUG_MODE = True  # Force enable debug mode
 
 # 기존 pydeps 모듈들 import
 from pydeps.depgraph import DepGraph, Source
@@ -98,6 +98,10 @@ class LegacyBridge:
                 # Run pydeps analysis with proper configuration
                 dep_graph = py2depgraph.py2dep(target, **config)
 
+                # Store pylib setting for later use in filtering
+                if dep_graph:
+                    dep_graph.pylib_enabled = config.get('pylib', False)
+
             finally:
                 # Always restore original working directory
                 os.chdir(original_cwd)
@@ -179,9 +183,38 @@ class LegacyBridge:
 
         # Convert sources to modules
         filtered_count = 0
+        pylib_enabled = getattr(dep_graph, 'pylib_enabled', False)
+
+        # Debug: Print all sources first
+        if DEBUG_MODE:
+            with open('/tmp/pyview_debug.log', 'a') as f:
+                f.write(f"🔍 CONVERT DEBUG: Processing {len(dep_graph.sources)} total sources, pylib_enabled: {pylib_enabled}\n")
+                stdlib_modules = ['os', 'sys', 'json', 'datetime', 'collections', 're', 'urllib', 'pathlib', 'socket', 'hashlib', 'itertools']
+                for name, source in list(dep_graph.sources.items())[:20]:  # First 20 for brevity
+                    f.write(f"🔍 SOURCE: {name} - excluded: {source.excluded}, noise: {source.is_noise()}, path: {source.path}\n")
+
         for source in dep_graph.sources.values():
-            if source.excluded or source.is_noise():
+            # Check if this is a standard library module
+            is_stdlib = self._is_stdlib_module(source)
+
+            # FORCE INCLUDE standard library if pylib is enabled
+            if pylib_enabled and is_stdlib:
+                # Force include stdlib modules regardless of excluded/noise status
+                if DEBUG_MODE:
+                    with open('/tmp/pyview_debug.log', 'a') as f:
+                        f.write(f"🔍 CONVERT DEBUG: FORCE INCLUDING stdlib module: {source.name}\n")
+                pass  # Don't filter, continue to create module info
+            elif source.excluded:
                 filtered_count += 1
+                if DEBUG_MODE:
+                    with open('/tmp/pyview_debug.log', 'a') as f:
+                        f.write(f"🔍 CONVERT DEBUG: Filtering EXCLUDED {source.name}\n")
+                continue
+            elif source.is_noise():
+                filtered_count += 1
+                if DEBUG_MODE:
+                    with open('/tmp/pyview_debug.log', 'a') as f:
+                        f.write(f"🔍 CONVERT DEBUG: Filtering NOISE {source.name}\n")
                 continue
 
             # Create module info
@@ -494,7 +527,38 @@ class LegacyBridge:
             strength *= 1.1  # Adjacent depth bonus
         
         return min(strength, 5.0)  # Cap at 5.0
-    
+
+    def _is_stdlib_module(self, source: Source) -> bool:
+        """Check if a module is part of Python standard library"""
+        if not source.path:
+            return False
+
+        path = str(source.path).lower()
+
+        # Common stdlib path patterns
+        stdlib_patterns = [
+            '/lib/python',
+            'python.framework',
+            'python3.',
+            '/usr/lib/python',
+            '/usr/local/lib/python'
+        ]
+
+        # Check if path contains any stdlib pattern
+        for pattern in stdlib_patterns:
+            if pattern in path:
+                return True
+
+        # Also check for well-known stdlib module names
+        stdlib_modules = {
+            'os', 'sys', 'json', 'logging', 'datetime', 'collections', 're',
+            'itertools', 'random', 'hashlib', 'typing', 'abc', 'math',
+            'urllib', 'urllib.request', 'urllib.parse', 'urllib.error',
+            'http', 'http.client', 'socket', 'pathlib'
+        }
+
+        return source.name in stdlib_modules
+
     def get_pydeps_metrics(self, dep_graph: DepGraph) -> Dict:
         """Extract metrics from pydeps analysis"""
         # Filter out excluded and noise modules for accurate metrics
