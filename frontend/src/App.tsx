@@ -17,6 +17,22 @@ const App: React.FC = () => {
   const [messageApi, contextHolder] = message.useMessage()
   const [hasShownAlert, setHasShownAlert] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
+
+  // 폼 데이터를 앱 레벨에서 관리하여 탭 전환 시에도 유지
+  const [formData, setFormData] = useState({
+    project_path: '',
+    max_depth: 10,
+    include_stdlib: false,
+    exclude_patterns: [
+      '__pycache__',
+      '.git',
+      '.venv',
+      'venv',
+      'env',
+      'tests',
+      'node_modules'
+    ]
+  })
   
   const {
     currentAnalysis,
@@ -99,6 +115,8 @@ const App: React.FC = () => {
               <AnalysisForm
                 onSubmit={handleAnalysisStart}
                 loading={isLoading}
+                formData={formData}
+                onFormDataChange={setFormData}
               />
             </div>
             {(currentAnalysis || error) && (

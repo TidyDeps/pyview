@@ -290,7 +290,7 @@ class AnalyzerEngine:
         try:
             # PyView 옵션을 pydeps 형식으로 변환 (API 차이 극복)                               # 기존 pydeps 라이브러리와 호환되도록 옵션 변환
             pydeps_kwargs = {
-                'max_bacon': self.options.max_depth if self.options.max_depth > 0 else 2,      # 의존성 탐색 깊이 (기본 2단계)
+                'max_bacon': self.options.max_depth if self.options.max_depth > 0 else 999,    # 의존성 탐색 깊이 (0이면 무제한)
                 'exclude': self.options.exclude_patterns,                                      # 제외할 패턴들
                 'pylib': self.options.include_stdlib,                                          # 표준 라이브러리 포함 여부
                 'verbose': 0,                                                                   # 상세 출력 비활성화
