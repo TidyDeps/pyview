@@ -299,8 +299,10 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
           />
         </Form.Item>
 
-        <Title level={4} style={{ marginTop: 80, marginBottom: 16 }}>Analysis Options</Title>
+        <Title level={4} style={{ marginTop: 120, marginBottom: 16 }}>Analysis Options</Title>
 
+        {/* Max Depth field temporarily disabled */}
+        {/*
         <Form.Item
             name="max_depth"
             label={<span style={{ fontWeight: 'bold' }}>Max Depth</span>}
@@ -315,6 +317,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
               placeholder="0 for unlimited"
             />
           </Form.Item>
+        */}
 
         <Form.Item label={<span style={{ fontWeight: 'bold' }}>Exclude Patterns</span>} style={{ marginTop: 24 }} help="Enter .gitignore-style patterns to exclude files/folders (supports *, /, wildcards)">
           <Space.Compact style={{ width: '100%' }}>
@@ -343,6 +346,8 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
           </div>
         </Form.Item>
 
+        {/* Standard Library field temporarily disabled */}
+        {/*
         <Form.Item
           name="include_stdlib"
           label={<span style={{ fontWeight: 'bold' }}>Standard Library</span>}
@@ -360,6 +365,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
             }}
           />
         </Form.Item>
+        */}
 
         <Form.Item style={{ marginTop: 120 }}>
           <Button
