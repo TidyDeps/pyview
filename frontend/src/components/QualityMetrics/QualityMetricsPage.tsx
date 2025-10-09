@@ -38,7 +38,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
       } catch (error) {
         if (isMounted && !abortController.signal.aborted) {
           console.error('Failed to fetch quality metrics:', error);
-          message.error('Server connection lost. Please try again.');
+          message.error('서버 연결이 끊어졌습니다. 다시 시도해 주세요.');
         }
       }
     };
@@ -75,15 +75,15 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
   };
 
   const getComplexityStatus = (complexity: number) => {
-    if (complexity <= 10) return { status: 'success' as const, text: 'Good' };
-    if (complexity <= 20) return { status: 'active' as const, text: 'Moderate' };
-    return { status: 'exception' as const, text: 'High' };
+    if (complexity <= 10) return { status: 'success' as const, text: '양호' };
+    if (complexity <= 20) return { status: 'active' as const, text: '보통' };
+    return { status: 'exception' as const, text: '높음' };
   };
 
   const getMaintainabilityStatus = (index: number) => {
-    if (index >= 80) return { status: 'success' as const, text: 'Excellent' };
-    if (index >= 60) return { status: 'active' as const, text: 'Good' };
-    return { status: 'exception' as const, text: 'Poor' };
+    if (index >= 80) return { status: 'success' as const, text: '우수' };
+    if (index >= 60) return { status: 'active' as const, text: '양호' };
+    return { status: 'exception' as const, text: '나쁘' };
   };
 
   const getEntityTypeColor = (type: string) => {
@@ -173,7 +173,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
 
   const columns = [
     {
-      title: 'Entity',
+      title: '엔티티',
       dataIndex: 'entity_id',
       key: 'entity_id',
       render: (id: string, record: QualityMetrics) => {
@@ -206,7 +206,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
     {
       title: (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          Grade
+          등급
           <Button
             type="text"
             size="small"
@@ -228,7 +228,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
     {
       title: (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          Complexity
+          복잡도
           <Button
             type="text"
             size="small"
@@ -260,7 +260,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
     {
       title: (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          Maintainability
+          유지보수성
           <Button
             type="text"
             size="small"
@@ -292,7 +292,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
     {
       title: (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          Cycle Status
+          순환 의존성 상태
           <Button
             type="text"
             size="small"
@@ -311,7 +311,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
           return (
             <div style={{ textAlign: 'center' }}>
               <Tag color="green" style={{ fontSize: 11 }}>
-                <CheckCircleOutlined /> Normal
+                <CheckCircleOutlined /> 정상
               </Tag>
             </div>
           );
@@ -319,10 +319,10 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
 
         const getCycleTypeText = (cycleType?: string) => {
           switch (cycleType) {
-            case 'import': return 'Import Cycle';
-            case 'call': return 'Call Cycle';
-            case 'self': return 'Self Reference';
-            default: return 'Circular Dependency';
+            case 'import': return '임포트 순환';
+            case 'call': return '호출 순환';
+            case 'self': return '자기 참조';
+            default: return '순환 의존성';
           }
         };
 
@@ -356,7 +356,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
   if (!analysisId) {
     return (
       <div style={{ textAlign: 'center', padding: '50px' }}>
-        <Empty description="No analysis selected" />
+        <Empty description="분석이 선택되지 않음" />
       </div>
     );
   }
@@ -364,16 +364,16 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
   return (
     <div style={{ padding: '20px' }}>
       <Title level={3} style={{ marginBottom: '20px' }}>
-        <DashboardOutlined /> Code Quality Metrics
+        <DashboardOutlined /> 코드 품질 메트릭
       </Title>
 
       {/* Overall Quality Assessment */}
-      <Card title="Overall Quality Assessment" size="small" style={{ marginBottom: '24px' }}>
+      <Card title="전체 품질 평가" size="small" style={{ marginBottom: '24px' }}>
         <Row gutter={16}>
           <Col span={6}>
             <Card>
               <Statistic
-                title="Average Complexity"
+                title="평균 복잡도"
                 value={avgComplexity}
                 precision={1}
                 valueStyle={{
@@ -386,7 +386,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
           <Col span={6}>
             <Card>
               <Statistic
-                title="Avg Maintainability"
+                title="평균 유지보수성"
                 value={avgMaintainability}
                 precision={1}
                 valueStyle={{
@@ -399,14 +399,14 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
           <Col span={6}>
             <Card>
               <Statistic
-                title="Total Entities"
+                title="전체 엔티티"
                 value={metrics.length}
                 prefix={<AppstoreOutlined />}
               />
             </Card>
           </Col>
           <Col span={6}>
-            <Card title="Quality Distribution" size="small">
+            <Card title="품질 분포" size="small">
               <div>
                 {Object.keys(gradeDistribution).length > 0 ? (
                   Object.entries(gradeDistribution).map(([grade, count]) => (
@@ -415,7 +415,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
                     </Tag>
                   ))
                 ) : (
-                  <Text type="secondary">No data</Text>
+                  <Text type="secondary">데이터 없음</Text>
                 )}
               </div>
             </Card>
@@ -425,11 +425,11 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
 
       {/* Metrics Table */}
       <Card 
-        title="Detailed Quality Metrics" 
+        title="상세 품질 메트릭" 
         size="small"
         extra={
           <Space>
-            <Tooltip title="Measurement Criteria Help">
+            <Tooltip title="측정 기준 도움말">
               <Button
                 type="text"
                 icon={<QuestionCircleOutlined />}
@@ -438,7 +438,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
             </Tooltip>
             <FilterOutlined />
             <Select
-              placeholder="Filter by Type"
+              placeholder="타입별 필터"
               allowClear
               style={{ width: 160 }}
               value={entityTypeFilter}
@@ -460,7 +460,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
             total: filteredMetrics.length,
             showSizeChanger: true,
             showTotal: (total, range) => 
-              `${range[0]}-${range[1]} of ${total} items`,
+              `${range[0]}-${range[1]} / 전체 ${total}개`,
             pageSizeOptions: ['10', '20', '50', '100'],
             onChange: (page, size) => {
               setCurrentPage(page);
@@ -475,7 +475,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
             hideOnSinglePage: false
           }}
           locale={{
-            emptyText: 'No data'
+            emptyText: '데이터 없음'
           }}
           size="small"
           scroll={{ x: 'max-content' }}
@@ -487,7 +487,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
-            <span>Circular Dependency Details</span>
+            <span>순환 의존성 상세 정보</span>
           </div>
         }
         open={cycleModalVisible}
@@ -509,7 +509,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
             <Divider />
 
             <div style={{ marginBottom: 16 }}>
-              <Text strong>Cycle Type:</Text>
+              <Text strong>순환 타입:</Text>
               <div style={{ marginTop: 4 }}>
                 <Tag color={
                   selectedCycleInfo.cycle_severity === 'high' ? 'red' :
@@ -523,14 +523,14 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <Text strong>Severity:</Text>
+              <Text strong>심각도:</Text>
               <div style={{ marginTop: 4 }}>
                 <Tag color={
                   selectedCycleInfo.cycle_severity === 'high' ? 'red' :
                   selectedCycleInfo.cycle_severity === 'medium' ? 'orange' : 'yellow'
                 }>
-                  {selectedCycleInfo.cycle_severity === 'high' ? 'High' :
-                   selectedCycleInfo.cycle_severity === 'medium' ? 'Medium' : 'Low'}
+                  {selectedCycleInfo.cycle_severity === 'high' ? '높음' :
+                   selectedCycleInfo.cycle_severity === 'medium' ? '보통' : '낮음'}
                 </Tag>
               </div>
             </div>
@@ -538,7 +538,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
 
             {selectedCycleInfo.cycle_partners.length > 0 && (
               <div>
-                <Text strong>Circular Dependency Entities:</Text>
+                <Text strong>순환 의존성 엔티티:</Text>
                 <div style={{ marginTop: 8 }}>
                   <List
                     size="small"
@@ -574,7 +574,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
                 <InfoCircleOutlined style={{ fontSize: 24, color: '#ccc' }} />
                 <div style={{ marginTop: 8, color: '#999' }}>
-                  No reference information available.
+                  참조 정보가 없습니다.
                 </div>
               </div>
             )}
@@ -587,7 +587,7 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <QuestionCircleOutlined style={{ color: '#1890ff' }} />
-            <span>Measurement Criteria</span>
+            <span>측정 기준</span>
           </div>
         }
         open={helpModalVisible}
@@ -597,66 +597,66 @@ const QualityMetricsPage: React.FC<QualityMetricsPageProps> = ({ analysisId }) =
       >
         <div>
           <div style={{ marginBottom: 24 }}>
-            <Title level={4}>Quality Grade</Title>
+            <Title level={4}>품질 등급</Title>
             <Text>
-              Overall code quality rating based on complexity and maintainability metrics.
+              복잡도와 유지보수성 메트릭을 기반으로 한 전반적인 코드 품질 평가입니다.
             </Text>
             <ul style={{ marginTop: 8, paddingLeft: 20 }}>
-              <li><Text strong>A:</Text> Excellent (≤10 complexity, ≥80 maintainability)</li>
-              <li><Text strong>B:</Text> Good (≤20 complexity, ≥60 maintainability)</li>
-              <li><Text strong>C:</Text> Fair (≤50 complexity, ≥40 maintainability)</li>
-              <li><Text strong>D:</Text> Poor (higher complexity, lower maintainability)</li>
-              <li><Text strong>F:</Text> Very Poor (very high complexity, very low maintainability)</li>
+              <li><Text strong>A:</Text> 우수 (복잡도 ≤10, 유지보수성 ≥80)</li>
+              <li><Text strong>B:</Text> 양호 (복잡도 ≤20, 유지보수성 ≥60)</li>
+              <li><Text strong>C:</Text> 보통 (복잡도 ≤50, 유지보수성 ≥40)</li>
+              <li><Text strong>D:</Text> 나쁘 (높은 복잡도, 낮은 유지보수성)</li>
+              <li><Text strong>F:</Text> 매우 나쁕 (매우 높은 복잡도, 매우 낮은 유지보수성)</li>
             </ul>
           </div>
 
           <Divider />
 
           <div style={{ marginBottom: 24 }}>
-            <Title level={4}>Cyclomatic Complexity</Title>
+            <Title level={4}>순환 복잡도</Title>
             <Text>
-              Measures the number of linearly independent paths through a program's source code.
-              Higher values indicate more complex code that is harder to test and maintain.
+              프로그램 소스 코드를 통과하는 선형 독립적인 경로의 수를 측정합니다.
+              높은 값은 테스트하고 유지보수하기 어려운 더 복잡한 코드를 나타냅니다.
             </Text>
             <ul style={{ marginTop: 8, paddingLeft: 20 }}>
-              <li><Text strong>1-10:</Text> Simple, low risk</li>
-              <li><Text strong>11-20:</Text> Moderate complexity</li>
-              <li><Text strong>21-50:</Text> Complex, high risk</li>
-              <li><Text strong>50+:</Text> Very complex, very high risk</li>
+              <li><Text strong>1-10:</Text> 단순, 낮은 위험</li>
+              <li><Text strong>11-20:</Text> 보통 복잡도</li>
+              <li><Text strong>21-50:</Text> 복잡, 높은 위험</li>
+              <li><Text strong>50+:</Text> 매우 복잡, 매우 높은 위험</li>
             </ul>
           </div>
 
           <Divider />
 
           <div style={{ marginBottom: 24 }}>
-            <Title level={4}>Maintainability Index</Title>
+            <Title level={4}>유지보수성 지수</Title>
             <Text>
-              Calculated using cyclomatic complexity and lines of code. Higher values indicate
-              more maintainable code.
+              순환 복잡도와 코드 라인 수를 사용하여 계산됩니다. 높은 값은
+              더 유지보수하기 쉬운 코드를 나타냅니다.
             </Text>
             <ul style={{ marginTop: 8, paddingLeft: 20 }}>
-              <li><Text strong>80-100:</Text> Excellent maintainability</li>
-              <li><Text strong>60-79:</Text> Good maintainability</li>
-              <li><Text strong>40-59:</Text> Fair maintainability</li>
-              <li><Text strong>0-39:</Text> Poor maintainability</li>
+              <li><Text strong>80-100:</Text> 우수한 유지보수성</li>
+              <li><Text strong>60-79:</Text> 양호한 유지보수성</li>
+              <li><Text strong>40-59:</Text> 보통 유지보수성</li>
+              <li><Text strong>0-39:</Text> 나쁜 유지보수성</li>
             </ul>
           </div>
 
           <Divider />
 
           <div>
-            <Title level={4}>Cycle Status</Title>
+            <Title level={4}>순환 상태</Title>
             <Text>
-              Indicates whether the entity is involved in circular dependencies.
+              엔티티가 순환 의존성에 관련되어 있는지를 나타냅니다.
             </Text>
             <ul style={{ marginTop: 8, paddingLeft: 20 }}>
-              <li><Text strong>Normal:</Text> No circular dependencies detected</li>
-              <li><Text strong>Import Cycle:</Text> Circular import dependencies</li>
-              <li><Text strong>Call Cycle:</Text> Circular function call dependencies</li>
-              <li><Text strong>Self Reference:</Text> Entity references itself</li>
+              <li><Text strong>정상:</Text> 순환 의존성이 감지되지 않음</li>
+              <li><Text strong>임포트 순환:</Text> 순환 임포트 의존성</li>
+              <li><Text strong>호출 순환:</Text> 순환 함수 호출 의존성</li>
+              <li><Text strong>자기 참조:</Text> 엔티티가 자기 자신을 참조</li>
             </ul>
             <Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
-              Click on cycle status tags to view detailed circular dependency information.
+              순환 상태 태그를 클릭하면 상세한 순환 의존성 정보를 볼 수 있습니다.
             </Text>
           </div>
         </div>

@@ -29,7 +29,7 @@ const App: React.FC = () => {
       messageApi.info('프로젝트 분석을 시작합니다...')
       await startAnalysis(request)
     } catch (err) {
-      messageApi.error('Failed to start analysis')
+      messageApi.error('분석 시작에 실패했습니다')
     }
   }
 

@@ -32,12 +32,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({
     {
       key: 'analysis',
       icon: <ProjectOutlined />,
-      label: 'Project Analysis',
+      label: '프로젝트 분석',
     },
     {
       key: 'visualization',
       icon: <BarChartOutlined />,
-      label: 'Dependency Graph',
+      label: '의존성 그래프',
     },
     // {
     //   key: 'search',
@@ -47,7 +47,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
     {
       key: 'quality-metrics',
       icon: <DashboardOutlined />,
-      label: 'Quality Metrics',
+      label: '품질 메트릭',
     },
     // {
     //   key: 'multi-view',

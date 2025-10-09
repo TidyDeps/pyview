@@ -98,14 +98,56 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
     }
   }
 
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return '완료'
+      case 'failed':
+        return '실패'
+      case 'running':
+        return '진행 중'
+      case 'pending':
+        return '대기 중'
+      default:
+        return status.toUpperCase()
+    }
+  }
+
+  const getProgressMessage = (status: string, progress: number) => {
+    if (status === 'completed') {
+      return '분석이 완료되었습니다'
+    }
+    if (status === 'failed') {
+      return '분석이 실패했습니다'
+    }
+    if (status === 'pending') {
+      return '분석 대기 중입니다...'
+    }
+
+    // 진행률에 따른 단계별 메시지
+    if (progress < 0.1) {
+      return '분석을 시작하고 있습니다...'
+    } else if (progress < 0.3) {
+      return '파일을 스캔하고 있습니다...'
+    } else if (progress < 0.5) {
+      return '의존성을 분석하고 있습니다...'
+    } else if (progress < 0.7) {
+      return '의존성 그래프를 구성하고 있습니다...'
+    } else if (progress < 0.9) {
+      return '순환 참조를 탐지하고 있습니다...'
+    } else {
+      return '분석을 마무리하고 있습니다...'
+    }
+  }
+
   return (
-    <Card 
-      title="Analysis Progress"
+    <Card
+      title="분석 진행 상황"
       extra={analysis && (
         <Space>
           {getStatusIcon(analysis.status)}
           <Tag color={getStatusColor(analysis.status)}>
-            {analysis.status.toUpperCase()}
+            {getStatusText(analysis.status)}
           </Tag>
         </Space>
       )}
@@ -119,25 +161,25 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({
       {analysis && (
         <Space direction="vertical" style={{ width: '100%' }}>
           <div>
-            <Text strong>Analysis ID: </Text>
+            <Text strong>분석 ID: </Text>
             <Text code>{analysis.analysis_id}</Text>
           </div>
-          
-          <Progress 
+
+          <Progress
             percent={Math.round(analysis.progress * 100)}
-            status={analysis.status === 'failed' ? 'exception' : 
+            status={analysis.status === 'failed' ? 'exception' :
                    analysis.status === 'completed' ? 'success' : 'active'}
             showInfo
           />
-          
+
           <div>
-            <Text>{analysis.message}</Text>
+            <Text>{getProgressMessage(analysis.status, analysis.progress)}</Text>
           </div>
 
           {analysis.created_at && analysis.updated_at && (
             <div>
               <Text type="secondary">
-                Duration: {formatDuration(analysis.created_at, analysis.updated_at, analysis.status)}
+                소요 시간: {formatDuration(analysis.created_at, analysis.updated_at, analysis.status)}
               </Text>
             </div>
           )}

@@ -1382,7 +1382,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   // 레벨 변경 핸들러
   const handleLevelChange = async (newLevel: number) => {
     setIsLevelChanging(true);
-    message.loading(`Switching to ${getLevelName(newLevel)} level...`, 0.5);
+    message.loading(`${getLevelName(newLevel)} 레벨로 전환 중...`, 0.5);
     
     // Give UI time to show loading state
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -1394,7 +1394,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     await new Promise(resolve => setTimeout(resolve, 200));
     
     setIsLevelChanging(false);
-    message.success(`Now viewing ${getLevelName(newLevel)} level`);
+    message.success(`현재 ${getLevelName(newLevel)} 레벨을 보고 있습니다`);
   };
 
   const getLevelName = (level: number): string => {
@@ -1408,7 +1408,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       .filter(n => n.children && n.children.length > 0)
       .map(n => n.id);
     setExpandedNodes(new Set(allExpandableNodes));
-    message.success('모든 노드가 확장되었습니다');
+    message.success('모든 노드가 초기화되었습니다');
   };
 
 
@@ -1418,7 +1418,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       {/* 컨트롤 패널 - 상단 고정 */}
       <Card 
         size="small" 
-        title="Hierarchical Controls"
+        title="계층 컨트롤"
         style={{ 
           marginBottom: 16,
           minWidth: '100%'
@@ -1452,7 +1452,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
             <Space wrap>
               
               <Button size="small" onClick={expandAll} icon={<ReloadOutlined />}>
-                Reset
+초기화
               </Button>
 
               <Button 
@@ -1460,7 +1460,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
                 onClick={() => cyInstanceRef.current?.fit()}
                 icon={<ExpandOutlined />}
               >
-                Fit
+배율 초기화
               </Button>
             </Space>
           </div>
@@ -1484,16 +1484,16 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
                   height: 'fit-content'
                 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, color: '#1890ff' }}>
-                    Selected Node
+선택된 노드
                   </div>
                   
                   {nodeInfo ? (
                     <div style={{ fontSize: 12, lineHeight: 1.3, display: 'flex', gap: 12 }}>
                       {/* 왼쪽: 기본 정보 */}
                       <div style={{ flex: '0 0 auto' }}>
-                        <div><strong>Name:</strong> {nodeInfo.name}</div>
+                        <div><strong>이름:</strong> {nodeInfo.name}</div>
                         <br></br>
-                        <div><strong>Type:</strong> 
+                        <div><strong>타입:</strong> 
                           <Tag color={
                             nodeInfo.type === 'package' ? 'green' :
                             nodeInfo.type === 'module' ? 'blue' :
@@ -1545,7 +1545,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
                     </div>
                   ) : (
                     <div style={{ fontSize: 12, color: '#999' }}>
-                      No node selected
+선택된 노드 없음
                     </div>
                   )}
                 </div>
@@ -1594,10 +1594,10 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           }}>
             <Spin size="large" />
             <div style={{ marginTop: 16, fontSize: 16, fontWeight: 500 }}>
-              Rendering {getLevelName(viewLevel)} Level...
+{getLevelName(viewLevel)} 레벨 렌더링 중...
             </div>
             <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-              Optimizing layout for better performance
+더 나은 성능을 위해 레이아웃 최적화 중
             </div>
           </div>
         )}

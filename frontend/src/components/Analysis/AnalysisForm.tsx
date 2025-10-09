@@ -57,7 +57,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
 
     // 빈 값 처리
     if (!projectPath || projectPath.trim().length === 0) {
-      setPathValidationMessage('Project path is required')
+      setPathValidationMessage('프로젝트 경로를 입력해주세요')
       setIsFormValid(false)
       return
     }
@@ -65,7 +65,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
     // 절대경로 검사
     const isAbsolutePath = projectPath.startsWith('/') || /^[A-Za-z]:\\/.test(projectPath)
     if (!isAbsolutePath) {
-      setPathValidationMessage('Please enter an absolute path (e.g., /path/to/project or C:\\path\\to\\project)')
+      setPathValidationMessage('절대 경로를 입력해주세요 (예: /path/to/project 또는 C:\\path\\to\\project)')
       setIsFormValid(false)
       return
     }
@@ -150,35 +150,35 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
 
     // Check for duplicates
     if (excludePatterns.includes(trimmedPattern)) {
-      message.warning('Pattern already exists')
+      message.warning('이미 존재하는 패턴입니다')
       return
     }
 
     // Validate .gitignore-style pattern
     if (!validateGitIgnorePattern(trimmedPattern)) {
       // 구체적인 오류 메시지 제공
-      let errorMsg = 'Invalid pattern format'
+      let errorMsg = '잘못된 패턴 형식입니다'
 
       if (trimmedPattern.startsWith('#')) {
-        errorMsg = 'Comments are not allowed in patterns'
+        errorMsg = '주석은 패턴에 사용할 수 없습니다'
       } else if (/[\x00-\x08\x0E-\x1F\x7F]/.test(trimmedPattern)) {
-        errorMsg = 'Control characters are not allowed'
+        errorMsg = '제어 문자는 사용할 수 없습니다'
       } else if (/\*{4,}/.test(trimmedPattern)) {
-        errorMsg = 'Too many consecutive wildcards (*)'
+        errorMsg = '와일드카드(*)가 너무 많습니다'
       } else if (/\/{3,}/.test(trimmedPattern)) {
-        errorMsg = 'Too many consecutive slashes (/)'
+        errorMsg = '슬래시(/)가 너무 많습니다'
       } else if (trimmedPattern.includes('[') && !trimmedPattern.includes(']')) {
-        errorMsg = 'Unclosed character class [...]'
+        errorMsg = '닫히지 않은 문자 클래스 [...]입니다'
       } else if (/\[\]/.test(trimmedPattern)) {
-        errorMsg = 'Empty character class is not allowed'
+        errorMsg = '빈 문자 클래스는 사용할 수 없습니다'
       } else if (trimmedPattern.includes('\\')) {
-        errorMsg = 'Backslashes (\\) are not supported'
+        errorMsg = '백슬래시(\\)는 지원되지 않습니다'
       } else if (/\.{4,}/.test(trimmedPattern)) {
-        errorMsg = 'Too many consecutive dots (.)'
+        errorMsg = '점(.)이 너무 많습니다'
       } else if (trimmedPattern.length > 255) {
-        errorMsg = 'Pattern is too long (max 255 characters)'
+        errorMsg = '패턴이 너무 깁니다 (최대 255자)'
       } else if ((trimmedPattern.match(/\*\*/g) || []).length > 3) {
-        errorMsg = 'Too many double wildcards (**)'
+        errorMsg = '이중 와일드카드(**)가 너무 많습니다'
       }
 
       message.error(errorMsg)
@@ -187,7 +187,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
 
     setExcludePatterns([...excludePatterns, trimmedPattern])
     setPatternInput('')
-    message.success('Pattern added successfully')
+    message.success('패턴이 추가되었습니다')
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -218,7 +218,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
   }
 
   return (
-    <Card title="Configure Project Analysis">
+    <Card title="프로젝트 분석 설정">
       <Form
         form={form}
         layout="vertical"
@@ -229,14 +229,14 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
           include_stdlib: false,
         }}
       >
-        <Title level={4}>Project Settings</Title>
-        
+        <Title level={4}>프로젝트 설정</Title>
+
         <Form.Item
           name="project_path"
-          label="Project Path"
+          label="프로젝트 경로"
           validateStatus={hasUserInput && pathValidationMessage ? 'error' : ''}
-          help={hasUserInput && pathValidationMessage ? pathValidationMessage : 'Enter the absolute path to your Python project'}
-          rules={[{ required: true, message: 'Please enter project path' }]}
+          help={hasUserInput && pathValidationMessage ? pathValidationMessage : 'Python 프로젝트의 절대 경로를 입력하세요'}
+          rules={[{ required: true, message: '프로젝트 경로를 입력해주세요' }]}
         >
           <Input
             placeholder="/path/to/your/python/project"
@@ -245,15 +245,15 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
         </Form.Item>
 
         <Divider />
-        
-        <Title level={4}>Analysis Options</Title>
+
+        <Title level={4}>분석 옵션</Title>
 
 
         <Space style={{ width: '100%' }} size="large">
           <Form.Item
             name="max_depth"
-            label="Max Depth"
-            tooltip="Maximum dependency depth to analyze"
+            label="최대 깊이"
+            tooltip="분석할 최대 의존성 깊이"
           >
             <InputNumber
               min={1}
@@ -266,17 +266,17 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
 
         </Space>
 
-        <Form.Item label="Exclude Patterns" help="Enter .gitignore-style patterns to exclude files/folders (supports *, /, wildcards)">
+        <Form.Item label="제외 패턴" help=".gitignore 스타일 패턴을 입력하여 파일/폴더를 제외하세요 (*, /, 와일드카드 지원)">
           <Space.Compact style={{ width: '100%' }}>
             <Input
-              placeholder="e.g., *.pyc, __pycache__/, test_*, node_modules/"
+              placeholder="예: *.pyc, __pycache__/, test_*, node_modules/"
               value={patternInput}
               onChange={(e) => setPatternInput(e.target.value)}
               onKeyDown={handleKeyDown}
               onCompositionStart={() => setIsComposing(true)}
               onCompositionEnd={() => setIsComposing(false)}
             />
-            <Button onClick={handleAddPattern}>Add</Button>
+            <Button onClick={handleAddPattern}>추가</Button>
           </Space.Compact>
           
           <div style={{ marginTop: 8 }}>
@@ -298,17 +298,17 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
         <Form.Item
           name="include_stdlib"
           valuePropName="checked"
-          tooltip="Include Python standard library in analysis"
+          tooltip="Python 표준 라이브러리를 분석에 포함"
         >
           <div>
             <Switch
-              checkedChildren="Include"
-              unCheckedChildren="Exclude"
+              checkedChildren="포함"
+              unCheckedChildren="제외"
               onChange={(checked) => {
                 form.setFieldValue('include_stdlib', checked)
               }}
             />
-            <Text style={{ marginLeft: 8 }}>Standard Library</Text>
+            <Text style={{ marginLeft: 8 }}>표준 라이브러리</Text>
           </div>
         </Form.Item>
 
@@ -322,7 +322,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
             size="large"
             block
           >
-            Start Analysis
+            분석 시작
           </Button>
         </Form.Item>
       </Form>

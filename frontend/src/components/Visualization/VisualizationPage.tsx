@@ -67,7 +67,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
         if (isMounted) {
           setLoading(true)
           setError(null)
-          setLoadingStage('Fetching analysis results...')
+          setLoadingStage('분석 결과를 가져오고 있습니다...')
           setLoadingProgress(5)
         }
 
@@ -84,7 +84,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
         setLoadingProgress(10)
 
         // Transform backend data to graph format with progress
-        setLoadingStage('Processing graph data...')
+        setLoadingStage('그래프 데이터를 처리하고 있습니다...')
         setLoadingProgress(15)
 
         // Use setTimeout to allow UI to update before heavy computation
@@ -105,8 +105,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
 
         // Start final rendering phase
         setLoadingProgress(95)
-        setLoadingStage('Rendering graph visualization...')
-        setLoadingDetails('Preparing visual elements and layout...')
+        setLoadingStage('그래프 시각화를 렌더링하고 있습니다...')
+        setLoadingDetails('시각적 요소와 레이아웃을 준비하고 있습니다...')
         setProcessingStats({ totalItems: 0, processedItems: 0, currentType: '' })
 
         setGraphData(transformedData)
@@ -117,8 +117,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
         if (!isMounted || abortController.signal.aborted) return;
 
         setLoadingProgress(100)
-        setLoadingStage('Visualization ready!')
-        setLoadingDetails('Graph successfully rendered')
+        setLoadingStage('시각화 준비 완료!')
+        setLoadingDetails('그래프가 성공적으로 렌더링되었습니다')
 
         // Clear loading states after a brief display
         setTimeout(() => {
@@ -435,12 +435,12 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
         const progress = Math.min(processedItems / totalItems, 0.3) // Packages take up to 30% of total progress
         onProgress?.(
           progress,
-          'Processing packages...',
-          `Building package hierarchy (${Math.min(i + CHUNK_SIZE, packages.length)}/${packages.length})`,
+          '패키지를 처리하고 있습니다...',
+          `패키지 계층 구조 구성 중 (${Math.min(i + CHUNK_SIZE, packages.length)}/${packages.length})`,
           {
             totalItems: packages.length,
             processedItems: Math.min(i + CHUNK_SIZE, packages.length),
-            currentType: 'Packages'
+            currentType: 'Package'
           }
         )
 
@@ -480,12 +480,12 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
         const progress = Math.min(processedItems / totalItems, 0.5) // Modules take up to 50% of total progress
         onProgress?.(
           progress,
-          'Processing modules...',
-          `Building module structure (${Math.min(i + CHUNK_SIZE, modules.length)}/${modules.length})`,
+          '모듈을 처리하고 있습니다...',
+          `모듈 구조 구성 중 (${Math.min(i + CHUNK_SIZE, modules.length)}/${modules.length})`,
           {
             totalItems: modules.length,
             processedItems: Math.min(i + CHUNK_SIZE, modules.length),
-            currentType: 'Modules'
+            currentType: 'Module'
           }
         )
 
@@ -524,12 +524,12 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
         const progress = Math.min(processedItems / totalItems, 0.7) // Classes take up to 70% of total progress
         onProgress?.(
           progress,
-          'Processing classes...',
-          `Building class hierarchy (${Math.min(i + CHUNK_SIZE, classes.length)}/${classes.length})`,
+          '클래스를 처리하고 있습니다...',
+          `클래스 계층 구조 구성 중 (${Math.min(i + CHUNK_SIZE, classes.length)}/${classes.length})`,
           {
             totalItems: classes.length,
             processedItems: Math.min(i + CHUNK_SIZE, classes.length),
-            currentType: 'Classes'
+            currentType: 'Class'
           }
         )
 
@@ -569,12 +569,12 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
         const progress = Math.min(processedItems / totalItems, 0.85) // Methods take up to 85% of total progress
         onProgress?.(
           progress,
-          'Processing methods...',
-          `Building method structure (${Math.min(i + CHUNK_SIZE, methods.length)}/${methods.length})`,
+          '메서드를 처리하고 있습니다...',
+          `메서드 구조 구성 중 (${Math.min(i + CHUNK_SIZE, methods.length)}/${methods.length})`,
           {
             totalItems: methods.length,
             processedItems: Math.min(i + CHUNK_SIZE, methods.length),
-            currentType: 'Methods'
+            currentType: 'Method'
           }
         )
 
@@ -613,12 +613,12 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
         const progress = Math.min(processedItems / totalItems, 0.9) // Fields take up to 90% of total progress
         onProgress?.(
           progress,
-          'Processing fields...',
-          `Building field structure (${Math.min(i + CHUNK_SIZE, fields.length)}/${fields.length})`,
+          '필드를 처리하고 있습니다...',
+          `필드 구조 구성 중 (${Math.min(i + CHUNK_SIZE, fields.length)}/${fields.length})`,
           {
             totalItems: fields.length,
             processedItems: Math.min(i + CHUNK_SIZE, fields.length),
-            currentType: 'Fields'
+            currentType: 'Field'
           }
         )
 
@@ -632,9 +632,9 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     console.log('Extracting relationships from dependency graph...')
     onProgress?.(
       0.9,
-      'Building relationships...',
-      'Creating dependency connections between nodes',
-      { totalItems: 0, processedItems: 0, currentType: 'Relationships' }
+      '관계를 구성하고 있습니다...',
+      '노드 간 의존성 연결을 생성하고 있습니다',
+      { totalItems: 0, processedItems: 0, currentType: '관계' }
     )
 
     const nodeIds = new Set(nodes.map(n => n.id))
@@ -725,12 +725,12 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
         const progress = 0.9 + relationshipProgress * 0.08 // 90% - 98%
         onProgress?.(
           progress,
-          'Building relationships...',
-          `Creating module dependencies (${Math.min(i + CHUNK_SIZE, modules.length)}/${modules.length})`,
+          '관계를 구성하고 있습니다...',
+          `모듈 의존성 생성 중 (${Math.min(i + CHUNK_SIZE, modules.length)}/${modules.length})`,
           {
             totalItems: modules.length,
             processedItems: Math.min(i + CHUNK_SIZE, modules.length),
-            currentType: 'Module edges'
+            currentType: 'Module Edge'
           }
         )
 
@@ -777,12 +777,12 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
         const progress = 0.9 + relationshipProgress * 0.08 // 90% - 98%
         onProgress?.(
           progress,
-          'Building relationships...',
-          `Creating class hierarchies (${Math.min(i + CHUNK_SIZE, classes.length)}/${classes.length})`,
+          '관계를 구성하고 있습니다...',
+          `클래스 계층 생성 중 (${Math.min(i + CHUNK_SIZE, classes.length)}/${classes.length})`,
           {
             totalItems: classes.length,
             processedItems: Math.min(i + CHUNK_SIZE, classes.length),
-            currentType: 'Class edges'
+            currentType: 'Class Edge'
           }
         )
 
@@ -799,12 +799,12 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     // Final processing step
     onProgress?.(
       0.98,
-      'Finalizing graph...',
-      `Completed processing ${nodes.length} nodes and ${edges.length} edges`,
+      '그래프를 마무리하고 있습니다...',
+      `${nodes.length}개 노드와 ${edges.length}개 엣지 처리 완료`,
       {
         totalItems: nodes.length + edges.length,
         processedItems: nodes.length + edges.length,
-        currentType: 'Finalization'
+        currentType: '마무리'
       }
     )
 
@@ -868,10 +868,10 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
       const parsedName = nodeId.includes('/') ? nodeId.split('/').pop() || nodeId : nodeId
       const parsedType = nodeType.charAt(0).toUpperCase() + nodeType.slice(1)
       console.log('🔄 Using nodeType fallback:', { type: parsedType, name: parsedName })
-      message.info(`Selected ${parsedType}: ${parsedName}`)
+      message.info(`선택된 ${parsedType}: ${parsedName}`)
     } else {
       console.log('✅ Using getNodeInfo result:', { type, name })
-      message.info(`Selected ${type}: ${name}`)
+      message.info(`선택된 ${type}: ${name}`)
     }
   }
 
@@ -881,7 +881,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     setSelectedNodeId(nodeId)
 
     const { type, name } = getNodeInfo(nodeId)
-    message.info(`Selected ${type}: ${name}`)
+    message.info(`선택된 ${type}: ${name}`)
   }
 
   if (loading) {
@@ -891,7 +891,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
 
         {/* Main Loading Stage */}
         <div style={{ marginTop: 16, fontSize: 18, fontWeight: 600, color: '#1890ff' }}>
-          {loadingStage || 'Loading visualization data...'}
+          {loadingStage || '시각화 데이터 로드 중...'}
         </div>
 
         {/* Progress Bar */}
@@ -951,22 +951,22 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
           textAlign: 'left'
         }}>
           <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 8 }}>
-            📋 Processing Steps:
+            📋 처리 단계:
           </div>
           <div style={{ fontSize: 11, color: '#bfbfbf', lineHeight: 1.6 }}>
-            {loadingProgress < 10 && '🔄 Fetching analysis data...'}
-            {loadingProgress >= 10 && loadingProgress < 20 && '✅ Analysis data loaded'}
-            {loadingProgress >= 20 && loadingProgress < 40 && '🔄 Processing packages & modules...'}
-            {loadingProgress >= 40 && loadingProgress < 60 && '🔄 Building class hierarchy...'}
-            {loadingProgress >= 60 && loadingProgress < 80 && '🔄 Processing methods & fields...'}
-            {loadingProgress >= 80 && loadingProgress < 95 && '🔄 Building relationships...'}
-            {loadingProgress >= 95 && loadingProgress < 100 && '🔄 Rendering graph visualization...'}
-            {loadingProgress >= 100 && '✅ Visualization ready!'}
+            {loadingProgress < 10 && '🔄 분석 데이터 가져오는 중...'}
+            {loadingProgress >= 10 && loadingProgress < 20 && '✅ 분석 데이터 로드 완료'}
+            {loadingProgress >= 20 && loadingProgress < 40 && '🔄 패키지 및 모듈 처리 중...'}
+            {loadingProgress >= 40 && loadingProgress < 60 && '🔄 클래스 계층 구성 중...'}
+            {loadingProgress >= 60 && loadingProgress < 80 && '🔄 메서드 및 필드 처리 중...'}
+            {loadingProgress >= 80 && loadingProgress < 95 && '🔄 관계 구성 중...'}
+            {loadingProgress >= 95 && loadingProgress < 100 && '🔄 그래프 시각화 렌더링 중...'}
+            {loadingProgress >= 100 && '✅ 시각화 준비 완료!'}
           </div>
         </div>
 
         <div style={{ marginTop: 20, color: '#666', fontSize: 12 }}>
-          💡 Large codebases may take longer to process. Please wait while we optimize the visualization for better performance.
+          💡 대용량 코드베이스는 처리 시간이 더 오래 걸릴 수 있습니다. 더 나은 성능을 위해 시각화를 최적화하는 동안 잠시 기다려 주세요.
         </div>
       </div>
     )
@@ -975,7 +975,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
   if (error) {
     return (
       <Alert
-        message="Visualization Error"
+        message="시각화 오류"
         description={error}
         type="error"
         showIcon
@@ -987,8 +987,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
   if (!analysisId && !graphData) {
     return (
       <Alert
-        message="No Analysis Selected"
-        description="Please run an analysis first to visualize the dependency graph."
+        message="분석이 선택되지 않음"
+        description="의존성 그래프를 시각화하려면 먼저 분석을 실행해 주세요."
         type="info"
         showIcon
         style={{ margin: '24px 0' }}

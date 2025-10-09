@@ -42,15 +42,28 @@ const parseFilePath = (filepath: string): string[] => {
   // 백슬래시를 슬래시로 변환
   cleanPath = cleanPath.replace(/\\/g, '/')
 
-  // 🗂️ 프로젝트 루트 경로 제거 (pyview 프로젝트 기준)
-  const projectRootPattern = /.*\/pyview\//
-  if (projectRootPattern.test(cleanPath)) {
-    cleanPath = cleanPath.replace(projectRootPattern, '')
+  // 🗂️ 프로젝트 루트 경로 제거 (다양한 패턴 시도)
+  // 패턴 1: .../pyview/ 이후 경로만 사용
+  const pyviewPattern = /.*\/pyview\//
+  if (pyviewPattern.test(cleanPath)) {
+    cleanPath = cleanPath.replace(pyviewPattern, '')
   } else {
-    // 절대 경로에서 파일명만 추출하는 fallback
-    const pathParts = cleanPath.split('/')
-    if (pathParts.length > 1) {
-      cleanPath = pathParts[pathParts.length - 1]
+    // 패턴 2: .../opensource/pyview/ 이후 경로만 사용
+    const opensourcePattern = /.*\/opensource\/pyview\//
+    if (opensourcePattern.test(cleanPath)) {
+      cleanPath = cleanPath.replace(opensourcePattern, '')
+    } else {
+      // 패턴 3: 절대 경로를 상대 경로로 변경하는 더 강력한 방법
+      const pathSegments = cleanPath.split('/')
+      const pyviewIndex = pathSegments.lastIndexOf('pyview')
+
+      if (pyviewIndex !== -1 && pyviewIndex < pathSegments.length - 1) {
+        // pyview 다음 부분부터 사용
+        cleanPath = pathSegments.slice(pyviewIndex + 1).join('/')
+      } else {
+        // fallback: 파일명만 사용
+        cleanPath = pathSegments[pathSegments.length - 1] || cleanPath
+      }
     }
   }
 
@@ -58,7 +71,14 @@ const parseFilePath = (filepath: string): string[] => {
   cleanPath = cleanPath.replace(/^\/+|\/+$/g, '')
 
   // 빈 부분 제거하고 경로 분할
-  return cleanPath.split('/').filter(part => part.length > 0)
+  const result = cleanPath.split('/').filter(part => part.length > 0)
+
+  // Debug only for unexpected cases
+  if (result.length === 0 || !result[result.length - 1]) {
+    console.log(`⚠️ Unexpected path parsing result for "${filepath}" → [${result.join(', ')}]`)
+  }
+
+  return result
 }
 
 // 🗂️ 노드 타입에 따른 아이콘과 색상
@@ -97,21 +117,17 @@ const buildFileSystemTree = (modules: any[], classes: any[], methods: any[], fie
     // 🔍 실제 file_path 사용
     const filepath = mod.file_path || mod.name || mod.id || 'unknown'
 
-    // 🔍 Debug: 모듈 데이터 확인
-    if (index < 5) {
+    // 🔍 Debug: 모듈 데이터 확인 (처음 3개만)
+    if (index < 3) {
       console.log(`🔍 Module ${index}:`, {
         id: mod.id,
         name: mod.name,
         file_path: mod.file_path,
-        filepath: filepath,
-        fullModule: mod
+        filepath: filepath
       })
     }
 
     const pathParts = parseFilePath(filepath)
-    if (index < 5) {
-      console.log(`📂 Path parts for "${filepath}":`, pathParts)
-    }
 
     const isInCycle = cycleInfo.cycleNodes.has(mod.id)
 
@@ -135,7 +151,8 @@ const buildFileSystemTree = (modules: any[], classes: any[], methods: any[], fie
 
     // 파일 생성 - 간단한 모듈명 추출
     const filename = getSimpleModuleName(mod)
-    const uniqueKey = `${filename}_${mod.id}` // 중복 키 방지를 위해 ID 포함
+    // 더 안전한 고유 키 생성 (모듈 ID를 기반으로)
+    const uniqueKey = `module_${mod.id.replace(/[^a-zA-Z0-9_]/g, '_')}`
 
     if (!currentNode.children.has(uniqueKey)) {
       const fileNode: FileSystemNode = {
@@ -166,7 +183,8 @@ const buildFileSystemTree = (modules: any[], classes: any[], methods: any[], fie
           methods.forEach((method: any) => {
             if (method.class_id === cls.id) {
               const methodIsInCycle = cycleInfo.cycleNodes.has(method.id)
-              classNode.children.set(method.name || method.id, {
+              const methodKey = `method_${method.id.replace(/[^a-zA-Z0-9_]/g, '_')}`
+              classNode.children.set(methodKey, {
                 name: method.name || method.id,
                 path: `${filepath}:${cls.name}:${method.name}`,
                 isFolder: false,
@@ -182,7 +200,8 @@ const buildFileSystemTree = (modules: any[], classes: any[], methods: any[], fie
           fields.forEach((field: any) => {
             if (field.class_id === cls.id) {
               const fieldIsInCycle = cycleInfo.cycleNodes.has(field.id)
-              classNode.children.set(field.name || field.id, {
+              const fieldKey = `field_${field.id.replace(/[^a-zA-Z0-9_]/g, '_')}`
+              classNode.children.set(fieldKey, {
                 name: field.name || field.id,
                 path: `${filepath}:${cls.name}:${field.name}`,
                 isFolder: false,
@@ -194,7 +213,8 @@ const buildFileSystemTree = (modules: any[], classes: any[], methods: any[], fie
             }
           })
 
-          fileNode.children.set(cls.name || cls.id, classNode)
+          const classKey = `class_${cls.id.replace(/[^a-zA-Z0-9_]/g, '_')}`
+          fileNode.children.set(classKey, classNode)
         }
       })
 
@@ -223,7 +243,7 @@ const convertFileSystemToTreeNodes = (fsNode: FileSystemNode, cycleInfo: any): F
     if (childNode.isFolder) {
       // 폴더 노드
       const folderTreeNode: FileTreeNode = {
-        key: `folder_${childNode.path}`,
+        key: `folder_${childNode.path.replace(/[^a-zA-Z0-9_/]/g, '_')}`,
         title: (
           <span>
             {getFileIcon(childNode.name, 'folder')}
@@ -253,7 +273,7 @@ const convertFileSystemToTreeNodes = (fsNode: FileSystemNode, cycleInfo: any): F
       const childNodes = hasChildren ? convertFileSystemToTreeNodes(childNode, cycleInfo) : []
 
       const fileTreeNode: FileTreeNode = {
-        key: `file_${childNode.nodeId || childNode.path}`,
+        key: `file_${(childNode.nodeId || childNode.path).replace(/[^a-zA-Z0-9_]/g, '_')}`,
         title: (
           <span>
             {getFileIcon(childNode.name, childNode.entityType)}
@@ -562,14 +582,14 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
   return (
     <div style={{ height: '100%', ...style }}>
       <Card 
-        title="File Explorer" 
+        title="파일 탐색기" 
         size="small" 
         style={{ height: '100%' }}
         bodyStyle={{ padding: 0, height: 'calc(100% - 57px)' }}
       >
         <div style={{ padding: '8px' }}>
           <Search
-            placeholder="Search files..."
+            placeholder="파일 검색..."
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             prefix={<SearchOutlined />}
