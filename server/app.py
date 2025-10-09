@@ -750,7 +750,24 @@ async def get_quality_metrics(analysis_id: str):
                 cycle_type=cycle_info.get("cycle_type")
             ))
     
-    return quality_metrics
+    # Remove duplicates based on entity_id
+    seen_entity_ids = set()
+    deduplicated_metrics = []
+    duplicates_removed = 0
+
+    for metric in quality_metrics:
+        if metric.entity_id not in seen_entity_ids:
+            seen_entity_ids.add(metric.entity_id)
+            deduplicated_metrics.append(metric)
+        else:
+            duplicates_removed += 1
+            print(f"REMOVED DUPLICATE: entity_id={metric.entity_id}, type={metric.entity_type}")
+
+    if duplicates_removed > 0:
+        print(f"Quality Metrics: Removed {duplicates_removed} duplicate entries")
+        print(f"Final count: {len(deduplicated_metrics)} unique entities")
+
+    return deduplicated_metrics
 
 @app.get("/api/cache/stats")
 async def get_cache_stats():
