@@ -855,16 +855,16 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     }
   }
 
-  // File tree node selection handler
-  const handleFileTreeNodeSelect = (nodeId: string, nodeType: string) => {
-    console.log('🌳 File tree selected:', nodeId, nodeType)
+  // Unified node selection handler
+  const handleNodeSelection = (nodeId: string, source: 'file-tree' | 'graph', nodeType?: string) => {
+    console.log(`${source === 'file-tree' ? '🌳 File tree' : '🎯 Graph'} selected:`, nodeId, nodeType || '')
     setSelectedNodeId(nodeId)
 
-    // Try to get info from graph data first, then fallback to nodeType
+    // Try to get info from graph data first, then fallback to nodeType if provided
     const { type, name } = getNodeInfo(nodeId)
 
-    // If getNodeInfo couldn't find it and we have nodeType, use that
-    if (type === 'Node' && nodeType) {
+    // If getNodeInfo couldn't find it and we have nodeType from file tree, use that
+    if (type === 'Node' && nodeType && source === 'file-tree') {
       const parsedName = nodeId.includes('/') ? nodeId.split('/').pop() || nodeId : nodeId
       const parsedType = nodeType.charAt(0).toUpperCase() + nodeType.slice(1)
       console.log('🔄 Using nodeType fallback:', { type: parsedType, name: parsedName })
@@ -875,13 +875,14 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
     }
   }
 
-  // Graph node click handler
-  const handleGraphNodeClick = (nodeId: string) => {
-    console.log('Graph node clicked:', nodeId)
-    setSelectedNodeId(nodeId)
+  // File tree node selection handler (wrapper)
+  const handleFileTreeNodeSelect = (nodeId: string, nodeType: string) => {
+    handleNodeSelection(nodeId, 'file-tree', nodeType)
+  }
 
-    const { type, name } = getNodeInfo(nodeId)
-    message.info(`선택된 ${type}: ${name}`)
+  // Graph node click handler (wrapper)
+  const handleGraphNodeClick = (nodeId: string) => {
+    handleNodeSelection(nodeId, 'graph')
   }
 
   if (loading) {
