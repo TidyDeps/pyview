@@ -28,12 +28,13 @@ const loadCytoscapeExtensions = async () => {
 interface HierarchicalNode {
   id: string;
   name: string;
-  type: 'package' | 'module' | 'class' | 'method' | 'field' | 'function';
+  type: 'package' | 'module' | 'class' | 'method' | 'field' | 'function' | 'package-container' | 'module-container' | 'class-container' | 'root-container';
   parent?: string;
   children?: string[];
   level: number;
   isExpanded: boolean;
   isSuperNode: boolean;
+  isContainer: boolean; // 컨테이너 노드인지 여부
   childCount?: number;
   aggregatedData?: {
     totalChildren: number;
@@ -116,6 +117,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           level,
           isExpanded: level <= viewLevel,
           isSuperNode: false,
+          isContainer: false, // 실노드는 컨테이너가 아님
           parent: findParentNode(node, inputData.nodes),
           children: findChildNodes(node, inputData.nodes)
         };
@@ -222,6 +224,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
             level: currentLevel + 0.5, // 중간 레벨
             isExpanded: false,
             isSuperNode: true,
+            isContainer: false, // SuperNode는 컨테이너가 아님
             parent: parentId,
             children: children.map(c => c.id),
             childCount: children.length,
@@ -242,11 +245,31 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   // 현재 표시할 노드들 필터링
   const getVisibleNodes = useCallback(() => {
     const visible = hierarchicalData.nodes.filter(node => {
-      // 현재 레벨 이하의 노드들만 표시
-      if (node.level > viewLevel && !node.isSuperNode) return false;
+      // SuperNode는 표시하지 않음 (회색 박스 숨김)
+      if (node.isSuperNode) return false;
       
-      // SuperNode는 현재 레벨에서 표시
-      if (node.isSuperNode) return true;
+      // 컨테이너 노드 필터링: 현재 레벨에 맞는 컨테이너만 표시
+      if (node.isContainer) {
+        // 레벨별 컨테이너 표시 규칙:
+        // Level 0 (Package): root-container만 표시 (여러 패키지가 있을 때)
+        // Level 1 (Module): package-container만 표시
+        // Level 2 (Class): module-container만 표시
+        // Level 3+ (Method/Field): class-container만 표시
+        
+        if (viewLevel === 0) {
+          return node.type === 'root-container'; // Package 레벨에서는 root-container만 (여러 패키지가 있을 때)
+        } else if (viewLevel === 1) {
+          return node.type === 'package-container'; // Module 레벨에서는 package-container만
+        } else if (viewLevel === 2) {
+          return node.type === 'module-container'; // Class 레벨에서는 module-container만
+        } else if (viewLevel >= 3) {
+          return node.type === 'class-container'; // Method/Field 레벨에서는 class-container만
+        }
+        return false;
+      }
+      
+      // 실노드 필터링
+      if (node.level > viewLevel) return false;
       
       // 확장된 노드의 자식들은 표시
       if (node.parent && expandedNodes.has(node.parent)) return true;
