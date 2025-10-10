@@ -22,7 +22,7 @@ interface GraphData {
   edges: Array<{
     source: string
     target: string
-    type: 'import' | 'inheritance' | 'composition' | 'call' | 'reference'
+    type: 'import' | 'inheritance' | 'composition' | 'call' | 'reference' | 'contains'
   }>
 }
 
@@ -150,234 +150,6 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
       abortController.abort();
     };
   }, [analysisId])
-
-  // Transform backend analysis results to graph data format
-  const transformAnalysisToGraph = (analysisResults: any): GraphData => {
-    const nodes: GraphData['nodes'] = []
-    const edges: GraphData['edges'] = []
-
-    console.log('Transforming analysis results:', analysisResults)
-    console.log('Available relationships:', analysisResults.relationships?.length || 0)
-
-    // Get dependency graph data
-    const firstDependencyGraph = analysisResults.dependency_graph || {}
-    
-    // Extract nodes from different levels
-    console.log('Processing nodes from dependency_graph...')
-    if (firstDependencyGraph.packages) {
-      console.log('Found packages:', firstDependencyGraph.packages.length)
-      firstDependencyGraph.packages.forEach((pkg: any, index: number) => {
-        const nodeId = pkg.id || pkg.name || `pkg_${index}`
-        nodes.push({
-          id: nodeId,
-          name: pkg.name || `Package ${index}`,
-          type: 'package',
-          x: Math.cos(index * 0.8) * 60,
-          y: 20,
-          z: Math.sin(index * 0.8) * 60,
-          connections: pkg.modules || []
-        })
-        if (index < 3) console.log('Package node:', nodeId, pkg.name)
-      })
-    }
-
-    if (firstDependencyGraph.modules) {
-      console.log('Found modules:', firstDependencyGraph.modules.length)
-      firstDependencyGraph.modules.forEach((mod: any, index: number) => {
-        const angle = index * (Math.PI * 2) / firstDependencyGraph.modules.length
-        const radius = 40
-        const nodeId = mod.id || mod.name || `mod_${index}`
-        nodes.push({
-          id: nodeId,
-          name: mod.name || `Module ${index}`,
-          type: 'module',
-          x: Math.cos(angle) * radius,
-          y: 0,
-          z: Math.sin(angle) * radius,
-          connections: []
-        })
-        if (index < 3) console.log('Module node:', nodeId, mod.name)
-      })
-    }
-
-    if (firstDependencyGraph.classes) {
-      firstDependencyGraph.classes.forEach((cls: any, index: number) => {
-        const angle = index * (Math.PI * 2) / firstDependencyGraph.classes.length
-        const radius = 35 + (index % 2) * 10  // Alternate between two radius levels
-        const height = 15 + (index % 3) * 8   // Three height levels
-        nodes.push({
-          id: cls.id || cls.name || `cls_${index}`,
-          name: cls.name || `Class ${index}`,
-          type: 'class',
-          x: Math.cos(angle) * radius,
-          y: height,
-          z: Math.sin(angle) * radius,
-          connections: [...(cls.method_ids || []), ...(cls.field_ids || [])]
-        })
-      })
-    }
-
-    if (firstDependencyGraph.methods) {
-      firstDependencyGraph.methods.forEach((method: any, index: number) => {
-        const angle = index * (Math.PI * 2) / firstDependencyGraph.methods.length
-        const radius = 20 + (index % 4) * 5  // Four radius levels for better spread
-        const height = 30 + (index % 3) * 12  // Three height levels
-        nodes.push({
-          id: method.id || method.name || `method_${index}`,
-          name: method.name || `Method ${index}`,
-          type: 'method',
-          x: Math.cos(angle) * radius,
-          y: height,
-          z: Math.sin(angle) * radius,
-          connections: []
-        })
-      })
-    }
-
-    if (firstDependencyGraph.fields) {
-      firstDependencyGraph.fields.forEach((field: any, index: number) => {
-        const angle = index * (Math.PI * 2) / firstDependencyGraph.fields.length
-        const radius = 25 + (index % 3) * 8  // Vary radius slightly for better distribution
-        const height = -20 + (index % 2) * 10  // Vary height as well
-        nodes.push({
-          id: field.id || field.name || `field_${index}`,
-          name: field.name || `Field ${index}`,
-          type: 'field',
-          x: Math.cos(angle) * radius,
-          y: height,
-          z: Math.sin(angle) * radius,
-          connections: []
-        })
-      })
-    }
-
-    // Extract relationships from module imports and class relationships  
-    console.log('Extracting relationships from dependency graph...')
-    const syncDependencyGraph = analysisResults.dependency_graph || {}
-    
-    const nodeIdSet = new Set(nodes.map(n => n.id))
-    let validEdges = 0
-    let invalidEdges = 0
-    
-    // Extract edges from module imports
-    if (syncDependencyGraph.modules) {
-      const modules = syncDependencyGraph.modules
-      console.log(`Extracting edges from ${modules.length} modules`)
-      
-      modules.forEach((mod: any) => {
-        const sourceId = mod.id
-        
-        // Create edges from imports
-        if (mod.imports && Array.isArray(mod.imports)) {
-          mod.imports.forEach((imp: any) => {
-            // Create target ID based on import
-            const targetModule = imp.module
-            let targetId = null
-            
-            // Try to find matching target node
-            if (targetModule) {
-              // Look for exact module match
-              targetId = nodes.find(n => 
-                n.id.includes(targetModule) || 
-                n.name === targetModule ||
-                (n.type === 'module' && n.id.endsWith(`:${targetModule}`))
-              )?.id
-              
-              // If exact match not found, try with mod: prefix
-              if (!targetId) {
-                targetId = `mod:${targetModule}`
-                if (!nodeIdSet.has(targetId)) {
-                  targetId = null
-                }
-              }
-            }
-            
-            // Create edge if valid target found
-            if (targetId && sourceId !== targetId && nodeIdSet.has(sourceId)) {
-              const edgeExists = edges.some(e => e.source === sourceId && e.target === targetId)
-              if (!edgeExists) {
-                edges.push({
-                  source: sourceId,
-                  target: targetId,
-                  type: imp.import_type || 'import'
-                })
-                validEdges++
-              }
-            } else {
-              invalidEdges++
-            }
-          })
-        }
-        
-        // Create edges from module to its classes
-        if (mod.classes && Array.isArray(mod.classes)) {
-          mod.classes.forEach((classId: string) => {
-            if (nodeIdSet.has(classId) && sourceId !== classId) {
-              const edgeExists = edges.some(e => e.source === sourceId && e.target === classId)
-              if (!edgeExists) {
-                edges.push({
-                  source: sourceId,
-                  target: classId,
-                  type: 'contains'
-                })
-                validEdges++
-              }
-            }
-          })
-        }
-      })
-    }
-    
-    // Extract edges from class methods and fields
-    if (syncDependencyGraph.classes) {
-      const classes = syncDependencyGraph.classes
-      console.log(`Extracting edges from ${classes.length} classes`)
-      
-      classes.forEach((cls: any) => {
-        const sourceId = cls.id
-        
-        // Create edges from class to its methods
-        if (cls.methods && Array.isArray(cls.methods)) {
-          cls.methods.forEach((methodId: string) => {
-            if (nodeIdSet.has(methodId) && sourceId !== methodId) {
-              const edgeExists = edges.some(e => e.source === sourceId && e.target === methodId)
-              if (!edgeExists) {
-                edges.push({
-                  source: sourceId,
-                  target: methodId,
-                  type: 'contains'
-                })
-                validEdges++
-              }
-            }
-          })
-        }
-        
-        // Create edges from class to its fields
-        if (cls.fields && Array.isArray(cls.fields)) {
-          cls.fields.forEach((fieldId: string) => {
-            if (nodeIdSet.has(fieldId) && sourceId !== fieldId) {
-              const edgeExists = edges.some(e => e.source === sourceId && e.target === fieldId)
-              if (!edgeExists) {
-                edges.push({
-                  source: sourceId,
-                  target: fieldId,
-                  type: 'contains'
-                })
-                validEdges++
-              }
-            }
-          })
-        }
-      })
-    }
-    
-    console.log(`All relationships extracted: ${validEdges} valid, ${invalidEdges} invalid`)
-    console.log(`Sample edges:`, edges.slice(0, 5))
-
-    console.log(`Final graph data: ${nodes.length} nodes, ${edges.length} edges`)
-    return { nodes, edges }
-  }
 
   // Async version with progress updates and data limiting
   const transformAnalysisToGraphAsync = async (
@@ -643,7 +415,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
 
     // 🚀 성능 최적화: Set을 사용한 O(1) 엣지 중복 검사
     const edgeSet = new Set<string>()
-    const addEdgeIfNotExists = (source: string, target: string, type: string) => {
+    const addEdgeIfNotExists = (source: string, target: string, type: 'import' | 'inheritance' | 'composition' | 'call' | 'reference' | 'contains') => {
       const edgeKey = `${source}->${target}`
       if (!edgeSet.has(edgeKey)) {
         edgeSet.add(edgeKey)
@@ -717,6 +489,15 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
               }
             })
           }
+
+          // Create edges from module to its functions (module-level functions)
+          if (mod.functions && Array.isArray(mod.functions)) {
+            mod.functions.forEach((functionId: string) => {
+              if (nodeIds.has(functionId) && sourceId !== functionId) {
+                addEdgeIfNotExists(sourceId, functionId, 'contains')
+              }
+            })
+          }
           processedRelationships++
         })
 
@@ -741,7 +522,49 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
       }
     }
     
-    // Extract edges from class methods and fields
+    // Extract edges from methods and fields (both class methods and module functions)
+    if (asyncDependencyGraph.methods) {
+      const methods = asyncDependencyGraph.methods
+      console.log(`Processing ${methods.length} methods/functions for relationships`)
+
+      for (let i = 0; i < methods.length; i += CHUNK_SIZE) {
+        const chunk = methods.slice(i, i + CHUNK_SIZE)
+
+        chunk.forEach((method: any) => {
+          const methodId = method.id
+          const classId = method.class_id
+          const moduleId = method.module_id
+
+          // Connect method to its parent (class or module)
+          if (classId && nodeIds.has(classId) && nodeIds.has(methodId)) {
+            // This is a class method
+            addEdgeIfNotExists(classId, methodId, 'contains')
+          } else if (moduleId && nodeIds.has(moduleId) && nodeIds.has(methodId)) {
+            // This is a module-level function
+            addEdgeIfNotExists(moduleId, methodId, 'contains')
+          }
+        })
+
+        // Update progress
+        const progress = 0.9 + (i / methods.length) * 0.08 // 90% - 98%
+        onProgress?.(
+          progress,
+          '관계를 구성하고 있습니다...',
+          `메서드/함수 관계 생성 중 (${Math.min(i + CHUNK_SIZE, methods.length)}/${methods.length})`,
+          {
+            totalItems: methods.length,
+            processedItems: Math.min(i + CHUNK_SIZE, methods.length),
+            currentType: 'Method/Function Edge'
+          }
+        )
+
+        if (i % CHUNK_SIZE === 0 && i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1))
+        }
+      }
+    }
+    
+    // Extract edges from class methods and fields (legacy - keeping for compatibility)
     if (asyncDependencyGraph.classes) {
       const classes = asyncDependencyGraph.classes
       console.log(`Extracting edges from ${classes.length} classes`)
