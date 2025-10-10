@@ -301,13 +301,8 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
         {/*
         <Form.Item
             name="max_depth"
-<<<<<<< HEAD
             label="최대 깊이"
             tooltip="분석할 최대 의존성 깊이"
-=======
-            label={<span style={{ fontWeight: 'bold' }}>Max Depth</span>}
-            tooltip="Maximum dependency depth to analyze (0 = unlimited)"
->>>>>>> main
           >
             <InputNumber
               min={0}
@@ -353,33 +348,18 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
           name="include_stdlib"
           label={<span style={{ fontWeight: 'bold' }}>Standard Library</span>}
           valuePropName="checked"
-<<<<<<< HEAD
           tooltip="Python 표준 라이브러리를 분석에 포함"
-        >
-          <div>
-            <Switch
-              checkedChildren="포함"
-              unCheckedChildren="제외"
-              onChange={(checked) => {
-                form.setFieldValue('include_stdlib', checked)
-              }}
-            />
-            <Text style={{ marginLeft: 8 }}>표준 라이브러리</Text>
-          </div>
-=======
-          tooltip="Include Python standard library in analysis"
           style={{ marginTop: 48 }}
         >
           <Switch
-            checkedChildren="Include"
-            unCheckedChildren="Exclude"
+            checkedChildren="포함"
+            unCheckedChildren="제외"
             onChange={(checked) => {
               form.setFieldValue('include_stdlib', checked)
               // 상위 컴포넌트에 변경 알림
               updateFormData({ include_stdlib: checked })
             }}
           />
->>>>>>> main
         </Form.Item>
         */}
 
