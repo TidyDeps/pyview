@@ -8,7 +8,6 @@ import cytoscape from 'cytoscape';
 
 // 확장 라이브러리들 동적 로드
 let coseBilkentLoaded = false;
-let colaLoaded = false;
 
 const loadCytoscapeExtensions = async () => {
   if (!coseBilkentLoaded) {
@@ -20,18 +19,6 @@ const loadCytoscapeExtensions = async () => {
       console.log('✅ Loaded cytoscape-cose-bilkent');
     } catch (error) {
       console.warn('Could not load cytoscape-cose-bilkent:', error);
-    }
-  }
-  
-  if (!colaLoaded) {
-    try {
-      // @ts-ignore
-      const cola = await import('cytoscape-cola');
-      cytoscape.use(cola.default || cola);
-      colaLoaded = true;
-      console.log('✅ Loaded cytoscape-cola');
-    } catch (error) {
-      console.warn('Could not load cytoscape-cola:', error);
     }
   }
 };
@@ -87,7 +74,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   
   // 상태 관리
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const layoutType = 'clustered'; // 레이아웃 고정 설정
   const [viewLevel, setViewLevel] = useState(1); // 0=package, 1=module, 2=class, 3=method, 4=field
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [isLevelChanging, setIsLevelChanging] = useState(false);
@@ -392,7 +378,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         container: cyRef.current,
         elements,
         style: getHierarchicalStylesheet(),
-        layout: getHierarchicalLayout(layoutType),
+        layout: getHierarchicalLayout(),
         wheelSensitivity: 1,
         minZoom: 0.1,
         maxZoom: 5
@@ -405,7 +391,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
       // 레이아웃 완료 후 자동 맞춤
       cy.ready(() => {
-        cy.layout(getHierarchicalLayout(layoutType)).run();
+        cy.layout(getHierarchicalLayout()).run();
         setTimeout(() => {
           cy.fit();
           cy.zoom(cy.zoom() * 0.8);
@@ -1295,88 +1281,27 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     }
   ];
 
-  // 계층적 레이아웃
-  const getHierarchicalLayout = (type: string) => {
-    switch (type) {
-      case 'clustered':
-        return {
-          name: 'cose-bilkent',
-          quality: 'default',
-          nodeDimensionsIncludeLabels: true,
-          refresh: 20,
-          fit: true,
-          padding: 30,
-          randomize: false,
-          nodeRepulsion: 6000,
-          idealEdgeLength: 70,
-          edgeElasticity: 0.45,
-          nestingFactor: 0.2,
-          gravity: 0.25,
-          numIter: 2500,
-          tile: true,
-          tilingPaddingVertical: 40,
-          tilingPaddingHorizontal: 40,
-          animate: false
-        };
-      case 'hierarchical-force':
-        return {
-          name: 'cose',
-          animate: false,
-          nodeRepulsion: 8000,
-          idealEdgeLength: 120,
-          edgeElasticity: 100,
-          nestingFactor: enableClustering ? 0.1 : 5,
-          gravity: 80,
-          numIter: 1000,
-          initialTemp: 200,
-          coolingFactor: 0.95,
-          minTemp: 1.0
-        };
-      case 'hierarchical-tree':
-        return {
-          name: 'breadthfirst',
-          directed: true,
-          spacingFactor: 1.75,
-          padding: 50,
-          avoidOverlap: true,
-          animate: false
-        };
-      case 'compound':
-        return {
-          name: 'cose',
-          animate: false,
-          nodeRepulsion: 10000,
-          idealEdgeLength: 150,
-          nestingFactor: 12,
-          gravity: 100
-        };
-      case 'cola':
-        return {
-          name: 'cola',
-          animate: false,
-          refresh: 1,
-          maxSimulationTime: 4000,
-          ungrabifyWhileSimulating: false,
-          fit: true,
-          padding: 30,
-          nodeDimensionsIncludeLabels: true,
-          randomize: false,
-          avoidOverlap: true,
-          handleDisconnected: true,
-          convergenceThreshold: 0.01,
-          nodeSpacing: 5,
-          flow: undefined,
-          alignment: undefined,
-          gapInequalities: undefined
-        };
-      default:
-        return {
-          name: 'cose',
-          animate: false,
-          nodeRepulsion: 5000,
-          idealEdgeLength: 100
-        };
-    }
+  // 계층적 레이아웃 - Cose-Bilkent만 사용
+  const getHierarchicalLayout = () => {
+    return {
+      name: 'cose-bilkent',
+      quality: 'default',
+      nodeDimensionsIncludeLabels: true,
+      refresh: 20,
+      fit: true,
+      padding: 30,
+      randomize: false,
+      nodeRepulsion: 6000,
+      idealEdgeLength: 70,
+      edgeElasticity: 0.45,
+      nestingFactor: 0.2,
+      gravity: 0.25,
+      numIter: 2500,
+      tile: true,
+      tilingPaddingVertical: 40,
+      tilingPaddingHorizontal: 40,
+      animate: false
+    };
   };
 
   // 레벨 변경 핸들러
