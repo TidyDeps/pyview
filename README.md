@@ -1,6 +1,12 @@
 # PyView - Interactive Python Dependency Visualization
 
 <div align="center">
+
+![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)
+![React](https://img.shields.io/badge/React-18.2.0-61DAFB.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-009688.svg)
+
 <img width="931" height="522" alt="image" src="https://github.com/user-attachments/assets/ee71b6ac-671b-4b52-8c27-89048f0119d5" />
 
 
@@ -282,26 +288,11 @@ PyView는 기존 도구들과 달리 **5단계 계층**으로 코드를 분석�
 <br/>
 
 
-## 📄 라이센스 & 법적 고지
+## 📄 라이센스
 
-이 프로젝트는 **BSD 2-Clause License** 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+이 프로젝트는 **BSD 2-Clause License** 하에 배포됩니다.
 
-### 🙏 원본 프로젝트 Attribution
-
-PyView는 [thebjorn/pydeps](https://github.com/thebjorn/pydeps) 프로젝트를 기반으로 개발되었습니다:
-
-- **원본 저장소**: https://github.com/thebjorn/pydeps
-- **원본 저작자**: Bjorn Pettersen (BP Consulting)
-- **라이센스**: BSD 2-Clause License
-- **Copyright**: (c) 2014, Bjorn Pettersen
-
-### 📦 의존성 라이센스
-
-주요 오픈소스 라이브러리들의 라이센스:
-- **React**: MIT License
-- **FastAPI**: MIT License  
-- **Cytoscape.js**: MIT License
-- **Ant Design**: MIT License
+자세한 라이센스 정보, 의존성 라이브러리 라이센스, 원본 프로젝트 Attribution은 **[LICENSES.md](LICENSES.md)** 파일을 참조하세요.
 
 <br/>
 <br/>

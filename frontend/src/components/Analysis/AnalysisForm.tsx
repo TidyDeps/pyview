@@ -9,36 +9,78 @@ import {
   InputNumber,
   Switch,
   Tag,
-  Divider,
   Typography,
   message
 } from 'antd'
 import { FolderOpenOutlined, PlayCircleOutlined } from '@ant-design/icons'
 import type { AnalysisRequest, AnalysisOptions } from '@/types/api'
 
-const { Title, Text } = Typography
+const { Title } = Typography
+
+interface FormData {
+  project_path: string
+  max_depth: number
+  include_stdlib: boolean
+  exclude_patterns: string[]
+}
 
 interface AnalysisFormProps {
   onSubmit: (request: AnalysisRequest) => void
   loading?: boolean
+  formData?: FormData
+  onFormDataChange?: (data: FormData) => void
 }
 
-const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }) => {
+const AnalysisForm: React.FC<AnalysisFormProps> = ({
+  onSubmit,
+  loading = false,
+  formData,
+  onFormDataChange
+}) => {
   const [form] = Form.useForm()
-  const [excludePatterns, setExcludePatterns] = useState<string[]>([
-    '__pycache__',
-    '.git',
-    '.venv',
-    'venv',
-    'env',
-    'tests',
-    'node_modules'
-  ])
+  const [excludePatterns, setExcludePatterns] = useState<string[]>(
+    formData?.exclude_patterns || [
+      '__pycache__',
+      '.git',
+      '.venv',
+      'venv',
+      'env',
+      'tests',
+      'node_modules'
+    ]
+  )
   const [patternInput, setPatternInput] = useState('')
   const [isComposing, setIsComposing] = useState(false)
   const [isFormValid, setIsFormValid] = useState(false)
   const [pathValidationMessage, setPathValidationMessage] = useState('')
   const [hasUserInput, setHasUserInput] = useState(false)
+
+  // formData가 변경되면 Form과 로컬 state 업데이트
+  React.useEffect(() => {
+    if (formData) {
+      form.setFieldsValue({
+        project_path: formData.project_path,
+        max_depth: formData.max_depth,
+        include_stdlib: formData.include_stdlib
+      })
+      setExcludePatterns(formData.exclude_patterns)
+    }
+  }, [formData, form])
+
+  // 폼 데이터 변경을 상위에 알려주는 함수
+  const updateFormData = (updates: Partial<FormData>) => {
+    if (onFormDataChange) {
+      const currentValues = form.getFieldsValue()
+      const newFormData = {
+        project_path: currentValues.project_path || formData?.project_path || '',
+        max_depth: currentValues.max_depth !== undefined ? currentValues.max_depth : (formData?.max_depth || 10),
+        include_stdlib: currentValues.include_stdlib !== undefined ? currentValues.include_stdlib : (formData?.include_stdlib || false),
+        exclude_patterns: excludePatterns,
+        ...updates
+      }
+      onFormDataChange(newFormData)
+    }
+  }
 
   // 실시간 폼 유효성 검사
   const validateForm = () => {
@@ -73,6 +115,9 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
     // 유효한 경우
     setPathValidationMessage('')
     setIsFormValid(true)
+
+    // 상위 컴포넌트에 폼 데이터 변경 알림
+    updateFormData({})
   }
 
   const validateGitIgnorePattern = (pattern: string): boolean => {
@@ -185,7 +230,8 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
       return
     }
 
-    setExcludePatterns([...excludePatterns, trimmedPattern])
+    const newPatterns = [...excludePatterns, trimmedPattern]
+    setExcludePatterns(newPatterns)
     setPatternInput('')
     message.success('패턴이 추가되었습니다')
   }
@@ -199,7 +245,11 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
   }
 
   const handleRemovePattern = (pattern: string) => {
-    setExcludePatterns(excludePatterns.filter(p => p !== pattern))
+    const newPatterns = excludePatterns.filter(p => p !== pattern)
+    setExcludePatterns(newPatterns)
+
+    // 상위 컴포넌트에 패턴 변경 알림
+    updateFormData({ exclude_patterns: newPatterns })
   }
 
   const handleSubmit = (values: any) => {
@@ -225,8 +275,9 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
         onFinish={handleSubmit}
         onValuesChange={validateForm}
         initialValues={{
-          max_depth: 10,
-          include_stdlib: false,
+          project_path: formData?.project_path || '',
+          max_depth: formData?.max_depth || 10,
+          include_stdlib: formData?.include_stdlib || false,
         }}
       >
         <Title level={4}>프로젝트 설정</Title>
@@ -244,27 +295,30 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
           />
         </Form.Item>
 
-        <Divider />
+        <Title level={4} style={{ marginTop: 120, marginBottom: 16 }}>Analysis Options</Title>
 
-        <Title level={4}>분석 옵션</Title>
-
-
-        <Space style={{ width: '100%' }} size="large">
-          <Form.Item
+        {/* Max Depth field temporarily disabled */}
+        {/*
+        <Form.Item
             name="max_depth"
+<<<<<<< HEAD
             label="최대 깊이"
             tooltip="분석할 최대 의존성 깊이"
+=======
+            label={<span style={{ fontWeight: 'bold' }}>Max Depth</span>}
+            tooltip="Maximum dependency depth to analyze (0 = unlimited)"
+>>>>>>> main
           >
             <InputNumber
-              min={1}
+              min={0}
               max={50}
               precision={0}
               parser={(value) => value ? parseInt(value.replace(/[^\d]/g, '')) : 0}
-              formatter={(value) => value ? `${value}` : ''}
+              formatter={(value) => value === 0 ? '0 (unlimited)' : (value ? `${value}` : '')}
+              placeholder="0 for unlimited"
             />
           </Form.Item>
-
-        </Space>
+        */}
 
         <Form.Item label="제외 패턴" help=".gitignore 스타일 패턴을 입력하여 파일/폴더를 제외하세요 (*, /, 와일드카드 지원)">
           <Space.Compact style={{ width: '100%' }}>
@@ -293,11 +347,13 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
           </div>
         </Form.Item>
 
-        <Divider />
-
+        {/* Standard Library field temporarily disabled */}
+        {/*
         <Form.Item
           name="include_stdlib"
+          label={<span style={{ fontWeight: 'bold' }}>Standard Library</span>}
           valuePropName="checked"
+<<<<<<< HEAD
           tooltip="Python 표준 라이브러리를 분석에 포함"
         >
           <div>
@@ -310,7 +366,22 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmit, loading = false }
             />
             <Text style={{ marginLeft: 8 }}>표준 라이브러리</Text>
           </div>
+=======
+          tooltip="Include Python standard library in analysis"
+          style={{ marginTop: 48 }}
+        >
+          <Switch
+            checkedChildren="Include"
+            unCheckedChildren="Exclude"
+            onChange={(checked) => {
+              form.setFieldValue('include_stdlib', checked)
+              // 상위 컴포넌트에 변경 알림
+              updateFormData({ include_stdlib: checked })
+            }}
+          />
+>>>>>>> main
         </Form.Item>
+        */}
 
         <Form.Item style={{ marginTop: 120 }}>
           <Button

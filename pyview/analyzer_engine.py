@@ -11,7 +11,7 @@ import uuid
 import time
 import logging
 from pathlib import Path
-from typing import List, Dict, Set, Optional, Callable, Any
+from typing import List, Dict, Set, Optional, Callable
 from datetime import datetime, timedelta
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -19,13 +19,13 @@ DEBUG_MODE = os.getenv('PYVIEW_DEBUG', 'false').lower() == 'true'
 
 from .models import (
     AnalysisResult, ProjectInfo, DependencyGraph,
-    PackageInfo, ModuleInfo, ClassInfo, MethodInfo, FieldInfo,
-    Relationship, CyclicDependency, DependencyType, QualityMetrics, EntityType,
+    PackageInfo, ModuleInfo, ClassInfo, MethodInfo,
+    Relationship, CyclicDependency, QualityMetrics, EntityType,
     create_module_id
 )
 from .ast_analyzer import ASTAnalyzer, FileAnalysis
 from .legacy_bridge import LegacyBridge
-from .code_metrics import CodeMetricsEngine
+# from .code_metrics import CodeMetricsEngine  # Currently disabled
 from .cache_manager import CacheManager, IncrementalAnalyzer, AnalysisCache, FileMetadata
 from .performance_optimizer import LargeProjectAnalyzer, PerformanceConfig, ResultPaginator
 from .gitignore_patterns import create_gitignore_matcher
@@ -290,7 +290,7 @@ class AnalyzerEngine:
         try:
             # PyView 옵션을 pydeps 형식으로 변환 (API 차이 극복)                               # 기존 pydeps 라이브러리와 호환되도록 옵션 변환
             pydeps_kwargs = {
-                'max_bacon': self.options.max_depth if self.options.max_depth > 0 else 2,      # 의존성 탐색 깊이 (기본 2단계)
+                'max_bacon': self.options.max_depth if self.options.max_depth > 0 else 999,    # 의존성 탐색 깊이 (0이면 무제한)
                 'exclude': self.options.exclude_patterns,                                      # 제외할 패턴들
                 'pylib': self.options.include_stdlib,                                          # 표준 라이브러리 포함 여부
                 'verbose': 0,                                                                   # 상세 출력 비활성화
@@ -517,15 +517,34 @@ class AnalyzerEngine:
         if not modules:
             return cycles
 
+        # Build set of project modules (exclude external libraries)
+        project_modules = {m.name for m in modules}
+
+        if DEBUG_MODE:
+            with open('/tmp/pyview_debug.log', 'a') as f:
+                f.write(f"🔍 CYCLE DEBUG: Project modules: {list(project_modules)[:10]}...\n")
+
         # Build module import graph: module_name -> set(imported_module_name)
+        # Only include imports between project modules to avoid false positives with external libraries
         graph: Dict[str, Set[str]] = {}
+        external_imports = set()
+
         for m in modules:
             src = m.name
             graph.setdefault(src, set())
             for imp in getattr(m, 'imports', []) or []:
                 target = imp.module
                 if target:
-                    graph[src].add(target)
+                    if target in project_modules:
+                        # Only add to graph if target is also a project module (not external library)
+                        graph[src].add(target)
+                    else:
+                        external_imports.add(target)
+
+        if DEBUG_MODE:
+            with open('/tmp/pyview_debug.log', 'a') as f:
+                f.write(f"🔍 CYCLE DEBUG: External imports found: {list(external_imports)[:10]}...\n")
+                f.write(f"🔍 CYCLE DEBUG: Internal graph edges: {sum(len(edges) for edges in graph.values())}\n")
 
         # Kosaraju to find SCCs
         visited: Set[str] = set()
@@ -567,7 +586,8 @@ class AnalyzerEngine:
                                     'relationship_type': 'import',
                                     'strength': 1.0
                                 })
-                    cycles.append({
+
+                    cycle_info = {
                         'id': f"mod_import_cycle_{cycle_id}",
                         'entities': [create_module_id(x) for x in comp],
                         'paths': paths,
@@ -578,7 +598,15 @@ class AnalyzerEngine:
                             'length': len(comp),
                             'detection_method': 'module_list'
                         }
-                    })
+                    }
+
+                    if DEBUG_MODE:
+                        with open('/tmp/pyview_debug.log', 'a') as f:
+                            f.write(f"🔍 CYCLE FOUND: {cycle_info['description']}\n")
+                            f.write(f"🔍 CYCLE ENTITIES: {comp}\n")
+                            f.write(f"🔍 CYCLE PATHS: {len(paths)} edges\n")
+
+                    cycles.append(cycle_info)
                     cycle_id += 1
         return cycles
     
@@ -681,21 +709,7 @@ class AnalyzerEngine:
                     }
                     cycles.append(cycle_info)
 
-        # 모든 노드에서 시작하여 순환 확인                                                      # 모든 연결 컴포넌트 확인
-        for node in graph:                                                                      # 그래프의 모든 노드에 대해
-            if node not in visited:                                                             # 아직 방문하지 않은 노드만
-                cycle = has_cycle(node, [])                                                     # 순환 탐지 시작
-                if cycle:                                                                       # 순환이 발견되면
-                    cycle_info = {                                                              # 순환 정보 생성
-                        'id': f"detailed_cycle_{len(cycles)}",                                 # 고유 순환 ID
-                        'entities': cycle,                                                      # 순환에 참여하는 엔티티들
-                        'cycle_type': 'call',  # 대부분의 상세 순환은 메소드 호출               # 순환 타입
-                        'severity': 'low' if len(cycle) <= 2 else 'medium',                   # 심각도 (길이에 따라)
-                        'description': f"Call cycle involving {len(cycle)} entities"           # 순환 설명
-                    }
-                    cycles.append(cycle_info)                                                   # 순환 리스트에 추가
-
-        return cycles                                                                           # 탐지된 모든 순환 참조 반환
+        return cycles
     
     def _detect_import_cycles_from_ast(self, ast_analyses: List[FileAnalysis]) -> List[Dict]:
         """Detect import cycles from AST analysis when pydeps fails"""
@@ -707,22 +721,37 @@ class AnalyzerEngine:
         # Build import graph from AST analysis
         import_graph: Dict[str, Set[str]] = {}
         file_to_module: Dict[str, str] = {}
-        
+        project_modules: Set[str] = set()
+
+        # First pass: collect all project modules
         for analysis in ast_analyses:
             if not analysis or not analysis.file_path:
                 continue
-            
             module_name = self._file_path_to_module_name(analysis.file_path)
+            project_modules.add(module_name)
             file_to_module[analysis.file_path] = module_name
+
+        if DEBUG_MODE:
+            with open('/tmp/pyview_debug.log', 'a') as f:
+                f.write(f"🔍 AST DEBUG: Found {len(project_modules)} project modules\n")
+                f.write(f"🔍 AST DEBUG: Project modules: {list(project_modules)[:10]}...\n")
+
+        # Second pass: build graph with only project-internal imports
+        for analysis in ast_analyses:
+            if not analysis or not analysis.file_path:
+                continue
+
+            module_name = self._file_path_to_module_name(analysis.file_path)
             import_graph.setdefault(module_name, set())
-            
+
             # Extract imports from AST analysis
             for import_info in analysis.imports:
                 # Convert relative imports to absolute module names (best-effort)
                 imported_module = self._resolve_import_name(
                     import_info.module, analysis.file_path
                 )
-                if imported_module:
+                # Only add to graph if target is also a project module (not external library)
+                if imported_module and imported_module in project_modules:
                     import_graph[module_name].add(imported_module)
 
         # Use Kosaraju's algorithm to find all strongly connected components
@@ -777,7 +806,7 @@ class AnalyzerEngine:
                                     'relationship_type': 'import',
                                     'strength': 1.0
                                 })
-                    cycles.append({
+                    cycle_info = {
                         'id': f"ast_import_cycle_{cycle_id}",
                         'entities': [create_module_id(x) for x in component],
                         'paths': cycle_paths,
@@ -788,12 +817,25 @@ class AnalyzerEngine:
                             'length': len(component),
                             'detection_method': 'ast'
                         }
-                    })
+                    }
+
+                    if DEBUG_MODE:
+                        with open('/tmp/pyview_debug.log', 'a') as f:
+                            f.write(f"🔍 AST CYCLE FOUND: {cycle_info['description']}\n")
+                            f.write(f"🔍 AST CYCLE ENTITIES: {component}\n")
+                            f.write(f"🔍 AST CYCLE PATHS: {len(cycle_paths)} edges\n")
+
+                    cycles.append(cycle_info)
                     cycle_id += 1
                 # Handle self-loop (module importing itself)
                 elif len(component) == 1:
                     u = component[0]
-                    if u in import_graph.get(u, set()):
+                    # Only flag as a cycle if:
+                    # 1. The module actually imports itself (self-reference)
+                    # 2. The module has actual imports (not just an empty set)
+                    u_imports = import_graph.get(u, set())
+
+                    if u in u_imports and len(u_imports) > 0:
                         cycles.append({
                             'id': f"ast_import_cycle_{cycle_id}",
                             'entities': [create_module_id(u)],
@@ -817,15 +859,35 @@ class AnalyzerEngine:
     
     def _file_path_to_module_name(self, file_path: str) -> str:
         """Convert file path to module name"""
-        # Simple conversion: remove .py extension and convert path separators to dots
+        # Remove .py extension
         if file_path.endswith('.py'):
             module_path = file_path[:-3]
         else:
             module_path = file_path
-        
-        # Convert to module name
+
+        # Convert path separators to dots and create a proper module path
         import os
-        module_name = os.path.basename(module_path)
+
+        # Split the path and filter out non-meaningful parts
+        parts = module_path.replace(os.sep, '/').split('/')
+
+        # Find the start of the actual module path (skip system paths)
+        start_idx = 0
+        for i, part in enumerate(parts):
+            # Look for common Python package indicators
+            if part in ['src', 'lib', 'autorag'] or part.endswith('.py') or (i > 0 and '.' in part):
+                start_idx = i
+                break
+
+        # Build module name from meaningful parts
+        meaningful_parts = parts[start_idx:]
+        if meaningful_parts:
+            # Remove empty parts and join with dots
+            module_name = '.'.join(part for part in meaningful_parts if part and part != '__pycache__')
+        else:
+            # Fallback to basename if no meaningful parts found
+            module_name = os.path.basename(module_path)
+
         return module_name
     
     def _resolve_import_name(self, import_name: str, current_file: str) -> Optional[str]:
