@@ -43,8 +43,12 @@ class LegacyBridge:
             
             # For directories, we need to specify a specific Python file or package
             if project_path_obj.is_dir():
-                # Find any Python file in the directory to use as target
+                # Find any Python file in the directory (including subdirectories) to use as target
                 python_files = list(project_path_obj.glob("*.py"))
+                if not python_files:
+                    # Look in subdirectories if no files in root
+                    python_files = list(project_path_obj.glob("**/*.py"))
+
                 if python_files:
                     # Use the first Python file as target
                     target_name = str(python_files[0])
