@@ -32,14 +32,7 @@ interface HierarchicalNode {
   parent?: string;
   children?: string[];
   level: number;
-  isExpanded: boolean;
-  isSuperNode: boolean;
   isContainer: boolean; // 컨테이너 노드인지 여부
-  childCount?: number;
-  aggregatedData?: {
-    totalChildren: number;
-    childTypes: Record<string, number>;
-  };
 }
 
 interface ClusterContainer {
@@ -115,8 +108,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           name: node.name || node.id,
           type: node.type,
           level,
-          isExpanded: level <= viewLevel,
-          isSuperNode: false,
           isContainer: false, // 실노드는 컨테이너가 아님
           parent: findParentNode(node, inputData.nodes),
           children: findChildNodes(node, inputData.nodes)
@@ -137,11 +128,8 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       }
     });
     
-    // 3. SuperNode 생성 (집계된 노드들)
-    const superNodes = createSuperNodes(nodesByLevel, viewLevel);
-    
     return {
-      nodes: [...nodes, ...superNodes],
+      nodes,
       edges: inputData.edges || [],
       hierarchy
     };
@@ -195,59 +183,10 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       .map(n => n.id);
   };
 
-  // SuperNode 생성 (현재 레벨보다 깊은 노드들을 집계)
-  const createSuperNodes = (nodesByLevel: Record<number, HierarchicalNode[]>, currentLevel: number): HierarchicalNode[] => {
-    const superNodes: HierarchicalNode[] = [];
-    
-    // 현재 레벨보다 깊은 레벨의 노드들을 부모별로 그룹화
-    for (let level = currentLevel + 1; level <= 4; level++) {
-      const nodesAtLevel = nodesByLevel[level] || [];
-      const groupedByParent = nodesAtLevel.reduce((acc, node) => {
-        const parent = node.parent || 'root';
-        if (!acc[parent]) acc[parent] = [];
-        acc[parent].push(node);
-        return acc;
-      }, {} as Record<string, HierarchicalNode[]>);
-      
-      // 각 부모에 대해 SuperNode 생성
-      Object.entries(groupedByParent).forEach(([parentId, children]) => {
-        if (children.length > 1) {
-          const childTypes = children.reduce((acc, child) => {
-            acc[child.type] = (acc[child.type] || 0) + 1;
-            return acc;
-          }, {} as Record<string, number>);
-          
-          const superNode: HierarchicalNode = {
-            id: `super:${parentId}:level${level}`,
-            name: `${children.length} ${children[0].type}s`,
-            type: children[0].type,
-            level: currentLevel + 0.5, // 중간 레벨
-            isExpanded: false,
-            isSuperNode: true,
-            isContainer: false, // SuperNode는 컨테이너가 아님
-            parent: parentId,
-            children: children.map(c => c.id),
-            childCount: children.length,
-            aggregatedData: {
-              totalChildren: children.length,
-              childTypes
-            }
-          };
-          
-          superNodes.push(superNode);
-        }
-      });
-    }
-    
-    return superNodes;
-  };
 
   // 현재 표시할 노드들 필터링
   const getVisibleNodes = useCallback(() => {
     const visible = hierarchicalData.nodes.filter(node => {
-      // SuperNode는 표시하지 않음 (회색 박스 숨김)
-      if (node.isSuperNode) return false;
-      
       // 컨테이너 노드 필터링: 현재 레벨에 맞는 컨테이너만 표시
       if (node.isContainer) {
         // 레벨별 컨테이너 표시 규칙:
@@ -526,9 +465,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           name: node.name,
           type: node.type,
           level: node.level,
-          isSuperNode: node.isSuperNode,
-          isExpanded: node.isExpanded,
-          childCount: node.childCount,
           isInCycle: cycleInfo.cycleNodes.has(node.id)
         },
         classes: classes.join(' ')
@@ -573,19 +509,16 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   };
 
   // 클러스터링 기반 레이아웃 구축
-  const buildClusteredLayout = (visibleNodes: HierarchicalNode[], edges: any[]) => {
-    console.log('🎯 Building clustered layout...');
-    
+  const buildClusteredLayout = (visibleNodes: HierarchicalNode[], edges: any[]) => {    
     // Step 1: 클러스터 식별
-    const clusters = identifyClusters(visibleNodes);
-    console.log('📦 Identified clusters:', clusters);
+    const clusters = identifyClusters(visibleNodes);    
     
     // Step 2: 컨테이너 노드 생성
     const containerElements = createContainerElements(clusters);
-    
+
     // Step 3: 노드들에 parent 속성 추가
     const clusteredNodes = assignNodesToContainers(visibleNodes, clusters);
-    
+
     // Step 4: 엣지 필터링 (자기 자신으로의 엣지 제외)
     const nodeIds = new Set(visibleNodes.map(n => n.id));
     console.log('🔗 Processing edges for clustering:', {
@@ -856,9 +789,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           name: node.name,
           type: node.type,
           level: node.level,
-          isSuperNode: node.isSuperNode,
-          isExpanded: node.isExpanded,
-          childCount: node.childCount,
           parent: parentContainer,
           isInCycle: cycleInfo.cycleNodes.has(node.id)
         },
@@ -889,8 +819,8 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         handleHierarchicalHighlight(cy, nodeId);
       }
       
-      // SuperNode이거나 자식이 있는 노드는 확장/축소
-      if (nodeData.isSuperNode || hierarchicalData.hierarchy[nodeId]) {
+      // 자식이 있는 노드는 확장/축소
+      if (hierarchicalData.hierarchy[nodeId]) {
         toggleNodeExpansion(nodeId);
       }
       
@@ -1117,9 +1047,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'z-index': 10,
         'background-color': (node: any) => {
           const type = node.data('type') || 'module';
-          const isSuperNode = node.data('isSuperNode') || false;
-          
-          if (isSuperNode) return '#d9d9d9';
           
           const colors = {
             package: '#1890ff',
@@ -1134,13 +1061,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         },
         'label': (node: any) => {
           const name = node.data('name') || node.data('id') || 'Node';
-          const isSuperNode = node.data('isSuperNode') || false;
-          const childCount = node.data('childCount');
-          
-          if (isSuperNode && childCount) {
-            return `${name} (${childCount})`;
-          }
-          
           return name;
         },
         'font-size': (node: any) => {
@@ -1149,13 +1069,11 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         },
         'width': (node: any) => {
           const level = node.data('level') || 1;
-          const isSuperNode = node.data('isSuperNode') || false;
-          return isSuperNode ? 120 : Math.max(40, 100 - level * 10);
+          return Math.max(40, 100 - level * 10);
         },
         'height': (node: any) => {
           const level = node.data('level') || 1;
-          const isSuperNode = node.data('isSuperNode') || false;
-          return isSuperNode ? 60 : Math.max(30, 80 - level * 8);
+          return Math.max(30, 80 - level * 8);
         },
         'text-valign': 'center',
         'text-halign': 'center',
@@ -1168,9 +1086,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'text-max-width': '150px',
         'shape': (node: any) => {
           const type = node.data('type') || 'module';
-          const isSuperNode = node.data('isSuperNode') || false;
-          
-          if (isSuperNode) return 'round-rectangle';
           
           switch (type) {
             case 'package': return 'round-rectangle';
@@ -1182,26 +1097,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
             default: return 'ellipse';
           }
         }
-      }
-    },
-    // SuperNode 스타일
-    {
-      selector: 'node[isSuperNode="true"]',
-      style: {
-        'background-color': '#f0f0f0',
-        'border-style': 'dashed',
-        'border-width': 3,
-        'border-color': '#999',
-        'opacity': 0.8,
-        'font-style': 'italic'
-      }
-    },
-    // 확장된 노드 스타일
-    {
-      selector: 'node[isExpanded="true"]',
-      style: {
-        'border-color': '#52c41a',
-        'border-width': 4
       }
     },
     // 엣지 스타일
