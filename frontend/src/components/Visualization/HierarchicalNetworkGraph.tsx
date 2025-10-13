@@ -16,9 +16,8 @@ const loadCytoscapeExtensions = async () => {
       const coseBilkent = await import('cytoscape-cose-bilkent');
       cytoscape.use(coseBilkent.default || coseBilkent);
       coseBilkentLoaded = true;
-      console.log('✅ Loaded cytoscape-cose-bilkent');
     } catch (error) {
-      console.warn('Could not load cytoscape-cose-bilkent:', error);
+      // Could not load cytoscape-cose-bilkent
     }
   }
 };
@@ -92,7 +91,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
   // 데이터를 계층적 구조로 변환
   const buildHierarchicalStructure = useCallback((inputData: any) => {
-    console.log('🏗️ Building hierarchical structure from:', inputData);
     
     const nodes: HierarchicalNode[] = [];
     const hierarchy: Record<string, string[]> = {};
@@ -195,7 +193,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       return !node.parent || node.level <= viewLevel;
     });
     
-    console.log(`👁️ Visible nodes at level ${viewLevel}:`, visible.length);
     return visible;
   }, [hierarchicalData, viewLevel, expandedNodes]);
 
@@ -204,37 +201,24 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     if (data) {
       const hierarchical = buildHierarchicalStructure(data);
       setHierarchicalData(hierarchical);
-      console.log('🏗️ Hierarchical data built:', hierarchical);
     }
   }, [data, buildHierarchicalStructure]);
 
   // 순환 참조 데이터 처리
   useEffect(() => {
-    console.log('🔄 HierarchicalNetworkGraph received cycleData:', cycleData);
-    
     if (cycleData && cycleData.cycles) {
       const cycleNodes = new Set<string>();
       const cycleEdges = new Set<string>();
 
-      console.log('🔄 Processing cycles:', cycleData.cycles);
-
-      cycleData.cycles.forEach((cycle: any, index: number) => {
-        console.log(`🔄 Processing cycle ${index + 1}:`, {
-          id: cycle.id,
-          entities: cycle.entities,
-          cycle_type: cycle.cycle_type
-        });
-
+      cycleData.cycles.forEach((cycle: any) => {
         // 순환에 포함된 모든 엔티티 추가
         cycle.entities.forEach((entity: string) => {
           cycleNodes.add(entity);
-          console.log(`🔄 Added cycle node: ${entity}`);
 
           // mod: 접두사 제거한 버전도 추가
           if (entity.startsWith('mod:')) {
             const withoutPrefix = entity.substring(4);
             cycleNodes.add(withoutPrefix);
-            console.log(`🔄 Also added without mod prefix: ${withoutPrefix}`);
           }
 
           // 다른 가능한 ID 패턴들도 추가
@@ -242,7 +226,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
             const parts = entity.split('.');
             const lastPart = parts[parts.length - 1];
             cycleNodes.add(lastPart);
-            console.log(`🔄 Also added last part: ${lastPart}`);
           }
         });
 
@@ -266,27 +249,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       });
 
       setCycleInfo({ cycleNodes, cycleEdges });
-      console.log('🔄 Cycle info processed:', { 
-        cycleNodes: Array.from(cycleNodes),
-        totalNodes: cycleNodes.size, 
-        totalEdges: cycleEdges.size 
-      });
-      
-      // 실제 그래프 노드 ID와 비교를 위한 디버깅
-      if (data && data.nodes) {
-        console.log('🔍 Graph node IDs (first 20):', data.nodes.slice(0, 20).map((n: any) => n.id));
-        console.log('🔍 All cycle nodes:', Array.from(cycleNodes));
-        
-        // 실제 매칭 테스트
-        const moduleNodes = data.nodes.filter((n: any) => n.type === 'module');
-        console.log('🔍 Module nodes in graph:');
-        moduleNodes.forEach((node: any) => {
-          const isInCycle = cycleNodes.has(node.id);
-          console.log(`  - ${node.id} (${node.name}) -> in cycle: ${isInCycle ? '✅' : '❌'}`);
-        });
-      }
     } else {
-      console.log('🔄 No cycle data received or cycles is empty');
       setCycleInfo({
         cycleNodes: new Set(),
         cycleEdges: new Set()
@@ -310,8 +273,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
       const visibleNodes = getVisibleNodes();
       const elements = transformToElements(visibleNodes, hierarchicalData.edges);
-      
-      console.log('🎨 Creating Cytoscape with elements:', elements.length);
       
       // Cytoscape 인스턴스 생성
       const cy = cytoscape({
@@ -339,7 +300,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       });
 
       } catch (error) {
-        console.error('Error creating hierarchical graph:', error);
+        // Error creating hierarchical graph
       }
     };
 
@@ -381,7 +342,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         duration: 500
       });
 
-      console.log('HierarchicalNetworkGraph - Centered on node:', selectedNodeId);
     } else {
       // Try to find node by partial match
       const allNodes = cy.nodes();
@@ -406,9 +366,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         }, {
           duration: 500
         });
-        console.log('HierarchicalNetworkGraph - Centered on matching node:', firstMatch.id());
       } else {
-        console.warn('HierarchicalNetworkGraph - Node not found:', selectedNodeId);
         // Keep the selectedNode as is to still show the panel even if not found in graph
       }
     }
@@ -499,11 +457,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
     // Step 4: 엣지 필터링 (자기 자신으로의 엣지 제외)
     const nodeIds = new Set(visibleNodes.map(n => n.id));
-    console.log('🔗 Processing edges for clustering:', {
-      totalEdges: edges.length,
-      nodeIds: Array.from(nodeIds).slice(0, 5),
-      sampleEdges: edges.slice(0, 5)
-    });
     
     const filteredEdges = edges.filter(edge => 
       nodeIds.has(edge.source) && 
@@ -540,10 +493,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       };
     });
     
-    console.log('✅ Filtered edges for clustering:', {
-      filteredCount: filteredEdges.length,
-      sampleFiltered: filteredEdges.slice(0, 3)
-    });
     
     return [...containerElements, ...clusteredNodes, ...filteredEdges];
   };
@@ -664,7 +613,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     return null;
   };
 
-  // 컨테이너 요소 생성  
+  // 컨테이너 요소 생성 (타입 없이)
   const createContainerElements = (clusters: { packages: ClusterContainer[], modules: ClusterContainer[], classes: ClusterContainer[] }) => {
     const containerElements: any[] = [];
     
@@ -674,8 +623,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         containerElements.push({
           data: {
             id: cluster.id,
-            label: cluster.name,
-            type: 'package-container'
+            label: cluster.name
           },
           classes: 'package-container'
         });
@@ -689,7 +637,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           data: {
             id: cluster.id,
             label: cluster.name,
-            type: 'module-container',
             parent: cluster.parentCluster
           },
           classes: 'module-container'
@@ -704,7 +651,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           data: {
             id: cluster.id,
             label: cluster.name,
-            type: 'class-container',
             parent: cluster.parentCluster
           },
           classes: 'class-container'
@@ -712,7 +658,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       }
     });
     
-    console.log('📦 Created container elements:', containerElements.length);
     return containerElements;
   };
 
@@ -774,7 +719,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       });
     });
     
-    console.log('🔗 Assigned nodes to containers:', nodeElements.length);
     return nodeElements;
   };
 
@@ -806,7 +750,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     // 배경 클릭
     cy.on('tap', (evt) => {
       if (evt.target === cy) {
-        console.log('🌍 Background clicked - clearing highlights');
         cy.elements().removeClass('highlighted connected dimmed hierarchical');
         setSelectedNode(null);
       }
@@ -828,22 +771,18 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
   // 계층적 하이라이트
   const handleHierarchicalHighlight = (cy: cytoscape.Core, nodeId: string) => {
-    console.log('🔍 Starting highlight for:', nodeId);
     
     // 먼저 기존 하이라이트 제거
     cy.elements().removeClass('highlighted connected dimmed');
 
     const targetNode = cy.getElementById(nodeId);
     if (!targetNode.length) {
-      console.warn('❌ Target node not found:', nodeId);
       return;
     }
-
-    console.log('✅ Target node found:', targetNode.data());
+    
     const connectedEdges = targetNode.connectedEdges();
     const connectedNodes = connectedEdges.connectedNodes();
-    
-    console.log('🔗 Connected nodes:', connectedNodes.length);
+
     
     // 약간의 지연을 주어 하이라이트가 제대로 적용되도록 함
     setTimeout(() => {
@@ -851,18 +790,32 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       targetNode.addClass('highlighted');
       // 연결된 노드들 하이라이트
       connectedNodes.addClass('connected');
-      // 관련 노드들 하이라이트
-      // relatedNodes.addClass('hierarchical');
-      
       connectedEdges.addClass('highlighted');
       
-      // 나머지 흐리게 (선택된 노드와 연결된 노드들 제외)
-      // const allNodes = cy.nodes();
-      // const nodesToKeepHighlighted = targetNode.add(connectedNodes);
-      // allNodes.not(nodesToKeepHighlighted).addClass('dimmed');
-      // cy.edges().not(connectedEdges).addClass('dimmed');
+      // 나머지 흐리게 (선택된 노드와 연결된 엣지들 제외)
+      const allNodes = cy.nodes();
+      const allEdges = cy.edges();
       
-      console.log('🎨 Highlight applied successfully - target should be highlighted now');
+      // 수동으로 dimmed 노드들 찾기
+      const dimmedNodes = allNodes.filter(node => {
+        const nodeId = node.id();
+        const isTarget = nodeId === targetNode.id();
+        const isConnected = connectedNodes.map(n => n.id()).includes(nodeId);
+        const shouldDim = !isTarget && !isConnected;
+        
+        console.log(`Node ${nodeId}: isTarget=${isTarget}, isConnected=${isConnected}, shouldDim=${shouldDim}`);
+        
+        return shouldDim;
+      });
+      
+      const dimmedEdges = allEdges.filter(edge => {
+        const edgeId = edge.id();
+        return !connectedEdges.map(e => e.id()).includes(edgeId);
+      });
+      
+      
+      dimmedNodes.addClass('dimmed');
+      dimmedEdges.addClass('dimmed');
     }, 50);
   };
 
@@ -871,82 +824,10 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
   // 계층적 스타일시트
   const getHierarchicalStylesheet = (): any[] => [
-    // 패키지 컨테이너 스타일
-    {
-      selector: '.package-container',
-      style: {
-        'shape': 'round-rectangle',
-        'background-color': '#fff7e6',
-        'background-opacity': 0.05,
-        'border-width': 3,
-        'border-style': 'dashed',
-        'border-color': '#d4b106',
-        'border-opacity': 0.8,
-        'content': '',  // 클러스터 라벨 숨김
-        'text-opacity': 0,  // 텍스트 완전 숨김
-        'padding': '39px',
-        'width': 300,
-        'height': 200,
-        'z-index': 1,
-        'overlay-opacity': 0,
-        'events': 'no'
-      }
-    },
-    
-    // 모듈 컨테이너 스타일
-    {
-      selector: '.module-container',
-      style: {
-        'shape': 'round-rectangle',
-        'background-color': '#f9f0ff',
-        'background-opacity': 0.08,
-        'border-width': 2,
-        'border-style': 'dashed',
-        'border-color': '#722ed1',
-        'border-opacity': 0.7,
-        'content': '',  // 클러스터 라벨 숨김
-        'text-opacity': 0,  // 텍스트 완전 숨김
-        'padding': '30px',
-        'width': 220,
-        'height': 140,
-        'z-index': 2,
-        'overlay-opacity': 0,
-        'events': 'no'
-      }
-    },    
-    // 클래스 컨테이너 스타일
-    {
-      selector: '.class-container',
-      style: {
-        'shape': 'round-rectangle',
-        'background-color': '#f0f9ff',
-        'background-opacity': 0.06,
-        'border-width': 1,
-        'border-style': 'dotted',
-        'border-color': '#1890ff',
-        'border-opacity': 0.6,
-        'content': '',  // 클러스터 라벨 숨김
-        'text-opacity': 0,  // 텍스트 완전 숨김
-        'padding': '21px',
-        'width': 150,
-        'height': 100,
-        'z-index': 3,
-        'overlay-opacity': 0,
-        'events': 'no'
-      }
-    },
-    
-    // 컨테이너 노드 공통 스타일
-    {
-      selector: 'node:parent',
-      style: {
-        'background-opacity': 0.1,
-        'text-outline-width': 0
-      }
-    },
+
     // 클래스 노드 전용 스타일 (컨테이너보다 위에 표시)
     {
-      selector: 'node[type="class"]',
+      selector: 'node[type = "class"]',
       style: {
         'z-index': 100,
         'overlay-opacity': 0,
@@ -963,7 +844,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           const type = node.data('type') || 'module';
           
           const colors = {
-            package: '#1890ff',
+            package: '#B7FF00',
             module: '#52c41a', 
             class: '#fa8c16',
             method: '#eb2f96',
@@ -996,7 +877,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'text-outline-color': '#fff',
         'border-width': 2,
         'border-color': '#666',
-        'text-wrap': 'wrap',
+        'text-wrap': 'wrap', //옵션 : wrap, none, ellipsis
         'text-max-width': '150px',
         'shape': (node: any) => {
           const type = node.data('type') || 'module';
@@ -1005,7 +886,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
             case 'package': return 'round-rectangle';
             case 'module': return 'rectangle';
             case 'class': return 'ellipse';
-            case 'method':
+            case 'method': return 'triangle';
             case 'function': return 'triangle';
             case 'field': return 'diamond';
             default: return 'ellipse';
@@ -1022,43 +903,91 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'target-arrow-color': '#888',
         'target-arrow-shape': 'triangle',
         'curve-style': 'bezier',
-        'opacity': 0.7
       }
     },
-    // 하이라이트 상태들
+    // 패키지 컨테이너 스타일
+    {
+      selector: '.package-container',
+      style: {
+            'shape': 'round-rectangle',
+            'background-color': '#00FF55',
+            'background-opacity': 1,
+            'border-width': 2,
+            'border-opacity': 0.8,
+            'label': '',  
+            'text-opacity': 0,  // 텍스트 완전 숨김
+            'padding': '20px',
+            'z-index': 1,
+            'overlay-opacity': 0,
+            'events': 'no'
+          }
+        },
+        
+        // 모듈 컨테이너 스타일
+        {
+          selector: '.module-container',
+          style: {
+            'shape': 'round-rectangle',         // 라운드 사각형 모양
+            'background-color': '#E5FF00',      
+            'background-opacity': 0.01,            // 배경 투명도: 완전히 불투명
+            'border-width': 2,                  // 테두리 두께
+            'border-opacity': 1,              // 테두리 투명
+            'label': '',                      // 클러스터 라벨 숨김
+            'text-opacity': 0,                  // 텍스트 완전 숨김
+            'padding': '20px',                  // 내부 패딩
+            'z-index': 2,                       // 계층 순서 (컨테이너 레이어)
+            'overlay-opacity': 0,               // 오버레이 투명도 (마우스 hover 등)
+            'events': 'no'
+          }
+        },    
+        // 클래스 컨테이너 스타일
+        {
+          selector: '.class-container',
+          style: {
+            'shape': 'round-rectangle',
+            'background-color': '#FF00F2',
+            'background-opacity': 0.06,
+            'border-width': 2,
+            'border-opacity': 0.6,
+            'label': '',  // 클러스터 라벨 숨김
+            'text-opacity': 0,  // 텍스트 완전 숨김
+            'padding': '20px',
+            'z-index': 3,
+            'overlay-opacity': 0,
+            'events': 'no'
+          }
+        },
+        {
+          selector: 'node.dimmed',
+          style: {
+            'opacity': 0.3
+          }
+        },
+        // 컨테이너 노드 공통 스타일
+        {
+          selector: 'node:parent',
+          style: {
+            'background-opacity': 0.1,
+            'text-outline-width': 0
+          }
+        },
+
+            // 하이라이트 상태들
     {
       selector: 'node.highlighted',
       style: {
-        'background-color': '#1E90FF',
         'border-color': '#1E90FF',
+        'opacity': 1,
         'border-width': 5,
         'z-index': 999
-      }
-    },
-    // 클래스 노드 하이라이트 특별 스타일
-    {
-      selector: 'node[type="class"].highlighted',
-      style: {
-        //'background-color': '#ff7875',
-        'border-color': '#1E90FF', 
-        'border-width': 6,
-        'z-index': 999,
-        'overlay-opacity': 0.1,
-        'overlay-color': '#1E90FF'
       }
     },
     {
       selector: 'node.connected',
       style: {
-        'background-color': '#1E90FF',
-        'border-color': '#1E90FF',
-        'border-width': 4
-      }
-    },
-    {
-      selector: 'node.dimmed',
-      style: {
-        'opacity': 0.2
+        'border-color': '#2F00FF',
+        'border-width': 4,
+        'opacity': 1
       }
     },
     {
@@ -1069,19 +998,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'width': 4
       }
     },
-    // 순환 참조 노드 스타일 - 기본
-    {
-      selector: 'node.in-cycle',
-      style: {
-        'border-color': '#ff4d4f',
-        'border-width': 5,
-        'border-style': 'solid',
-        'border-opacity': 1,
-        'overlay-opacity': 0.15,
-        'overlay-color': '#ff4d4f',
-        'z-index': 50  // 다른 노드보다 위에 표시
-      }
-    },
+    
     // 순환 참조 엣지 스타일 - 기본
     {
       selector: 'edge.cycle-edge',
@@ -1100,9 +1017,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     {
       selector: 'edge.dimmed',
       style: {
-        'opacity': 0.1
+        'opacity': 0.3
       }
-    }
+    },
   ];
 
   // 계층적 레이아웃 - Cose-Bilkent만 사용
