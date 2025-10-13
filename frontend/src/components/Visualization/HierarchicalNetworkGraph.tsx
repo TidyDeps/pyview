@@ -780,43 +780,23 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       return;
     }
     
-    const connectedEdges = targetNode.connectedEdges();
-    const connectedNodes = connectedEdges.connectedNodes();
+    const edges = targetNode.connectedEdges();
+    const neighbors = edges.connectedNodes();
 
-    
-    // 약간의 지연을 주어 하이라이트가 제대로 적용되도록 함
-    setTimeout(() => {
-      // 클릭한 노드 하이라이트 (가장 중요!)
-      targetNode.addClass('highlighted');
-      // 연결된 노드들 하이라이트
-      connectedNodes.addClass('connected');
-      connectedEdges.addClass('highlighted');
-      
-      // 나머지 흐리게 (선택된 노드와 연결된 엣지들 제외)
-      const allNodes = cy.nodes();
-      const allEdges = cy.edges();
-      
-      // 수동으로 dimmed 노드들 찾기
-      const dimmedNodes = allNodes.filter(node => {
-        const nodeId = node.id();
-        const isTarget = nodeId === targetNode.id();
-        const isConnected = connectedNodes.map(n => n.id()).includes(nodeId);
-        const shouldDim = !isTarget && !isConnected;
-        
-        console.log(`Node ${nodeId}: isTarget=${isTarget}, isConnected=${isConnected}, shouldDim=${shouldDim}`);
-        
-        return shouldDim;
-      });
-      
-      const dimmedEdges = allEdges.filter(edge => {
-        const edgeId = edge.id();
-        return !connectedEdges.map(e => e.id()).includes(edgeId);
-      });
-      
-      
-      dimmedNodes.addClass('dimmed');
-      dimmedEdges.addClass('dimmed');
-    }, 50);
+    // 포커스: 타깃 + 이웃 + 각자의 부모(컨테이너)
+    const focus = targetNode
+      .union(neighbors)
+      .union(targetNode.parents())
+      .union(neighbors.parents());
+
+    // 상태 부여
+    targetNode.addClass('highlighted');
+    neighbors.addClass('connected');
+    edges.addClass('highlighted');
+
+    // 포커스 외는 전부 dimmed
+    cy.nodes().not(focus).addClass('dimmed');
+    cy.edges().not(edges).addClass('dimmed');
   };
 
 
@@ -985,7 +965,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     {
       selector: 'node.connected',
       style: {
-        'border-color': '#2F00FF',
+        'border-color': '#FF5100',
         'border-width': 4,
         'opacity': 1
       }
