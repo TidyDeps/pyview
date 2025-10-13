@@ -35,10 +35,9 @@ interface HierarchicalNode {
 
 interface ClusterContainer {
   id: string;
-  type: 'package-cluster' | 'module-cluster' | 'class-cluster';
+  type: 'root-container' | 'package-container' | 'module-container' | 'class-container';
   name: string;
   children: string[];
-  bounds?: { x: number, y: number, width: number, height: number };
   parentCluster?: string;
 }
 
@@ -509,10 +508,11 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         const packageId = extractPackageId(node.id);
         if (!packageClusters.has(packageId)) {
           packageClusters.set(packageId, {
-            id: `package-cluster-${packageId}`,
-            type: 'package-cluster',
+            id: `package-container-${packageId}`,
+            type: 'package-container',
             name: `📦 ${packageId}`,
-            children: []
+            children: [],
+            parentCluster: 'root-container'
           });
         }
         packageClusters.get(packageId)!.children.push(node.id);
@@ -524,11 +524,11 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         if (moduleId && !moduleClusters.has(moduleId)) {
           const packageId = extractPackageId(moduleId);
           moduleClusters.set(moduleId, {
-            id: `module-cluster-${moduleId}`,
-            type: 'module-cluster',
+            id: `module-container-${moduleId}`,
+            type: 'module-container',
             name: `📄 ${moduleId.split(':').pop()?.split('.').pop() || moduleId}`,
             children: [],
-            parentCluster: `package-cluster-${packageId}`
+            parentCluster: `package-container-${packageId}`
           });
         }
         if (moduleId) {
@@ -542,11 +542,11 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         if (classId && !classClusters.has(classId)) {
           const moduleId = extractModuleId(classId);
           classClusters.set(classId, {
-            id: `class-cluster-${classId}`,
-            type: 'class-cluster',
+            id: `class-container-${classId}`,
+            type: 'class-container',
             name: `🏷️ ${classId.split(':').pop() || classId}`,
             children: [],
-            parentCluster: moduleId ? `module-cluster-${moduleId}` : undefined
+            parentCluster: moduleId ? `module-container-${moduleId}` : undefined
           });
         }
         if (classId) {
@@ -617,13 +617,20 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   const createContainerElements = (clusters: { packages: ClusterContainer[], modules: ClusterContainer[], classes: ClusterContainer[] }) => {
     const containerElements: any[] = [];
     
+    // 맨 먼저 root-container 요소를 추가
+    containerElements.push({
+      data: { id: 'root-container', label: '📦 Root' },
+      classes: 'root-container'
+    });
+    
     // 패키지 컨테이너
     clusters.packages.forEach(cluster => {
       if (cluster.children.length > 0) {
         containerElements.push({
           data: {
             id: cluster.id,
-            label: cluster.name
+            label: cluster.name,
+            parent: 'root-container'
           },
           classes: 'package-container'
         });
@@ -671,7 +678,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       // 모듈 노드 → 패키지 컨테이너
       if (node.type === 'module') {
         const packageId = extractPackageId(node.id);
-        const packageCluster = clusters.packages.find(c => c.id === `package-cluster-${packageId}`);
+        const packageCluster = clusters.packages.find(c => c.id === `package-container-${packageId}`);
         if (packageCluster && packageCluster.children?.includes(node.id)) {
           parentContainer = packageCluster.id;
         }
@@ -681,7 +688,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       if (node.type === 'class') {
         const moduleId = extractModuleId(node.id);
         if (moduleId) {
-          const moduleCluster = clusters.modules.find(c => c.id === `module-cluster-${moduleId}`);
+          const moduleCluster = clusters.modules.find(c => c.id === `module-container-${moduleId}`);
           if (moduleCluster && moduleCluster.children?.includes(node.id)) {
             parentContainer = moduleCluster.id;
           }
@@ -692,7 +699,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       if (node.type === 'method' || node.type === 'field' || node.type === 'function') {
         const classId = extractClassId(node.id);
         if (classId) {
-          const classCluster = clusters.classes.find(c => c.id === `class-cluster-${classId}`);
+          const classCluster = clusters.classes.find(c => c.id === `class-container-${classId}`);
           if (classCluster && classCluster.children?.includes(node.id)) {
             parentContainer = classCluster.id;
           }
@@ -885,58 +892,71 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'curve-style': 'bezier',
       }
     },
+    // root-container 스타일
+    {
+      selector: '.root-container',
+      style: {
+        'shape': 'round-rectangle',
+        'background-color': '#B0FFB0',
+        'background-opacity': 0.05,
+        'border-width': 3,
+        'border-color': '#8c8c8c',
+        'label': '',
+        'z-index': 0,
+        'events': 'no'
+      }
+    },
     // 패키지 컨테이너 스타일
     {
       selector: '.package-container',
       style: {
-            'shape': 'round-rectangle',
-            'background-color': '#00FF55',
-            'background-opacity': 1,
-            'border-width': 2,
-            'border-opacity': 0.8,
-            'label': '',  
-            'text-opacity': 0,  // 텍스트 완전 숨김
-            'padding': '20px',
-            'z-index': 1,
-            'overlay-opacity': 0,
-            'events': 'no'
-          }
-        },
-        
-        // 모듈 컨테이너 스타일
-        {
-          selector: '.module-container',
-          style: {
-            'shape': 'round-rectangle',         // 라운드 사각형 모양
-            'background-color': '#E5FF00',      
-            'background-opacity': 0.01,            // 배경 투명도: 완전히 불투명
-            'border-width': 2,                  // 테두리 두께
-            'border-opacity': 1,              // 테두리 투명
-            'label': '',                      // 클러스터 라벨 숨김
-            'text-opacity': 0,                  // 텍스트 완전 숨김
-            'padding': '20px',                  // 내부 패딩
-            'z-index': 2,                       // 계층 순서 (컨테이너 레이어)
-            'overlay-opacity': 0,               // 오버레이 투명도 (마우스 hover 등)
-            'events': 'no'
-          }
-        },    
-        // 클래스 컨테이너 스타일
-        {
-          selector: '.class-container',
-          style: {
-            'shape': 'round-rectangle',
-            'background-color': '#FF00F2',
-            'background-opacity': 0.06,
-            'border-width': 2,
-            'border-opacity': 0.6,
-            'label': '',  // 클러스터 라벨 숨김
-            'text-opacity': 0,  // 텍스트 완전 숨김
-            'padding': '20px',
-            'z-index': 3,
-            'overlay-opacity': 0,
-            'events': 'no'
-          }
-        },
+        'shape': 'round-rectangle',
+        'background-color': '#00FF55',
+        'background-opacity': 0.08,
+        'border-width': 2,
+        'border-color': '#52c41a',
+        'label': '',  
+        'text-opacity': 0,
+        'padding': '20px',
+        'z-index': 1,
+        'overlay-opacity': 0,
+        'events': 'no'
+      }
+    },
+    // 모듈 컨테이너 스타일
+    {
+      selector: '.module-container',
+      style: {
+        'shape': 'round-rectangle',
+        'background-color': '#E5FF00',
+        'background-opacity': 0.05,
+        'border-width': 2,
+        'border-color': '#d4b106',
+        'label': '',
+        'text-opacity': 0,
+        'padding': '20px',
+        'z-index': 2,
+        'overlay-opacity': 0,
+        'events': 'no'
+      }
+    },
+    // 클래스 컨테이너 스타일
+    {
+      selector: '.class-container',
+      style: {
+        'shape': 'round-rectangle',
+        'background-color': '#FF00F2',
+        'background-opacity': 0.06,
+        'border-width': 2,
+        'border-color': '#722ed1',
+        'label': '',
+        'text-opacity': 0,
+        'padding': '20px',
+        'z-index': 3,
+        'overlay-opacity': 0,
+        'events': 'no'
+      }
+    },
         {
           selector: 'node.dimmed',
           style: {
