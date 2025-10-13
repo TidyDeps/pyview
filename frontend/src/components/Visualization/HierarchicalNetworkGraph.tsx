@@ -28,11 +28,10 @@ const loadCytoscapeExtensions = async () => {
 interface HierarchicalNode {
   id: string;
   name: string;
-  type: 'package' | 'module' | 'class' | 'method' | 'field' | 'function' | 'package-container' | 'module-container' | 'class-container' | 'root-container';
+  type: 'package' | 'module' | 'class' | 'method' | 'field' | 'function';
   parent?: string;
   children?: string[];
   level: number;
-  isContainer: boolean; // 컨테이너 노드인지 여부
 }
 
 interface ClusterContainer {
@@ -108,7 +107,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
           name: node.name || node.id,
           type: node.type,
           level,
-          isContainer: false, // 실노드는 컨테이너가 아님
           parent: findParentNode(node, inputData.nodes),
           children: findChildNodes(node, inputData.nodes)
         };
@@ -186,27 +184,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
   // 현재 표시할 노드들 필터링
   const getVisibleNodes = useCallback(() => {
-    const visible = hierarchicalData.nodes.filter(node => {
-      // 컨테이너 노드 필터링: 현재 레벨에 맞는 컨테이너만 표시
-      if (node.isContainer) {
-        // 레벨별 컨테이너 표시 규칙:
-        // Level 0 (Package): root-container만 표시 (여러 패키지가 있을 때)
-        // Level 1 (Module): package-container만 표시
-        // Level 2 (Class): module-container만 표시
-        // Level 3+ (Method/Field): class-container만 표시
-        
-        if (viewLevel === 0) {
-          return node.type === 'root-container'; // Package 레벨에서는 root-container만 (여러 패키지가 있을 때)
-        } else if (viewLevel === 1) {
-          return node.type === 'package-container'; // Module 레벨에서는 package-container만
-        } else if (viewLevel === 2) {
-          return node.type === 'module-container'; // Class 레벨에서는 module-container만
-        } else if (viewLevel >= 3) {
-          return node.type === 'class-container'; // Method/Field 레벨에서는 class-container만
-        }
-        return false;
-      }
-      
+    const visible = hierarchicalData.nodes.filter(node => { 
       // 실노드 필터링
       if (node.level > viewLevel) return false;
       
@@ -810,12 +788,10 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       const nodeData = node.data();
       const nodeId = nodeData.id;
       
-      console.log('🎯 Node clicked:', { nodeId, nodeData, type: nodeData.type });
       setSelectedNode(nodeId);
       
-      // 하이라이트 모드 (컨테이너가 아닌 모든 실제 노드에 적용)
-      if (highlightMode && nodeData.type !== 'package-container' && nodeData.type !== 'module-container' && nodeData.type !== 'class-container') {
-        console.log('🌟 Applying highlight to:', nodeId, 'type:', nodeData.type);
+      // 하이라이트 모드
+      if (highlightMode) {
         handleHierarchicalHighlight(cy, nodeId);
       }
       
@@ -855,7 +831,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     console.log('🔍 Starting highlight for:', nodeId);
     
     // 먼저 기존 하이라이트 제거
-    cy.elements().removeClass('highlighted connected dimmed hierarchical');
+    cy.elements().removeClass('highlighted connected dimmed');
 
     const targetNode = cy.getElementById(nodeId);
     if (!targetNode.length) {
@@ -866,92 +842,30 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     console.log('✅ Target node found:', targetNode.data());
     const connectedEdges = targetNode.connectedEdges();
     const connectedNodes = connectedEdges.connectedNodes();
-
-    // 계층적 관계 하이라이트
-    const relatedNodes = getHierarchicallyRelatedNodes(cy, nodeId);
     
     console.log('🔗 Connected nodes:', connectedNodes.length);
-    console.log('👥 Related nodes:', relatedNodes.length);
     
     // 약간의 지연을 주어 하이라이트가 제대로 적용되도록 함
     setTimeout(() => {
       // 클릭한 노드 하이라이트 (가장 중요!)
       targetNode.addClass('highlighted');
-      console.log('🎯 Target highlighted:', targetNode.data('type'), targetNode.data('id'));
-      
-      // 연결된 노드들 하이라이트 (컨테이너 제외)
-      const actualConnectedNodes = connectedNodes.filter(node => {
-        const nodeType = node.data('type');
-        return nodeType !== 'package-container' && nodeType !== 'module-container' && nodeType !== 'class-container';
-      });
-      actualConnectedNodes.addClass('connected');
-      
-      // 관련 노드들 하이라이트 (컨테이너 제외)
-      const actualRelatedNodes = relatedNodes.filter(node => {
-        const nodeType = node.data('type');
-        return nodeType !== 'package-container' && nodeType !== 'module-container' && nodeType !== 'class-container';
-      });
-      actualRelatedNodes.addClass('hierarchical');
+      // 연결된 노드들 하이라이트
+      connectedNodes.addClass('connected');
+      // 관련 노드들 하이라이트
+      // relatedNodes.addClass('hierarchical');
       
       connectedEdges.addClass('highlighted');
       
-      // 나머지 흐리게 (컨테이너는 dimmed에서 제외)
-      const nonContainerNodes = cy.nodes().filter(node => {
-        const nodeType = node.data('type');
-        return nodeType !== 'package-container' && nodeType !== 'module-container' && nodeType !== 'class-container';
-      });
-      
-      nonContainerNodes.not(targetNode).not(actualConnectedNodes).not(actualRelatedNodes).addClass('dimmed');
-      cy.edges().not(connectedEdges).addClass('dimmed');
+      // 나머지 흐리게 (선택된 노드와 연결된 노드들 제외)
+      // const allNodes = cy.nodes();
+      // const nodesToKeepHighlighted = targetNode.add(connectedNodes);
+      // allNodes.not(nodesToKeepHighlighted).addClass('dimmed');
+      // cy.edges().not(connectedEdges).addClass('dimmed');
       
       console.log('🎨 Highlight applied successfully - target should be highlighted now');
     }, 50);
   };
 
-  // 계층적으로 관련된 노드들 찾기
-  const getHierarchicallyRelatedNodes = (cy: cytoscape.Core, nodeId: string): cytoscape.NodeCollection => {
-    console.log('🔎 Finding related nodes for:', nodeId);
-    
-    const node = hierarchicalData.nodes.find(n => n.id === nodeId);
-    if (!node) {
-      console.warn('❌ Node not found in hierarchical data:', nodeId);
-      return cy.collection();
-    }
-
-    console.log('📊 Node data:', { id: node.id, type: node.type, parent: node.parent, children: node.children });
-
-    let relatedIds: string[] = [];
-    
-    // 부모 노드
-    if (node.parent) {
-      relatedIds.push(node.parent);
-      console.log('👆 Parent found:', node.parent);
-    }
-    
-    // 자식 노드들
-    if (node.children && node.children.length > 0) {
-      relatedIds.push(...node.children);
-      console.log('👇 Children found:', node.children);
-    }
-    
-    // 형제 노드들 (같은 부모를 가진 노드들)
-    if (node.parent) {
-      const siblings = hierarchicalData.nodes
-        .filter(n => n.parent === node.parent && n.id !== nodeId)
-        .map(n => n.id);
-      relatedIds.push(...siblings);
-      console.log('👫 Siblings found:', siblings);
-    }
-
-    // 같은 타입 노드 하이라이트 기능 제거 - 실제 연결된 노드만 하이라이트
-    // (이전에 클래스 클릭 시 다른 클래스들도 하이라이트되던 기능을 제거함)
-
-    console.log('🎯 Total related IDs:', relatedIds);
-    const relatedNodes = cy.nodes().filter(n => relatedIds.includes(n.id()));
-    console.log('✅ Related nodes found in cytoscape:', relatedNodes.length);
-    
-    return relatedNodes;
-  };
 
   // clearHighlights 함수 제거 - 직접 cy.elements().removeClass() 사용
 
@@ -1139,14 +1053,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'background-color': '#1E90FF',
         'border-color': '#1E90FF',
         'border-width': 4
-      }
-    },
-    {
-      selector: 'node.hierarchical',
-      style: {
-        'background-color': '#1E90FF',
-        'border-color': '#1E90FF',
-        'border-width': 3
       }
     },
     {
