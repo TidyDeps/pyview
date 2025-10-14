@@ -52,13 +52,15 @@ interface HierarchicalGraphProps {
   cycleData?: any; // 순환 참조 데이터
   onNodeClick?: (nodeId: string) => void;
   selectedNodeId?: string | null;
+  projectName?: string; // 프로젝트 이름
 }
 
 const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({ 
   data, 
   cycleData,
   onNodeClick,
-  selectedNodeId 
+  selectedNodeId,
+  projectName = 'Root' // 기본값 설정
 }) => {
   const cyRef = useRef<HTMLDivElement>(null);
   const cyInstanceRef = useRef<cytoscape.Core | null>(null);
@@ -627,7 +629,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     containerElements.push({
       data: { 
         id: 'root-container', 
-        label: viewLevel >= 1 ? '📦 Root' : ''
+        label: viewLevel >= 1 ? `📦 ${projectName}` : ''
       },
       classes: viewLevel >= 1 ? 'root-container show-label' : 'root-container'
     });

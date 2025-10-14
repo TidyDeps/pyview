@@ -362,6 +362,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ analysisId }) => 
             cycleData={extractCycleData(analysisResults)}
             onNodeClick={handleGraphNodeClick}
             selectedNodeId={selectedNodeId || undefined}
+            projectName={analysisResults?.project_info?.name}
           />
         </Col>
       </Row>
