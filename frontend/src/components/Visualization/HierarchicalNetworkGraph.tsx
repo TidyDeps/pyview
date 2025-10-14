@@ -41,12 +41,6 @@ interface ClusterContainer {
   parentCluster?: string;
 }
 
-// interface ClusteredLayoutData {
-//   containers: ClusterContainer[];
-//   nodes: HierarchicalNode[];
-//   edges: any[];
-// }
-
 interface HierarchicalGraphProps {
   data: any;
   cycleData?: any; // 순환 참조 데이터
@@ -183,7 +177,11 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
   // 현재 표시할 노드들 필터링
   const getVisibleNodes = useCallback(() => {
+    // 숨겨야 하는 중복 패키지 전역 필터 적용
+    const hiddenPackages: Set<string> = (window as any).__hiddenRootPackages || new Set<string>();
+
     const visible = hierarchicalData.nodes.filter(node => { 
+      if (hiddenPackages.has(node.id)) return false; // 전역적으로 숨김
       // 실노드 필터링
       if (node.level > viewLevel) return false;
       
@@ -413,6 +411,47 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         classes: classes.join(' ')
       });
     });
+
+    // Level 0(Package 뷰)에서는 중복된 패키지를 전체 렌더링에서 제거하고,
+    // root-proxy를 추가한다. 이때 해당 패키지는 이후 레벨에서도 숨김 처리된다.
+    if (viewLevel === 0) {
+      const duplicatePackageIds = visibleNodes
+        .filter(
+          n =>
+            n.type === 'package' &&
+            (n.name === projectName ||
+             n.id === `pkg:${projectName}` ||
+             n.id === projectName)
+        )
+        .map(n => n.id);
+
+      if (duplicatePackageIds.length > 0) {
+        // 전역 숨김 집합 업데이트
+        const winAny = window as any;
+        const existing: Set<string> = winAny.__hiddenRootPackages || new Set<string>();
+        duplicatePackageIds.forEach((id: string) => existing.add(id));
+        winAny.__hiddenRootPackages = existing;
+
+        // 현재 표시 목록 및 elements에서도 제거
+        for (const dupId of duplicatePackageIds) {
+          const idx = visibleNodes.findIndex(n => n.id === dupId);
+          if (idx !== -1) visibleNodes.splice(idx, 1);
+          const elIdx = elements.findIndex(el => el.data?.id === dupId);
+          if (elIdx !== -1) elements.splice(elIdx, 1);
+        }
+      }
+
+      // 루트 프록시 노드 추가 (모듈 룩)
+      elements.push({
+        data: {
+          id: 'root-proxy',
+          name: projectName,
+          type: 'module',
+          level: 0
+        },
+        classes: 'root-as-module'
+      });
+    }
 
     // 엣지 변환 (보이는 노드들 간의 연결만, 자기 자신으로의 엣지 제외)
     edges.forEach(edge => {
@@ -901,6 +940,44 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'target-arrow-color': '#888',
         'target-arrow-shape': 'triangle',
         'curve-style': 'bezier',
+      }
+    },
+    // 루트 타입 전용 스타일 (모듈과 차별화)
+    {
+      selector: 'node[type = "root"]',
+      style: {
+        'shape': 'round-rectangle',
+        'background-color': '#0050b3',
+        'border-color': '#003a8c',
+        'border-width': 3,
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'color': '#ffffff',
+        'text-outline-width': 1,
+        'text-outline-color': '#003a8c',
+        'font-size': '16px',
+        'width': 150,
+        'height': 50,
+        'z-index': 12
+      }
+    },
+    // Level 0에서 루트를 모듈처럼 보이게 하는 프록시 노드 스타일
+    {
+      selector: 'node.root-as-module',
+      style: {
+        'shape': 'round-rectangle',
+        'background-color': '#2db7f5',
+        'border-color': '#096dd9',
+        'border-width': 3,
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'color': '#ffffff',
+        'text-outline-width': 1,
+        'text-outline-color': '#0958d9',
+        'font-size': '16px',
+        'width': 140,
+        'height': 46,
+        'z-index': 11
       }
     },
     // root-container 스타일
