@@ -629,7 +629,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     containerElements.push({
       data: { 
         id: 'root-container', 
-        label: viewLevel >= 1 ? `📦 ${projectName}` : ''
+        label: viewLevel >= 1 ? `${projectName}` : ''
       },
       classes: viewLevel >= 1 ? 'root-container show-label' : 'root-container'
     });
@@ -913,6 +913,8 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'border-width': 3,
         'border-color': '#8c8c8c',
         'label': '',
+        'font-size': '25px',
+        'color': '#FFFFFF',
         'text-opacity': 0,
         'z-index': 0,
         'events': 'no'
@@ -926,10 +928,11 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'text-opacity': 1,
         'text-halign': 'left',
         'text-valign': 'top',
-        'text-margin-x': -8,
+        'text-margin-x': 140,
         'text-margin-y': -10,
-        'text-background-opacity': 0.7,
-        'text-background-color': '#ffffff',
+        'text-font-size': '100px',
+        'text-background-opacity': 0.9,
+        'text-background-color': '#207000',
         'text-background-padding': 2,
         'text-background-shape': 'round-rectangle'
       }
