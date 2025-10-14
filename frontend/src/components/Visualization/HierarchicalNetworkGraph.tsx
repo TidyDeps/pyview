@@ -373,10 +373,11 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
   // 클러스터링된 요소들을 Cytoscape 형식으로 변환
   const transformToElements = (visibleNodes: HierarchicalNode[], edges: any[]) => {
-    if (!enableClustering) {
+    if (viewLevel === 0) {
+      // 컨테이너(=박스) 만들지 않고, 패키지 노드를 모듈처럼 보이게
       return transformToSimpleElements(visibleNodes, edges);
     }
-    
+    if (!enableClustering) return transformToSimpleElements(visibleNodes, edges);
     return buildClusteredLayout(visibleNodes, edges);
   };
 
@@ -388,6 +389,11 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     // 노드 변환
     visibleNodes.forEach(node => {
       const classes = [`node-${node.type}`];
+      
+      // Pkg 레벨에서 패키지 노드를 모듈처럼 보이게
+      if (viewLevel === 0 && node.type === 'package') {
+        classes.push('pkg-as-module');
+      }
       
       // 순환 참조 클래스 추가
       if (cycleInfo.cycleNodes.has(node.id)) {
@@ -619,8 +625,11 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     
     // 맨 먼저 root-container 요소를 추가
     containerElements.push({
-      data: { id: 'root-container', label: '📦 Root' },
-      classes: 'root-container'
+      data: { 
+        id: 'root-container', 
+        label: viewLevel >= 1 ? '📦 Root' : ''
+      },
+      classes: viewLevel >= 1 ? 'root-container show-label' : 'root-container'
     });
     
     // 패키지 컨테이너
@@ -902,8 +911,25 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'border-width': 3,
         'border-color': '#8c8c8c',
         'label': '',
+        'text-opacity': 0,
         'z-index': 0,
         'events': 'no'
+      }
+    },
+    // show-label 클래스가 붙은 루트 컨테이너만 라벨 표기
+    {
+      selector: '.root-container.show-label',
+      style: {
+        'label': 'data(label)',
+        'text-opacity': 1,
+        'text-halign': 'left',
+        'text-valign': 'top',
+        'text-margin-x': -8,
+        'text-margin-y': -10,
+        'text-background-opacity': 0.7,
+        'text-background-color': '#ffffff',
+        'text-background-padding': 2,
+        'text-background-shape': 'round-rectangle'
       }
     },
     // 패키지 컨테이너 스타일
@@ -915,7 +941,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'background-opacity': 0.08,
         'border-width': 2,
         'border-color': '#52c41a',
-        'label': '',  
+        'label': '',
         'text-opacity': 0,
         'padding': '20px',
         'z-index': 1,
