@@ -27,7 +27,7 @@ const loadCytoscapeExtensions = async () => {
 interface HierarchicalNode {
   id: string;
   name: string;
-  type: 'package' | 'module' | 'class' | 'method' | 'field' | 'function';
+  type: 'package' | 'module' | 'class' | 'method' | 'field';
   parent?: string;
   children?: string[];
   level: number;
@@ -132,8 +132,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       case 'package': return 0;
       case 'module': return 1;
       case 'class': return 2;
-      case 'method': 
-      case 'function': return 3;
+      case 'method': return 3;
       case 'field': return 4;
       default: return 1;
     }
@@ -584,7 +583,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       }
       
       // Class 클러스터 식별 (method/field 노드들을 그룹핑)
-      if (node.type === 'method' || node.type === 'field' || node.type === 'function') {
+      if (node.type === 'method' || node.type === 'field') {
         const classId = extractClassId(node.id);
         if (classId && !classClusters.has(classId)) {
           const moduleId = extractModuleId(classId);
@@ -746,7 +745,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       }
       
       // Method/Field 노드 → 클래스 컨테이너
-      if (node.type === 'method' || node.type === 'field' || node.type === 'function') {
+      if (node.type === 'method' || node.type === 'field') {
         const classId = extractClassId(node.id);
         if (classId) {
           const classCluster = clusters.classes.find(c => c.id === `class-container-${classId}`);
@@ -885,7 +884,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
             module: '#52c41a', 
             class: '#fa8c16',
             method: '#eb2f96',
-            function: '#eb2f96',
             field: '#722ed1'
           };
           
@@ -924,7 +922,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
             case 'module': return 'rectangle';
             case 'class': return 'ellipse';
             case 'method': return 'triangle';
-            case 'function': return 'triangle';
             case 'field': return 'diamond';
             default: return 'ellipse';
           }
