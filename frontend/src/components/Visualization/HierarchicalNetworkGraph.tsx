@@ -492,7 +492,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   // 클러스터링 기반 레이아웃 구축
   const buildClusteredLayout = (visibleNodes: HierarchicalNode[], edges: any[]) => {
     // Step 1: 클러스터 식별
-    const clusters = identifyClusters(visibleNodes);
+    const clusters = identifyClusters(visibleNodes, edges);
 
     // Step 2: 컨테이너 노드 생성
     const containerElements = createContainerElements(clusters);
@@ -543,7 +543,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   };
 
   // 클러스터 식별 - 개별 노드 기반 계층적 컨테이너 생성
-  const identifyClusters = (nodes: HierarchicalNode[]) => {
+  const identifyClusters = (nodes: HierarchicalNode[], edges: any[]) => {
     const moduleClusters = new Map<string, ClusterContainer>();
     const classClusters = new Map<string, ClusterContainer>();
 
@@ -566,6 +566,19 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       );
       childClasses.forEach(classNode => {
         moduleClusters.get(moduleId)!.children.push(classNode.id);
+      });
+
+      // 해당 모듈과 엣지로 연결된 함수들을 포함
+      const functionNodes = nodes.filter(n => n.type === 'method' && n.id.startsWith('func:'));
+      functionNodes.forEach(funcNode => {
+        const connectedToThisModule = edges.some(edge =>
+          (edge.source === funcNode.id && edge.target === moduleId) ||
+          (edge.target === funcNode.id && edge.source === moduleId)
+        );
+
+        if (connectedToThisModule) {
+          moduleClusters.get(moduleId)!.children.push(funcNode.id);
+        }
       });
     });
 
@@ -747,15 +760,26 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
       // 3. 메서드 노드 할당
       else if (node.type === 'method') {
-        // viewLevel >= 3이면 해당 class-container에 할당
-        if (viewLevel >= 3) {
-          const classId = extractClassId(node.id);
-          if (classId) {
-            const classCluster = clusters.classes.find(c => c.children.includes(node.id));
-            parentContainer = classCluster?.id;
+        if (node.id.startsWith('func:')) {
+          // module-level 함수: 해당 module-container에 할당
+          if (viewLevel >= 2) {
+            const moduleCluster = clusters.modules.find(c => c.children.includes(node.id));
+            parentContainer = moduleCluster?.id;
+          } else {
+            // viewLevel < 2면 package-container에 직접 할당
+            parentContainer = 'package-container';
           }
+        } else {
+          // 클래스 메서드: viewLevel >= 3이면 해당 class-container에 할당
+          if (viewLevel >= 3) {
+            const classId = extractClassId(node.id);
+            if (classId) {
+              const classCluster = clusters.classes.find(c => c.children.includes(node.id));
+              parentContainer = classCluster?.id;
+            }
+          }
+          // viewLevel < 3이면 표시되지 않음 (getVisibleNodes에서 필터링됨)
         }
-        // viewLevel < 3이면 표시되지 않음 (getVisibleNodes에서 필터링됨)
       }
 
       // 4. 필드 노드 할당
@@ -803,7 +827,7 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
       const node = evt.target;
       const nodeData = node.data();
       const nodeId = nodeData.id;
-      
+
       setSelectedNode(nodeId);
       
       // 하이라이트 모드
