@@ -35,7 +35,7 @@ interface HierarchicalNode {
 
 interface ClusterContainer {
   id: string;
-  type: 'root-container' | 'package-container' | 'module-container' | 'class-container';
+  type: 'package-container' | 'module-container' | 'class-container';
   name: string;
   children: string[];
   parentCluster?: string;
@@ -490,10 +490,10 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
   };
 
   // 클러스터링 기반 레이아웃 구축
-  const buildClusteredLayout = (visibleNodes: HierarchicalNode[], edges: any[]) => {    
+  const buildClusteredLayout = (visibleNodes: HierarchicalNode[], edges: any[]) => {
     // Step 1: 클러스터 식별
-    const clusters = identifyClusters(visibleNodes);    
-    
+    const clusters = identifyClusters(visibleNodes);
+
     // Step 2: 컨테이너 노드 생성
     const containerElements = createContainerElements(clusters);
 
@@ -542,67 +542,65 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
     return [...containerElements, ...clusteredNodes, ...filteredEdges];
   };
 
-  // 클러스터 식별
+  // 클러스터 식별 - 개별 노드 기반 계층적 컨테이너 생성
   const identifyClusters = (nodes: HierarchicalNode[]) => {
-    const packageClusters = new Map<string, ClusterContainer>();
     const moduleClusters = new Map<string, ClusterContainer>();
     const classClusters = new Map<string, ClusterContainer>();
-    
-    nodes.forEach(node => {
-      // Package 클러스터 식별 (모듈 노드들을 그룹핑)
-      if (node.type === 'module') {
-        const packageId = extractPackageId(node.id);
-        if (!packageClusters.has(packageId)) {
-          packageClusters.set(packageId, {
-            id: `package-container-${packageId}`,
-            type: 'package-container',
-            name: `📦 ${packageId}`,
-            children: [],
-            parentCluster: 'root-container'
-          });
-        }
-        packageClusters.get(packageId)!.children.push(node.id);
-      }
-      
-      // Module 클러스터 식별 (클래스 노드들을 그룹핑)
-      if (node.type === 'class') {
-        const moduleId = extractModuleId(node.id);
-        if (moduleId && !moduleClusters.has(moduleId)) {
-          const packageId = extractPackageId(moduleId);
-          moduleClusters.set(moduleId, {
-            id: `module-container-${moduleId}`,
-            type: 'module-container',
-            name: `📄 ${moduleId.split(':').pop()?.split('.').pop() || moduleId}`,
-            children: [],
-            parentCluster: `package-container-${packageId}`
-          });
-        }
-        if (moduleId) {
-          moduleClusters.get(moduleId)!.children.push(node.id);
-        }
-      }
-      
-      // Class 클러스터 식별 (method/field 노드들을 그룹핑)
-      if (node.type === 'method' || node.type === 'field') {
-        const classId = extractClassId(node.id);
-        if (classId && !classClusters.has(classId)) {
-          const moduleId = extractModuleId(classId);
+
+    // 1. module-container 논리적 그룹 생성 (viewLevel과 무관하게 항상 생성)
+    nodes.filter(node => node.type === 'module').forEach(moduleNode => {
+      const moduleId = moduleNode.id;
+
+      // 각 모듈마다 개별 module-container 생성
+      moduleClusters.set(moduleId, {
+        id: `module-container-${moduleId}`,
+        type: 'module-container',
+        name: `📄 ${moduleNode.name}`,
+        children: [moduleId], // 대표 노드부터 시작
+        parentCluster: 'package-container'
+      });
+
+      // 해당 모듈의 하위 클래스들을 포함
+      const childClasses = nodes.filter(n =>
+        n.type === 'class' && extractModuleId(n.id) === moduleId
+      );
+      childClasses.forEach(classNode => {
+        moduleClusters.get(moduleId)!.children.push(classNode.id);
+      });
+    });
+
+    // 2. ViewLevel에 따른 class-container 생성 (viewLevel >= 3일 때만)
+    if (viewLevel >= 3) {
+      nodes.filter(node => node.type === 'class').forEach(classNode => {
+        const classId = classNode.id;
+        const moduleId = extractModuleId(classId);
+
+        // 해당 클래스의 하위 메서드/필드 찾기
+        const childMethods = nodes.filter(n =>
+          n.type === 'method' && extractClassId(n.id) === classId
+        );
+        const childFields = viewLevel >= 4 ? nodes.filter(n =>
+          n.type === 'field' && extractClassId(n.id) === classId
+        ) : [];
+
+        // 하위 노드가 있을 때만 class-container 생성
+        if (childMethods.length > 0 || childFields.length > 0) {
+          const parentContainer = moduleId && moduleClusters.has(moduleId)
+            ? `module-container-${moduleId}`
+            : 'package-container';
+
           classClusters.set(classId, {
             id: `class-container-${classId}`,
             type: 'class-container',
-            name: `🏷️ ${classId.split(':').pop() || classId}`,
-            children: [],
-            parentCluster: moduleId ? `module-container-${moduleId}` : undefined
+            name: `🏷️ ${classNode.name}`,
+            children: [classId, ...childMethods.map(m => m.id), ...childFields.map(f => f.id)],
+            parentCluster: parentContainer
           });
         }
-        if (classId) {
-          classClusters.get(classId)!.children.push(node.id);
-        }
-      }
-    });
-    
+      });
+    }
+
     return {
-      packages: Array.from(packageClusters.values()),
       modules: Array.from(moduleClusters.values()),
       classes: Array.from(classClusters.values())
     };
@@ -631,76 +629,61 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
 
   // 클래스 ID 추출 (method/field에서)
   const extractClassId = (nodeId: string): string | null => {
-    // PyView 형식: meth:cls:module_id:class_name:method_name:line_number → cls:module_id:class_name
-    // PyView 형식: field:cls:module_id:class_name:field_name → cls:module_id:class_name
+    // PyView 형식: meth:cls:mod:module_name:ClassName:method_name:line_number → cls:mod:module_name:ClassName
+    // PyView 형식: field:cls:mod:module_name:ClassName:field_name:line_number → cls:mod:module_name:ClassName
     if (nodeId.startsWith('meth:') || nodeId.startsWith('field:')) {
       const parts = nodeId.split(':');
-      if (parts.length >= 4 && parts[1] === 'cls') {
-        return `${parts[1]}:${parts[2]}:${parts[3]}`;
+      if (parts.length >= 5 && parts[1] === 'cls') {
+        return `${parts[1]}:${parts[2]}:${parts[3]}:${parts[4]}`;  // cls:mod:module_name:ClassName
       }
     }
-    
-    // Demo 데이터 형식: method_cls_ClassName → cls_ClassName
+
+    // func: 형식은 모듈 레벨 함수이므로 클래스에 속하지 않음
+    if (nodeId.startsWith('func:')) {
+      return null;
+    }
+
+    // Demo 데이터 형식: method_cls_ClassName → cls_ClassName (하위 호환성)
     if (nodeId.includes('_cls_') || nodeId.includes('cls_')) {
       const clsMatch = nodeId.match(/cls_([^_]+)/);
       if (clsMatch) {
         return `cls_${clsMatch[1]}`;
       }
     }
-    
-    // 직접적인 클래스 참조가 있는 경우
-    const parts = nodeId.split('_');
-    for (let i = 0; i < parts.length - 1; i++) {
-      if (parts[i] === 'cls' || parts[i] === 'class') {
-        return `cls_${parts[i + 1]}`;
-      }
-    }
-    
+
     return null;
   };
 
   // 컨테이너 요소 생성 (타입 없이)
-  const createContainerElements = (clusters: { packages: ClusterContainer[], modules: ClusterContainer[], classes: ClusterContainer[] }) => {
+  const createContainerElements = (clusters: { modules: ClusterContainer[], classes: ClusterContainer[] }) => {
     const containerElements: any[] = [];
-    
-    // 맨 먼저 root-container 요소를 추가
+
+    // 맨 먼저 package-container 요소를 추가 (최상위 컨테이너)
     containerElements.push({
-      data: { 
-        id: 'root-container', 
+      data: {
+        id: 'package-container',
         label: viewLevel >= 1 ? `${projectName}` : ''
       },
-      classes: viewLevel >= 1 ? 'root-container show-label' : 'root-container'
+      classes: viewLevel >= 1 ? 'package-container show-label' : 'package-container'
     });
-    
-    // 패키지 컨테이너
-    clusters.packages.forEach(cluster => {
-      if (cluster.children.length > 0) {
-        containerElements.push({
-          data: {
-            id: cluster.id,
-            label: cluster.name,
-            parent: 'root-container'
-          },
-          classes: 'package-container'
-        });
-      }
-    });
-    
-    // 모듈 컨테이너
-    clusters.modules.forEach(cluster => {
-      if (cluster.children.length > 0) {
-        containerElements.push({
-          data: {
-            id: cluster.id,
-            label: cluster.name,
-            parent: cluster.parentCluster
-          },
-          classes: 'module-container'
-        });
-      }
-    });
-    
-    // 클래스 컨테이너
+
+    // 모듈 컨테이너들 (viewLevel >= 2일 때만 UI 요소 생성)
+    if (viewLevel >= 2) {
+      clusters.modules.forEach(cluster => {
+        if (cluster.children.length > 0) {
+          containerElements.push({
+            data: {
+              id: cluster.id,
+              label: cluster.name,
+              parent: 'package-container'
+            },
+            classes: 'module-container'
+          });
+        }
+      });
+    }
+
+    // 클래스 컨테이너들 (기존 모듈 컨테이너 역할)
     clusters.classes.forEach(cluster => {
       if (cluster.children.length > 0) {
         containerElements.push({
@@ -713,68 +696,101 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         });
       }
     });
-    
+
     return containerElements;
   };
 
-  // 노드를 컨테이너에 할당
-  const assignNodesToContainers = (nodes: HierarchicalNode[], clusters: { packages: ClusterContainer[], modules: ClusterContainer[], classes: ClusterContainer[] }) => {
+  // 노드를 컨테이너에 계층적으로 할당
+  const assignNodesToContainers = (nodes: HierarchicalNode[], clusters: { modules: ClusterContainer[], classes: ClusterContainer[] }) => {
     const nodeElements: any[] = [];
-    
+
     nodes.forEach(node => {
       let parentContainer: string | undefined;
-      
-      // 모듈 노드 → 패키지 컨테이너
+
+      // 1. 모듈 노드 할당
       if (node.type === 'module') {
-        const packageId = extractPackageId(node.id);
-        const packageCluster = clusters.packages.find(c => c.id === `package-container-${packageId}`);
-        if (packageCluster && packageCluster.children?.includes(node.id)) {
-          parentContainer = packageCluster.id;
+        // viewLevel >= 2면 해당 module-container에 할당, 아니면 package-container에 할당
+        if (viewLevel >= 2) {
+          const moduleCluster = clusters.modules.find(c => c.children.includes(node.id));
+          parentContainer = moduleCluster?.id;
+        } else {
+          // viewLevel < 2면 명시적으로 package-container에 할당
+          parentContainer = 'package-container';
         }
       }
-      
-      // 클래스 노드 → 모듈 컨테이너
-      if (node.type === 'class') {
-        const moduleId = extractModuleId(node.id);
-        if (moduleId) {
-          const moduleCluster = clusters.modules.find(c => c.id === `module-container-${moduleId}`);
-          if (moduleCluster && moduleCluster.children?.includes(node.id)) {
-            parentContainer = moduleCluster.id;
-          }
-        }
-      }
-      
-      // Method/Field 노드 → 클래스 컨테이너
-      if (node.type === 'method' || node.type === 'field') {
-        const classId = extractClassId(node.id);
-        if (classId) {
-          const classCluster = clusters.classes.find(c => c.id === `class-container-${classId}`);
-          if (classCluster && classCluster.children?.includes(node.id)) {
+
+      // 2. 클래스 노드 할당
+      else if (node.type === 'class') {
+        // viewLevel >= 3이고 class-container가 있으면 class-container에 할당
+        if (viewLevel >= 3) {
+          const classCluster = clusters.classes.find(c => c.children.includes(node.id));
+          if (classCluster) {
             parentContainer = classCluster.id;
+          } else {
+            // class-container가 없으면 해당 module-container에 할당
+            const moduleId = extractModuleId(node.id);
+            if (moduleId && viewLevel >= 2) {
+              const moduleCluster = clusters.modules.find(c => c.children.includes(node.id));
+              parentContainer = moduleCluster?.id;
+            }
+          }
+        } else if (viewLevel >= 2) {
+          // viewLevel 2면 module-container에 할당
+          const moduleId = extractModuleId(node.id);
+          if (moduleId) {
+            const moduleCluster = clusters.modules.find(c => c.children.includes(node.id));
+            parentContainer = moduleCluster?.id;
           }
         }
+        // viewLevel < 2면 package-container에 직접 할당
       }
-      
+
+      // 3. 메서드 노드 할당
+      else if (node.type === 'method') {
+        // viewLevel >= 3이면 해당 class-container에 할당
+        if (viewLevel >= 3) {
+          const classId = extractClassId(node.id);
+          if (classId) {
+            const classCluster = clusters.classes.find(c => c.children.includes(node.id));
+            parentContainer = classCluster?.id;
+          }
+        }
+        // viewLevel < 3이면 표시되지 않음 (getVisibleNodes에서 필터링됨)
+      }
+
+      // 4. 필드 노드 할당
+      else if (node.type === 'field') {
+        // viewLevel >= 4이면 해당 class-container에 할당
+        if (viewLevel >= 4) {
+          const classId = extractClassId(node.id);
+          if (classId) {
+            const classCluster = clusters.classes.find(c => c.children.includes(node.id));
+            parentContainer = classCluster?.id;
+          }
+        }
+        // viewLevel < 4이면 표시되지 않음
+      }
+
       const classes = [`node-${node.type}`];
-      
+
       // 순환 참조 클래스 추가
       if (cycleInfo.cycleNodes.has(node.id)) {
         classes.push('in-cycle');
       }
-      
+
       nodeElements.push({
         data: {
           id: node.id,
           name: node.name,
           type: node.type,
           level: node.level,
-          parent: parentContainer,
+          parent: parentContainer, // undefined면 package-container에 속함
           isInCycle: cycleInfo.cycleNodes.has(node.id)
         },
         classes: classes.join(' ')
       });
     });
-    
+
     return nodeElements;
   };
 
@@ -977,9 +993,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'z-index': 11
       }
     },
-    // root-container 스타일
+    // package-container 스타일 (최상위 컨테이너)
     {
-      selector: '.root-container',
+      selector: '.package-container',
       style: {
         'shape': 'round-rectangle',
         'background-color': '#B0FFB0',
@@ -994,9 +1010,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'events': 'no'
       }
     },
-    // show-label 클래스가 붙은 루트 컨테이너만 라벨 표기
+    // show-label 클래스가 붙은 패키지 컨테이너만 라벨 표기
     {
-      selector: '.root-container.show-label',
+      selector: '.package-container.show-label',
       style: {
         'label': 'data(label)',
         'text-opacity': 1,
@@ -1011,9 +1027,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'text-background-shape': 'round-rectangle'
       }
     },
-    // 패키지 컨테이너 스타일
+    // 모듈 컨테이너 스타일 (기존 패키지 컨테이너 역할)
     {
-      selector: '.package-container',
+      selector: '.module-container',
       style: {
         'shape': 'round-rectangle',
         'background-color': '#00FF55',
@@ -1028,9 +1044,9 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'events': 'no'
       }
     },
-    // 모듈 컨테이너 스타일
+    // 클래스 컨테이너 스타일 (기존 모듈 컨테이너 역할)
     {
-      selector: '.module-container',
+      selector: '.class-container',
       style: {
         'shape': 'round-rectangle',
         'background-color': '#E5FF00',
@@ -1041,23 +1057,6 @@ const HierarchicalNetworkGraph: React.FC<HierarchicalGraphProps> = ({
         'text-opacity': 0,
         'padding': '20px',
         'z-index': 2,
-        'overlay-opacity': 0,
-        'events': 'no'
-      }
-    },
-    // 클래스 컨테이너 스타일
-    {
-      selector: '.class-container',
-      style: {
-        'shape': 'round-rectangle',
-        'background-color': '#FF00F2',
-        'background-opacity': 0.06,
-        'border-width': 2,
-        'border-color': '#722ed1',
-        'label': '',
-        'text-opacity': 0,
-        'padding': '20px',
-        'z-index': 3,
         'overlay-opacity': 0,
         'events': 'no'
       }
