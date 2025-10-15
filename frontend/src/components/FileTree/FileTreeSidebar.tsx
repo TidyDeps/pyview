@@ -75,7 +75,7 @@ const parseFilePath = (filepath: string): string[] => {
 
   // Debug only for unexpected cases
   if (result.length === 0 || !result[result.length - 1]) {
-    console.log(`⚠️ Unexpected path parsing result for "${filepath}" → [${result.join(', ')}]`)
+    // Unexpected path parsing result
   }
 
   return result
@@ -117,14 +117,9 @@ const buildFileSystemTree = (modules: any[], classes: any[], methods: any[], fie
     // 🔍 실제 file_path 사용
     const filepath = mod.file_path || mod.name || mod.id || 'unknown'
 
-    // 🔍 Debug: 모듈 데이터 확인 (처음 3개만)
+    // Debug: 모듈 데이터 확인
     if (index < 3) {
-      console.log(`🔍 Module ${index}:`, {
-        id: mod.id,
-        name: mod.name,
-        file_path: mod.file_path,
-        filepath: filepath
-      })
+      // Module data logging removed
     }
 
     const pathParts = parseFilePath(filepath)
@@ -357,13 +352,11 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
         if (Array.isArray(cycle.entities)) {
           cycle.entities.forEach((entity: string) => {
             cycleNodes.add(entity);
-            console.log(`🔄 FileTree: Added cycle node: ${entity}`);
 
             // mod: 접두사 제거한 버전도 추가
             if (entity.startsWith('mod:')) {
               const withoutPrefix = entity.substring(4);
               cycleNodes.add(withoutPrefix);
-              console.log(`🔄 FileTree: Also added without mod prefix: ${withoutPrefix}`);
             }
 
             // 다른 가능한 ID 패턴들도 추가
@@ -371,7 +364,6 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
               const parts = entity.split('.');
               const lastPart = parts[parts.length - 1];
               cycleNodes.add(lastPart);
-              console.log(`🔄 FileTree: Also added last part: ${lastPart}`);
             }
           });
         }
@@ -390,30 +382,9 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
 
     const dependencyGraph = analysisData.dependency_graph || {}
 
-    // 🔍 Debug: 실제 데이터 구조 확인
-    console.log('📋 Dependency Graph Structure:', dependencyGraph)
+    // Debug: 실제 데이터 구조 확인
     if (dependencyGraph.modules) {
-      console.log('📄 Sample modules (first 5):', dependencyGraph.modules.slice(0, 5))
-      console.log('📄 Total modules count:', dependencyGraph.modules.length)
-
-      // 모든 필드 확인
-      const firstModule = dependencyGraph.modules[0]
-      if (firstModule) {
-        console.log('🔍 First module all fields:', Object.keys(firstModule))
-        console.log('🔍 First module full data:', firstModule)
-      }
-
-      // 실제 파일 경로가 있는지 확인
-      dependencyGraph.modules.slice(0, 5).forEach((mod: any, i: number) => {
-        console.log(`📂 Module ${i} paths:`, {
-          id: mod.id,
-          name: mod.name,
-          file_path: mod.file_path,
-          path: mod.path,
-          module_path: mod.module_path,
-          source_file: mod.source_file
-        })
-      })
+      // Module data analysis removed for performance
     }
 
     // 🗂️ 새로운 파일 시스템 기반 트리 생성
@@ -428,7 +399,6 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
     // FileTreeNode로 변환
     const treeNodes = convertFileSystemToTreeNodes(fileSystemRoot, cycleInfo)
 
-    console.log('🗂️ Generated file system tree:', treeNodes)
     return treeNodes
   }, [analysisData, cycleInfo])
 
@@ -519,7 +489,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
                 behavior: 'smooth'
               })
 
-              console.log('FileTree: Scrolled to selected node:', selectedNodeId)
+              // Scrolled to selected node
             } else {
               // Fallback: try to find by content
               const allTreeNodes = treeContainerRef.current.querySelectorAll('.ant-tree-node-content-wrapper')
@@ -536,7 +506,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
                     behavior: 'smooth'
                   })
 
-                  console.log('FileTree: Scrolled to selected node (fallback):', selectedNodeId)
+                  // Scrolled to selected node (fallback)
                   break
                 }
               }
@@ -544,7 +514,7 @@ const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           }
         }, 500) // Wait for tree expansion animation and selection update
 
-        console.log('FileTree: Auto-expanded path to selected node:', selectedNodeId, pathToNode)
+        // Auto-expanded path to selected node
       }
     }
   }, [selectedNodeId, treeData])
