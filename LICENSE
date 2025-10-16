@@ -1,5 +1,12 @@
-Copyright (c) 2014, Bjorn
+PyView - Python 모듈 의존성 시각화 도구
+https://github.com/TidyDeps/pyview
+
+Copyright (c) 2025, JuYeong Park, TaeGwon Lee, MunGi Choi
 All rights reserved.
+
+This project is based on pydeps (https://github.com/thebjorn/pydeps)
+Copyright (c) 2014, Bjorn
+Licensed under BSD 2-Clause License
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:

@@ -56,3 +56,6 @@ Thumbs.db
 # PyDeps output
 *.svg
 .pydeps~
+
+# Pydeps Source
+pydeps-master/
